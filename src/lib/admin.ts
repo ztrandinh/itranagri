@@ -6,6 +6,7 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "regions", pk: "id", label: "Vùng", group: "Công ty", farmScoped: false, softDelete: "active", writeRoles: ["owner", "it_engineer"] },
   { table: "facilities", pk: "id", label: "Nhà công năng / hạ tầng", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "FC", hidden: ["created_at", "created_by", "updated_at", "updated_by"] },
   { table: "locations", pk: "id", label: "Khu / vị trí / chuồng", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "LOC" },
+  { table: "tool_issues", pk: "id", label: "Công cụ · cấp phát / thu hồi / hỏng mất", group: "Kho", farmScoped: true, softDelete: null, writeRoles: [...OPS, "worker"] },
   { table: "plan_scenarios", pk: "id", label: "Kế hoạch · kịch bản cung–cầu (đàn → thức ăn → nguyên liệu → đất → mua)", group: "Kế hoạch", farmScoped: true, softDelete: "status", writeRoles: OPS, codePrefix: "KB" },
   { table: "sku_crop_map", pk: "sku", label: "Kế hoạch · SKU nguyên liệu ↔ cây trồng (hao hụt ủ, lead time, mua/trồng)", group: "Kế hoạch", farmScoped: false, softDelete: null, writeRoles: OPS },
   { table: "class_recipes", pk: "class_code", label: "Kế hoạch · hạng vật nuôi → công thức mặc định", group: "Kế hoạch", farmScoped: false, softDelete: null, writeRoles: OPS },
