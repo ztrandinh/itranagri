@@ -57,7 +57,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
           {!forms && <div className="card">Đang tải danh mục… {animals.stale && "(dữ liệu offline)"}</div>}
           {forms && !form && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span><span className="text-xs text-stone-500">{forms[k].table}</span></button>)}
+              {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span></button>)}
             </div>)}
           {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={{ ...forms[form], onDone: () => { recent.reload(); } }} /></div>)}
         </div>)}

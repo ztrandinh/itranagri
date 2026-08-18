@@ -1,5 +1,6 @@
 "use client";
 import Tabs from "@/components/Tabs";
+import { useUrlTab } from "@/lib/useUrlTab";
 import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
 import { KhachMessages } from "@/components/panels/Extra";
@@ -33,7 +34,7 @@ export function DoiSoatPanel({ sess }: { sess: Sess }) {
 }
 
 export function CanhBaoPanel({ sess }: { sess: Sess }) {
-  const open = useData("alerts_open"); const all = useData("alerts_all"); const grouped = useData("alerts_grouped"); const [tab, setTab] = useState<"open" | "all" | "group" | "caidat">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "caidat" ? "caidat" : "group");
+  const open = useData("alerts_open"); const all = useData("alerts_all"); const grouped = useData("alerts_grouped"); const [tab, setTab] = useUrlTab(["open", "all", "group", "caidat"] as const, "group");
   const rows = tab === "open" ? open.rows : all.rows;
   return (
     <div className="space-y-3">
@@ -58,7 +59,7 @@ export function SopPanel({ code }: { code?: string }) {
 
 export function BanHangPanel({ sess }: { sess: Sess }) {
   const sales = useData("sales_recent"); const recv = useData("receivables"); const price = useData("price_list"); const orders = useData("orders"); const contracts = useData("contracts"); const cov = useData("contract_coverage"); const custody = useData("custody"); const aging = useData("receivable_aging");
-  const [tab, setTab] = useState<"ban" | "don" | "hd" | "nn" | "crm" | "pos" | "kenh" | "tra" | "gia" | "bg" | "ct" | "diem" | "no" | "lich">(typeof window !== "undefined" && ["crm","pos","kenh","nhan-nuoi","gia","bg","ct","diem","no","lich","hd","don"].includes(new URLSearchParams(window.location.search).get("tab") ?? "") ? ((new URLSearchParams(window.location.search).get("tab") === "nhan-nuoi" ? "nn" : new URLSearchParams(window.location.search).get("tab")) as "crm") : "ban"); const [of, setOf] = useState<Record<string, string>>({});
+  const [tab, setTab] = useUrlTab(["ban", "don", "hd", "nn", "crm", "pos", "kenh", "tra", "gia", "bg", "ct", "diem", "no", "lich"] as const, "ban", { "nhan-nuoi": "nn" }); const [of, setOf] = useState<Record<string, string>>({});
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"), plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null, [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = ref ? buildForms(ref, sess.farmId) : null;

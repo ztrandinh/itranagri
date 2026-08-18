@@ -9,6 +9,7 @@ import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
 import { FinanceMorePanel } from "@/components/panels/FinanceMore";
 import { useState } from "react";
+import { useUrlTab } from "@/lib/useUrlTab";
 import DaoTaoThuong from "@/components/panels/DaoTaoThuong";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -56,7 +57,7 @@ export function ThuYPanel({ sess }: { sess: Sess }) {
 /** NHÂN SỰ */
 export function NhanSuPanel({ sess }: { sess: Sess }) {
   const { prompt, promptElement } = usePrompt();
-  const [nsTab, setNsTab] = useState<"dt" | "ns" | "bac">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "bac" ? "bac" : "dt");
+  const [nsTab, setNsTab] = useUrlTab(["dt", "ns", "bac"] as const, "dt");
   const st = useData("staff_activity"); const sops = useData("sops");
   const canW = ["director","owner","it_engineer"].includes(sess.role);
   const due = (d: unknown) => d && new Date(String(d)) < new Date(Date.now() + 30 * 86400e3);

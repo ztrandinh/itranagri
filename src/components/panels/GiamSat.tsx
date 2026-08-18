@@ -5,11 +5,12 @@ import type { Sess } from "@/components/Shell";
 import Tabs from "@/components/Tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 import { usePrompt } from "@/components/ui/PromptDialog";
+import { useUrlTab } from "@/lib/useUrlTab";
 type R = Record<string, unknown>;
 const COL = ["#059669", "#0ea5e9", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#64748b", "#84cc16"];
 /** GIÁM SÁT: bộ tiêu chí theo vị trí (auto từ dữ liệu vận hành + quan sát tại chỗ) → điểm tuần 0–100/người & bộ phận → lỗi trừ điểm thưởng; giám sát viên đủ lượt = đủ điều kiện thưởng */
 export default function GiamSat({ sess }: { sess: Sess }) {
-  const [tab, setTab] = useState<"ngay" | "tuan" | "cham" | "tieuchi" | "loi" | "xuhuong" | "nhip" | "chong">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "chong" ? "chong" : "ngay");
+  const [tab, setTab] = useUrlTab(["ngay", "tuan", "cham", "tieuchi", "loi", "xuhuong", "nhip", "chong"] as const, "ngay");
   const asg = useData("my_supervision"); const targets = useData("supervision_targets"); const crit = useData("supervision_criteria"); const wk = useData("supervision_week", { week: "" }); const weekly = useData("supervision_weekly"); const dept = useData("supervision_dept_weekly"); const checks = useData("supervision_checks_recent");
   const [sel, setSel] = useState<string>(""); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false); const { prompt, promptElement } = usePrompt();
   const T = targets.rows ?? []; const tsel = T.find((t) => t.id === sel); const C = crit.rows ?? [];
