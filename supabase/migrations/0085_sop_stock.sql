@@ -1,0 +1,50 @@
+-- 0085 · sop_monthly: bắp ủ/rơm là hàng TỒN được → tồn đầu kỳ + thu hoạch − tiêu thụ (gap = tồn cuối), xuất bán vỗ béo từ đàn thật, mua bù theo tồn
+create or replace function sop_monthly(p_farm text, p_from date default date_trunc('month', current_date)::date, p_months int default 12) returns table(month date, line text, value numeric, unit text, detail jsonb) language plpgsql stable as $$
+declare m date; i int; hb record; stock_bap numeric; stock_rom numeric; stock_bap_prev numeric; stock_rom_prev numeric; fat_real int; exits_real int; d numeric; base_head jsonb; kgday numeric; grass numeric; corn numeric; straw numeric; demand_bap numeric; demand_co numeric; demand_rom numeric; supply_co numeric; supply_bap numeric; supply_rom numeric; eggs numeric; hens numeric; rev numeric; cost numeric; buy numeric; heads jsonb; nfat int; nsow int; nbe int; nto int; nde int; nga int; ngt int; born numeric; exits_fat int; rev_fat numeric; tmr_kg numeric; vien_kg numeric; capfat numeric; capbo numeric; begin
+  select capacity into capfat from plan_capacity where farm_id=p_farm and kind='CHO_VO_BEO' and active; select capacity into capbo from plan_capacity where farm_id=p_farm and kind='CHO_BO' and active;
+  select coalesce(sum(available),0) into stock_bap from v_stock_available where farm_id=p_farm and sku='NL-BAP-U'; select coalesce(sum(available),0) into stock_rom from v_stock_available where farm_id=p_farm and sku='NL-ROM';
+  select count(*) into fat_real from animals where farm_id=p_farm and status not in ('CHET','XUAT','LOAI') and derive_class(species, sex, birth_date, class_code)='BO-VO-BEO';
+  for i in 0..p_months-1 loop m := (p_from + (i||' months')::interval)::date;
+    -- đàn thật tại mốc (dự báo hạng theo tuổi + đẻ dự kiến) — herd_forecast theo số ngày tới mốc
+    d := greatest(0, m - current_date);
+    select coalesce(sum(head_forecast) filter (where class_code='BO-VO-BEO'),0), coalesce(sum(head_forecast) filter (where class_code in ('BO-CAI-SS','BO-DUC-GIONG')),0), coalesce(sum(head_forecast) filter (where class_code='BO-BE'),0), coalesce(sum(head_forecast) filter (where class_code='BO-TO'),0), coalesce(sum(head_forecast) filter (where class_code like 'DE-%'),0), coalesce(sum(head_forecast) filter (where class_code='GA-DE'),0), coalesce(sum(head_forecast) filter (where class_code='GA-THIT'),0), coalesce(sum(births),0)
+      into nfat, nsow, nbe, nto, nde, nga, ngt, born from herd_forecast(p_farm, least(d,365)::int);
+    -- lứa kế hoạch chồng lên (nhập trong tháng hoặc đang chạy)
+    exits_fat := 0; rev_fat := 0;
+    for hb in select * from plan_herd_batches b where b.farm_id=p_farm and b.status in ('KE_HOACH','DANG_CHAY') and b.start_date <= (m + interval '1 month')::date and (b.start_date + coalesce(b.days, 180)) >= m loop
+      case hb.kind when 'VO_BEO' then nfat := nfat + hb.head; when 'NAI_MOI' then nsow := nsow + hb.head; when 'GA_DE' then nga := nga + hb.head; when 'GA_THIT' then ngt := ngt + hb.head; when 'DE_THIT' then nde := nde + hb.head; else null; end case;
+      if (hb.start_date + coalesce(hb.days,180)) >= m and (hb.start_date + coalesce(hb.days,180)) < (m + interval '1 month')::date then exits_fat := exits_fat + round(hb.head*(1-coalesce(hb.mortality_pct,2)/100)); rev_fat := rev_fat + round(hb.head*(1-coalesce(hb.mortality_pct,2)/100)) * coalesce(hb.out_weight_kg,430) * coalesce(hb.price_out, asm(p_farm,'price_sell_SKU-BO-HOI',82000)); end if;
+    end loop;
+    exits_real := case when i < 6 then round(fat_real/6.0) else 0 end; exits_fat := exits_fat + exits_real; rev_fat := rev_fat + exits_real*430*asm(p_farm,'price_sell_SKU-BO-HOI',82000);
+    heads := jsonb_build_object('vo_beo', nfat, 'nai', nsow, 'be', nbe, 'to', nto, 'de', nde, 'ga_de', nga, 'ga_thit', ngt, 'sinh_du_kien', born, 'xuat_vo_beo_ke_hoach', exits_fat, 'cap_vo_beo', capfat, 'cap_bo', capbo, 'over_cap', (nfat > coalesce(capfat, 1e9) or nsow+nbe+nto > coalesce(capbo,1e9)));
+    month := m; line := 'DAN'; value := nfat+nsow+nbe+nto; unit := 'con bò'; detail := heads; return next;
+    -- thức ăn cần (kg/ngày × ngày trong tháng)
+    kgday := nfat*asm(p_farm,'norm_TA_KG_VB',35) + nsow*32 + nbe*8 + nto*20; tmr_kg := kgday * extract(day from (m + interval '1 month - 1 day'));
+    vien_kg := (nga*0.115 + ngt*0.09) * extract(day from (m + interval '1 month - 1 day'));
+    month := m; line := 'TMR_KG'; value := round(tmr_kg); unit := 'kg'; detail := jsonb_build_object('kg_day', round(kgday), 'vien_kg', round(vien_kg), 'de_kg', round(nde*3.5*30)); return next;
+    demand_bap := tmr_kg*0.45 + vien_kg*0.55; demand_co := tmr_kg*0.08 + nde*3.5*30*0.7; demand_rom := tmr_kg*0.15 + vien_kg*0.10;
+    -- cung sinh khối: cỏ = ha cỏ × kg/ha/tháng × hệ số mùa; bắp = thu hoạch dự kiến (mùa vụ mở + lịch vụ kế hoạch) rơi trong tháng
+    grass := coalesce((select sum(area_ha) from plots p where p.farm_id=p_farm and p.crop_code like 'CO-%' and p.active),0) * asm(p_farm,'grass_kg_ha_month',15000) * asm(p_farm,'grass_season_m'||extract(month from m)::int, 1);
+    corn := coalesce((select sum(greatest(coalesce(target_yield_kg,0)-coalesce(actual_yield_kg,0),0)) from crop_seasons cs where cs.farm_id=p_farm and cs.status in ('DANG_TRONG','THU_HOACH') and cs.crop_code='BAP-SK' and coalesce(cs.expected_harvest, cs.sow_date+85) >= m and coalesce(cs.expected_harvest, cs.sow_date+85) < (m + interval '1 month')::date),0)
+          + coalesce((select sum(coalesce(c.area_ha,(select area_ha from plots where id=c.plot_id)) * coalesce(c.expected_yield_kg_ha, asm(p_farm,'yield_BAP-SK_kg_ha',45000))) from plan_crop_calendar c where c.farm_id=p_farm and c.status in ('KE_HOACH','DANG_TRONG') and c.crop_code in ('BAP-SK','CAO-LUONG') and (c.sow_date + coalesce(c.cycle_days,85)) >= m and (c.sow_date + coalesce(c.cycle_days,85)) < (m + interval '1 month')::date),0);
+    straw := coalesce((select sum(coalesce(area_ha,2.5) * coalesce(actual_yield_kg, target_yield_kg, 15000)/2.5*1.0) from crop_seasons cs where cs.farm_id=p_farm and cs.crop_code='LUA' and cs.status in ('DANG_TRONG','THU_HOACH') and coalesce(cs.expected_harvest, cs.sow_date+105) >= m and coalesce(cs.expected_harvest, cs.sow_date+105) < (m + interval '1 month')::date),0);
+    month := m; line := 'CUNG_CO'; value := round(grass); unit := 'kg'; detail := jsonb_build_object('demand', round(demand_co), 'gap', round(grass-demand_co)); return next;
+    stock_bap_prev := stock_bap; stock_bap := stock_bap + corn/1.18 - demand_bap; month := m; line := 'CUNG_BAP'; value := round(corn/1.18); unit := 'kg ủ'; detail := jsonb_build_object('demand', round(demand_bap), 'gap', round(stock_bap), 'fresh', round(corn), 'stock_end', round(stock_bap), 'note', 'gap = tồn hào ủ cuối tháng (âm = hết bắp ủ)'); if stock_bap < 0 then stock_bap := 0; end if; return next;
+    stock_rom_prev := stock_rom; stock_rom := stock_rom + straw - demand_rom; month := m; line := 'CUNG_ROM'; value := round(straw); unit := 'kg'; detail := jsonb_build_object('demand', round(demand_rom), 'gap', round(stock_rom), 'stock_end', round(stock_rom)); if stock_rom < 0 then stock_rom := 0; end if; return next;
+    -- mua bù (bã bia, rỉ mật, khoáng luôn mua + thiếu bắp/rơm/cỏ)
+    buy := (tmr_kg*0.25 + vien_kg*0.25) * asm(p_farm,'price_buy_NL-BA-BIA',1200) + (tmr_kg*0.04+vien_kg*0.05)*asm(p_farm,'price_buy_NL-RI-MAT',6500) + (tmr_kg*0.03+vien_kg*0.05)*asm(p_farm,'price_buy_NL-KHOANG',18000)
+         + greatest(-(stock_rom),0)*0 + greatest(demand_rom - straw - stock_rom_prev,0)*asm(p_farm,'price_buy_NL-ROM',1500) + greatest(demand_bap - corn/1.18 - stock_bap_prev,0)*900 + greatest(demand_co-grass,0)*600;
+    month := m; line := 'MUA_DONG'; value := round(buy); unit := 'đ'; detail := jsonb_build_object('ba_bia_kg', round(tmr_kg*0.25+vien_kg*0.25), 'rom_bu_kg', round(greatest(demand_rom - straw - stock_rom_prev,0)), 'bap_bu_kg', round(greatest(demand_bap - corn/1.18 - stock_bap_prev,0)), 'co_bu_kg', round(greatest(demand_co-grass,0))); return next;
+    -- SX D5
+    month := m; line := 'SX_D5_KG'; value := round(tmr_kg + vien_kg); unit := 'kg'; detail := jsonb_build_object('tan_ngay', round((tmr_kg+vien_kg)/30/1000,1), 'cap_tan_ngay', (select capacity from plan_capacity where farm_id=p_farm and kind='D5_TAN_NGAY')); return next;
+    -- bán: trứng, bò hơi, phân trùn, TMR bao (hợp đồng), dê, gà thịt
+    eggs := nga * asm(p_farm,'egg_per_hen_day',0.8) * 30 / 10; rev := eggs * asm(p_farm,'price_sell_SKU-TRUNG-10',42000) + rev_fat + 170*asm(p_farm,'price_sell_SKU-PTR-25',78000) + 430*asm(p_farm,'price_sell_SKU-TMR-25',101200)
+         + coalesce((select sum(planned_qty*coalesce(price,0)) from v_contract_schedule cs where cs.farm_id=p_farm and cs.planned_date>=m and cs.planned_date<(m+interval '1 month')::date and cs.status<>'DA_GIAO'),0)*0
+         + case when extract(month from m)::int % 3 = 0 then 8*32*asm(p_farm,'price_sell_SKU-DE-HOI',145000) + 1400*2.1*asm(p_farm,'price_sell_SKU-GA-THIT',68000) else 0 end;
+    month := m; line := 'DOANH_THU'; value := round(rev); unit := 'đ'; detail := jsonb_build_object('trung_vi', round(eggs), 'bo_hoi', rev_fat, 'xuat_vo_beo', exits_fat); return next;
+    cost := buy + asm(p_farm,'payroll_month',350000000) + asm(p_farm,'opex_other_month',60000000) + tmr_kg*0 ;
+    month := m; line := 'CHI_PHI'; value := round(cost); unit := 'đ'; detail := jsonb_build_object('mua', round(buy), 'luong', asm(p_farm,'payroll_month',0), 'khac', asm(p_farm,'opex_other_month',0)); return next;
+    month := m; line := 'LAI_GOP'; value := round(rev-cost); unit := 'đ'; detail := '{}'::jsonb; return next;
+    month := m; line := 'DONG_TIEN'; value := round(rev-cost - coalesce((select sum(s.principal+s.interest) from loan_schedule s join loans l on l.id=s.loan_id where l.farm_id=p_farm and s.status<>'DA_TRA' and s.due_date>=m and s.due_date<(m+interval '1 month')::date),0)); unit := 'đ'; detail := jsonb_build_object('tra_no', coalesce((select sum(s.principal+s.interest) from loan_schedule s join loans l on l.id=s.loan_id where l.farm_id=p_farm and s.status<>'DA_TRA' and s.due_date>=m and s.due_date<(m+interval '1 month')::date),0)); return next;
+  end loop; end $$;
+

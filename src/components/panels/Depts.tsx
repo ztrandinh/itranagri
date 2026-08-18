@@ -1,6 +1,6 @@
 "use client";
 import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
-import SupplyPlan from "@/components/panels/SupplyPlan";
+import KeHoachNam from "@/components/panels/KeHoachNam";
 import Tabs from "@/components/Tabs";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
@@ -22,7 +22,7 @@ export function KeHoachPanel({ sess }: { sess: Sess }) {
   const canW = ["team_lead","tech_head","director","owner"].includes(sess.role);
   const byDay = new Map<string, { plan: number; actual: number }>(); for (const r of fp.rows ?? []) { const k = String(r.day).slice(0, 10); const o = byDay.get(k) ?? { plan: 0, actual: 0 }; o.plan += Number(r.plan_kg); o.actual += Number(r.actual_kg); byDay.set(k, o); }
   return (
-    <div className="space-y-3"><Tabs items={[["cc", "📊 Ban kế hoạch · Cung–cầu (đàn → thức ăn → đất → mua)"], ["vu", "Vụ & cho ăn · KH vs thực"]]} value={khTab} onChange={(k) => setKhTab(k as typeof khTab)} />{khTab === "cc" && <SupplyPlan sess={sess} />}{khTab !== "cc" && <div className="space-y-4">
+    <div className="space-y-3"><Tabs items={[["cc", "📊 KẾ HOẠCH: Năm → S&OP tháng → Đàn/Vụ → việc → KH–TT"], ["vu", "Vụ & cho ăn · KH vs thực"]]} value={khTab} onChange={(k) => setKhTab(k as typeof khTab)} />{khTab === "cc" && <KeHoachNam sess={sess} />}{khTab !== "cc" && <div className="space-y-4">
       <div className="card"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">Cho ăn: kế hoạch (định mức × số con) vs thực — 7 ngày</h3>{canW && <button className="btn-secondary !py-1 !px-3 !text-sm ml-auto" onClick={async () => { await act("gen_feed_plans", {}); fp.reload(); }}>↻ Sinh KH 7 ngày tới</button>}</div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 mt-2">{[...byDay.entries()].sort().map(([d, v]) => <div key={d} className={`rounded-xl p-2 text-center ${v.actual === 0 ? "bg-stone-100" : Math.abs(v.actual - v.plan) / (v.plan || 1) > 0.05 ? "bg-amber-50 border border-amber-300" : "bg-green-50"}`}><div className="text-xs text-stone-500">{d.slice(5)}</div><div className="font-bold">{fmt.n(v.actual)}</div><div className="text-xs">KH {fmt.n(v.plan)}</div></div>)}</div>
         <table className="tbl mt-2"><thead><tr><th>Ngày</th><th>Đàn</th><th className="text-right">KH kg</th><th className="text-right">Thực kg</th><th className="text-right">Lệch</th></tr></thead><tbody>{(fp.rows ?? []).slice(0, 40).map((r, i) => { const d = Number(r.actual_kg) - Number(r.plan_kg); return <tr key={i}><td>{fmt.d(r.day)}</td><td>{String(r.group_name)}</td><td className="text-right">{fmt.n(r.plan_kg)}</td><td className="text-right font-bold">{fmt.n(r.actual_kg)}</td><td className={`text-right ${Math.abs(d) / (Number(r.plan_kg) || 1) > 0.05 && Number(r.actual_kg) > 0 ? "text-amber-700" : ""}`}>{Number(r.actual_kg) ? fmt.n(d) : "—"}</td></tr>; })}</tbody></table></div>
