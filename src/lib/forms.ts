@@ -217,16 +217,16 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
 
 /** Form gợi ý theo vị trí (Phụ lục A) */
 export const ROLE_FORMS: Record<string, string[]> = {
-  A1: ["feed_tmr", "animal_event", "checklist", "incident", "paper_submit"],
-  A2: ["animal_event", "checklist", "incident", "paper_submit"],
-  A3: ["poultry_daily", "egg_in", "feed_tmr", "checklist", "incident", "paper_submit"],
-  A4: ["ras_daily", "ras_feed", "checklist", "incident", "paper_submit"],
-  A5: ["crop_log", "irrigation", "pest_scout", "fuel_out", "checklist", "incident", "paper_submit"],
-  A6: ["bio_batch", "checklist", "incident", "paper_submit"],
+  A1: ["feed_tmr", "animal_event", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
+  A2: ["animal_event", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
+  A3: ["poultry_daily", "egg_in", "feed_tmr", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
+  A4: ["ras_daily", "ras_feed", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
+  A5: ["crop_log", "irrigation", "pest_scout", "fuel_out", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
+  A6: ["bio_batch", "stock_in", "stock_out", "checklist", "incident", "paper_submit"],
   A7: ["d5_batch", "stock_in", "checklist", "incident", "paper_submit"],
   A8: ["stock_in", "stock_out", "stocktake", "sale", "checklist", "incident", "paper_submit"],
-  A9: ["sale", "incident", "paper_submit"],
-  A11: ["gate", "incident", "paper_submit"],
+  A9: ["sale", "stock_in", "stock_out", "incident", "paper_submit"],
+  A11: ["gate", "stock_in", "stock_out", "incident", "paper_submit"],
   ALL: ["animal_event", "feed_tmr", "poultry_daily", "egg_in", "ras_daily", "ras_feed", "crop_log", "irrigation", "pest_scout", "fuel_out", "bio_batch", "d5_batch", "stock_in", "stock_out", "stocktake", "sale", "gate", "checklist", "incident", "paper_submit"],
 };
 export function formsForPosition(position: string | null | undefined, role: string): string[] {
