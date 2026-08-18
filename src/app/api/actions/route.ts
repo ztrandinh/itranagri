@@ -170,6 +170,80 @@ export async function POST(req: Request) {
           if (!["team_lead","tech_head","director"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const r = await c.query("update checklist_runs set approved_by=$2, approved_at=now() where farm_id=$1 and approved_by is null and all_green and created_by<>$2 and ts::date=current_date returning id", [s.farmId, s.staffId]); return { ok: true, n: r.rowCount };
         }
+        case "add_fixed_cost": {
+          if (!["accountant","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          await c.query("insert into cc_fixed_costs(farm_id,month,cost_center,kind,amount,note,created_by) values ($1,$2,$3,$4,$5,$6,$7) on conflict (farm_id,month,cost_center,kind) do update set amount=excluded.amount, note=excluded.note", [s.farmId, b.month, b.cost_center, b.kind, b.amount, b.note ?? null, s.staffId]); return { ok: true };
+        }
+        case "compute_kpi": { const r = await c.query("select compute_staff_kpi($1, coalesce($2::date, date_trunc('month', now())::date)) as n", [s.farmId, b.month ?? null]); return { ok: true, n: r.rows[0].n }; }
+        case "reply_customer": { await c.query("insert into customer_messages(farm_id,contract_id,animal_id,from_customer,body,replied_by,replied_at) values ($1,$2,$3,false,$4,$5,now())", [s.farmId, b.contract_id, b.animal_id ?? null, b.body, s.staffId]); await c.query("update customer_messages set replied_by=$2, replied_at=now() where id=$1", [b.reply_to, s.staffId]); return { ok: true }; }
+        case "set_grid": { if (!["director","owner","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update locations set grid_x=$2, grid_y=$3 where id=$1 and farm_id=$4", [b.id, b.x, b.y, s.farmId]); return { ok: true }; }
+        case "save_alert_rule": {
+          if (!["tech_head","director","owner","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const scope = b.scope === "GLOBAL" && ["owner","it_engineer"].includes(s.role) ? "GLOBAL" : s.farmId;
+          const ver = Number((await c.query("select coalesce(max(version),0)+1 as v from alert_rules where code=$1 and farm_id=$2", [b.code, scope])).rows[0].v);
+          await c.query("update alert_rules set active=false where code=$1 and farm_id=$2", [b.code, scope]);
+          await c.query("insert into alert_rules(code,version,farm_id,name,source,expr,level,recipients,channels,sop_code,cooldown_min,active,updated_by,reason,description,created_by) values ($1,$2,$3,$4,'custom',$5,$6,$7,$8,$9,$10,true,$11,$12,$13,$11)",
+            [b.code, ver, scope, b.name, JSON.stringify(b.expr ?? {}), b.level ?? "VANG", b.recipients ?? ["tech_head"], b.channels ?? ["app"], b.sop_code ?? null, b.cooldown_min ?? 720, s.staffId, b.reason ?? "cấu hình qua UI", b.description ?? null]);
+          return { ok: true, version: ver };
+        }
+        case "toggle_alert_rule": { if (!["tech_head","director","owner","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update alert_rules set active=$3, updated_by=$4, updated_at=now() where code=$1 and version=$2", [b.code, b.version, !!b.active, s.staffId]); return { ok: true }; }
+        case "run_rules_now": { const { runCustomRules, dispatchEvents } = await import("@/lib/notify"); const f = await runCustomRules(s.farmId); const n = await dispatchEvents(); return { ok: true, fired: f, notified: n }; }
+        case "create_farm": {
+          if (!["owner","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          if (!/^F\d{2,3}$/.test(String(b.id))) throw new Error("ERR_FARM_ID_FORMAT");
+          const r = await c.query("select create_farm($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as id", [b.id, s.orgId, b.region_id ?? null, b.name, b.province ?? null, b.legal_entity ?? null, b.kind ?? "CAMPUS", b.s_ha ?? null, b.k_factor ?? null, JSON.stringify(b.modules ?? {})]);
+          await c.query("update staff set farm_ids = array_append(coalesce(farm_ids,'{}'), $1) where id=$2 and not ($1 = any(coalesce(farm_ids,'{}')))", [b.id, s.staffId]);
+          return { ok: true, id: r.rows[0].id };
+        }
+        case "update_farm": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update farms set name=coalesce($2,name), province=coalesce($3,province), legal_entity=coalesce($4,legal_entity), s_ha=coalesce($5,s_ha), k_factor=coalesce($6,k_factor), modules=coalesce($7::jsonb,modules), status=coalesce($8,status), region_id=coalesce($9,region_id) where id=$1", [b.id, b.name ?? null, b.province ?? null, b.legal_entity ?? null, b.s_ha ?? null, b.k_factor ?? null, b.modules ? JSON.stringify(b.modules) : null, b.status ?? null, b.region_id ?? null]); return { ok: true }; }
+        case "set_setting": { if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const scope = b.scope === "GLOBAL" && ["owner","it_engineer"].includes(s.role) ? "GLOBAL" : s.farmId; const v = Number((await c.query("select coalesce(max(version),0)+1 as v from settings where farm_id=$1 and key=$2", [scope, b.key])).rows[0].v); await c.query("insert into settings(farm_id,key,value,version,updated_by) values ($1,$2,$3,$4,$5)", [scope, b.key, JSON.stringify(b.value), v, s.staffId]); return { ok: true, version: v }; }
+        case "set_norm": { if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("insert into norms(id,org_id,farm_id,kind,subject,value,unit,note) values ($1,$2,$3,$4,$5,$6,$7,$8) on conflict (id) do update set value=excluded.value, unit=excluded.unit, note=excluded.note", [b.id ?? `N-${b.kind}-${b.subject}-${s.farmId}`, s.orgId, b.scope === "GLOBAL" ? null : s.farmId, b.kind, b.subject ?? null, b.value, b.unit ?? null, b.note ?? null]); return { ok: true }; }
+        case "assign_staff_farm": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update staff set farm_id=coalesce($2,farm_id), farm_ids=(select array_agg(distinct x) from unnest(array_append(coalesce(farm_ids,'{}'),$3)) x) where id=$1", [b.staff_id, b.farm_id ?? null, b.add_farm_id ?? b.farm_id]); return { ok: true }; }
+        case "create_staff": {
+          if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const id = (await c.query("select next_code($1,'NS',3) as c", [s.orgId])).rows[0].c.replace(s.orgId + "-", "");
+          await c.query("insert into staff(id,org_id,farm_id,full_name,role,dept,position,phone,login,pin_hash,farm_ids) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,crypt($10,gen_salt('bf')),$11)", [id, s.orgId, b.farm_id ?? s.farmId, b.full_name, b.role ?? "worker", b.dept ?? null, b.position ?? null, b.phone ?? null, b.login, String(b.pin ?? "1234"), [b.farm_id ?? s.farmId]]);
+          return { ok: true, id };
+        }
+        case "save_process": {
+          if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const code = String(b.code ?? "").toUpperCase(); if (!/^P-[A-Z0-9-]{2,30}$/.test(code)) throw new Error("ERR_BAD_CODE: mã dạng P-XX-NN");
+          const ex = (await c.query("select status from processes where code=$1", [code])).rows[0];
+          if (!ex) await c.query("insert into processes(code,dept_code,name,kind,object_type,trigger_text,description,sla,owner_role,kpi,ui_path,status,farm_id,created_by,coverage,position,auto_start) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'NHAP',$12,$13,'DA_CO',99,$14)", [code, b.dept_code, b.name, b.kind ?? "CORE", b.object_type ?? null, b.trigger_text ?? null, b.description ?? null, b.sla ?? null, b.owner_role ?? null, b.kpi ?? null, b.ui_path ?? null, b.scope === "GLOBAL" ? null : s.farmId, s.staffId, JSON.stringify(b.auto_start ?? {})]);
+          else await c.query("update processes set dept_code=$2,name=$3,kind=$4,object_type=$5,trigger_text=$6,description=$7,sla=$8,owner_role=$9,kpi=$10,ui_path=$11,auto_start=$12 where code=$1", [code, b.dept_code, b.name, b.kind ?? "CORE", b.object_type ?? null, b.trigger_text ?? null, b.description ?? null, b.sla ?? null, b.owner_role ?? null, b.kpi ?? null, b.ui_path ?? null, JSON.stringify(b.auto_start ?? {})]);
+          return { ok: true, code };
+        }
+        case "save_step": {
+          if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const st = b.step ?? {}; const code = String(b.code);
+          const stepNo = Number(st.step_no) || Number((await c.query("select coalesce(max(step_no),0)+1 as n from process_steps where process_code=$1", [code])).rows[0].n);
+          const tools = Array.isArray(st.tools) ? st.tools : String(st.tools ?? "").split(",").map((x: string) => x.trim()).filter(Boolean);
+          await c.query(`insert into process_steps(process_code,step_no,name,actor_role,dept_code,action,system_where,control,output,tools,materials,inputs,outputs,duration_min,sla_hours,form_table,notify_roles,required,parallel_group,checklist)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+            on conflict (process_code, step_no) do update set name=excluded.name, actor_role=excluded.actor_role, dept_code=excluded.dept_code, action=excluded.action, system_where=excluded.system_where, control=excluded.control, output=excluded.output, tools=excluded.tools, materials=excluded.materials, inputs=excluded.inputs, outputs=excluded.outputs, duration_min=excluded.duration_min, sla_hours=excluded.sla_hours, form_table=excluded.form_table, notify_roles=excluded.notify_roles, required=excluded.required, parallel_group=excluded.parallel_group, checklist=excluded.checklist`,
+            [code, stepNo, st.name ?? `Bước ${stepNo}`, st.actor_role ?? null, st.dept_code ?? null, st.action ?? null, st.system_where ?? null, st.control ?? null, st.output ?? null, tools, JSON.stringify(st.materials ?? []), st.inputs ?? null, st.outputs ?? null, st.duration_min ?? null, st.sla_hours ?? null, st.form_table ?? null, Array.isArray(st.notify_roles) ? st.notify_roles : [], st.required ?? true, st.parallel_group ?? null, JSON.stringify(st.checklist ?? [])]);
+          return { ok: true, step_no: stepNo };
+        }
+        case "delete_step": {
+          if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          await c.query("insert into audit_log(farm_id,table_name,pk,action,before,by_staff,by_role) select $3, 'process_steps', process_code||'#'||step_no, 'DELETE', to_jsonb(process_steps), $4, $5 from process_steps where process_code=$1 and step_no=$2", [b.code, b.step_no, s.farmId, s.staffId, s.role]);
+          await c.query("delete from process_steps where process_code=$1 and step_no=$2", [b.code, b.step_no]);
+          await c.query("with o as (select id, row_number() over (order by step_no) as rn from process_steps where process_code=$1) update process_steps p set step_no = -o.rn from o where p.id=o.id", [b.code]);
+          await c.query("update process_steps set step_no = -step_no where process_code=$1 and step_no < 0", [b.code]);
+          return { ok: true };
+        }
+        case "move_step": {
+          const dir = Number(b.dir); const a = Number(b.step_no); const bNo = a + dir;
+          await c.query("update process_steps set step_no=-1 where process_code=$1 and step_no=$2", [b.code, a]);
+          await c.query("update process_steps set step_no=$3 where process_code=$1 and step_no=$2", [b.code, bNo, a]);
+          await c.query("update process_steps set step_no=$2 where process_code=$1 and step_no=-1", [b.code, bNo]);
+          return { ok: true };
+        }
+        case "publish_process": { if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("select publish_process($1,$2)", [b.code, s.staffId]); return { ok: true }; }
+        case "unpublish_process": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update processes set status=$2 where code=$1", [b.code, b.status ?? "NHAP"]); return { ok: true }; }
+        case "start_run": { const r = await c.query("select start_process_run($1,$2,$3,$4,$5,$6,$7) as id", [s.farmId, b.code, s.staffId, b.ref_table ?? null, b.ref_id ?? null, b.title ?? null, JSON.stringify(b.context ?? {})]); return { ok: true, run_id: r.rows[0].id }; }
+        case "complete_step": { const r = await c.query("select complete_run_step($1,$2,$3,$4,$5) as r", [b.run_id, b.step_no, s.staffId, b.output ?? null, b.note ?? null]); return { ok: true, result: r.rows[0].r }; }
+        case "cancel_run": { if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update process_runs set status='HUY', finished_at=now(), note=$2 where id=$1", [b.run_id, b.note ?? null]); await c.query("update tasks set status='BO_QUA' where ref_table='process_runs' and ref_id=$1 and status in ('MO','DANG_LAM')", [String(b.run_id)]); return { ok: true }; }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });

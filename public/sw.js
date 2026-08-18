@@ -1,6 +1,7 @@
 // ITRAN OS service worker: cache shell + static; network-first cho trang; API không cache (queue offline lo phần ghi)
 const V = "itran-v1";
-self.addEventListener("install", (e) => { self.skipWaiting(); });
+const PRECACHE = ["/offline", "/manifest.webmanifest", "/icon.svg"];
+self.addEventListener("install", (e) => { self.skipWaiting(); e.waitUntil(caches.open(V).then((c) => c.addAll(PRECACHE).catch(() => {}))); });
 self.addEventListener("activate", (e) => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (e) => {
   const u = new URL(e.request.url);

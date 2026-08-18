@@ -1,4 +1,5 @@
 import { withCtx, type Ctx } from "./db";
+import { runCustomRules, dispatchEvents } from "./notify";
 
 const sysCtx = (farmId: string): Ctx => ({ orgId: "ITRAN", farmId, role: "it_engineer", staffId: "SYSTEM", farmIds: [farmId] });
 
@@ -72,8 +73,10 @@ export async function runAlerts(farmId: string) {
       const d = (await c.query(`select count(*) as n, coalesce(md5(string_agg(id::text, ',' order by id)),'') as dg from ${t} where farm_id=$1 and created_at::date=current_date`, [farmId])).rows[0];
       await c.query("insert into audit_anchors(farm_id,day,table_name,row_count,digest,prev_digest) values ($1,current_date,$2,$3,$4,(select digest from audit_anchors where farm_id=$1 and table_name=$2 and day<current_date order by day desc limit 1)) on conflict (farm_id,day,table_name) do update set row_count=excluded.row_count, digest=excluded.digest", [farmId, t, d.n, d.dg]);
     }
+    fired.push(...(await runCustomRules(farmId)));
     // tổng hợp ngày (hôm qua + hôm nay) + snapshot; đảm bảo partition cảm biến
     await c.query("select refresh_agg_daily($1, current_date-1), refresh_agg_daily($1, current_date), ensure_sensor_partitions(), gen_feed_plans($1)", [farmId]);
+    await dispatchEvents();
     return fired;
   });
 }

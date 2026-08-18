@@ -94,6 +94,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
         case "herd": return csvRes(`so-dan-${farm}.csv`, await q("select a.*, g.name as group_name from animals a left join animal_groups g on g.id=a.group_id where a.farm_id=$1 order by a.id", [farm]));
         case "medicine-book": return csvRes(`so-thuoc-${farm}.csv`, await q("select e.ts, e.animal_id, e.group_id, e.event_type, e.value, e.unit, e.detail, e.withdrawal_until, e.created_by from animal_events e where e.farm_id=$1 and e.event_type in ('DIEU_TRI','VACCINE') and e.ts::date between $2 and $3 order by ts", [farm, from, to]));
         case "gap-log": return csvRes(`nhat-ky-gap-${farm}.csv`, await q("select c.ts, c.plot_id, p.name as plot, c.activity, c.variety, c.input_lots, c.qty_kg, c.machine_id, c.machine_hours, c.fuel_l, c.water_source, c.water_m3, c.chemical, c.director_order, c.phi_until, c.created_by, c.source from crop_logs c join plots p on p.id=c.plot_id where c.farm_id=$1 and c.ts::date between $2 and $3 order by ts", [farm, from, to]));
+        case "crop-dossier": {
+          const season = u.searchParams.get("season"); const seasons = await q(season ? "select * from v_crop_dossier where farm_id=$1 and id=$2" : "select * from v_crop_dossier where farm_id=$1 order by sow_date desc", season ? [farm, season] : [farm]);
+          const files: Record<string, string> = { "00_mua_vu.csv": csv(seasons) };
+          for (const sn of seasons) { const sid = String(sn.id); const pid = String(sn.plot_id); const f0 = String(sn.sow_date ?? "2000-01-01"), t0 = String(sn.harvest_end ?? "2100-01-01");
+            files[`${sn.code}/01_nhat_ky_ruong.csv`] = csv(await q("select ts, activity, variety, qty_kg, moisture_pct, machine_id, machine_hours, fuel_l, water_m3, chemical, phi_until, created_by, source, paper_serial from crop_logs where farm_id=$1 and plot_id=$2 and status='ACTIVE' and ts::date between $3 and $4 order by ts", [farm, pid, f0, t0]));
+            files[`${sn.code}/02_vat_tu_phan_bvtv.csv`] = csv(await q("select ts, kind, sku, product_name, qty, unit, dose_per_ha, method, target_pest, phi_days, safe_after, weather, organic_allowed, applicator_id, created_by, lot_no from crop_inputs where farm_id=$1 and (season_id=$2 or (plot_id=$3 and ts::date between $4 and $5)) and status='ACTIVE' order by ts", [farm, sid, pid, f0, t0]));
+            files[`${sn.code}/03_thu_hoach.csv`] = csv(await q("select ts, crop, variety, qty_kg, moisture_pct, grade, harvest_lot, dest_warehouse_id, phi_ok, residue_test, weigh_ticket_id, created_by from harvests where farm_id=$1 and (season_id=$2 or (plot_id=$3 and ts::date between $4 and $5)) and status='ACTIVE' order by ts", [farm, sid, pid, f0, t0]));
+            files[`${sn.code}/04_mau_lab.csv`] = csv(await q("select * from lab_samples where farm_id=$1 and subject_ref in ($2,$3)", [farm, sid, pid]));
+          }
+          return zipRes(`nhat-ky-san-xuat-${farm}-${season ?? "tat-ca"}.zip`, files);
+        }
+        case "harvest-log": return csvRes(`thu-hoach-${farm}.csv`, await q("select h.ts, h.plot_id, p.name as plot, h.crop, h.variety, h.qty_kg, h.moisture_pct, h.grade, h.harvest_lot, h.dest_warehouse_id, h.phi_ok, h.created_by from harvests h left join plots p on p.id=h.plot_id where h.farm_id=$1 and h.status='ACTIVE' and h.ts::date between $2 and $3 order by h.ts", [farm, from, to]));
         case "recon": return csvRes(`doi-soat-${farm}.csv`, await q("select * from recon_results where farm_id=$1 and period between $2 and $3 order by period, rule_code", [farm, from, to]));
         case "epcis": {
           if (!lot) throw new Error("ERR_LOT_REQUIRED");

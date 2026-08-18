@@ -1,0 +1,2 @@
+import { Page } from "@/components/withSession"; import QuanTri from "@/components/panels/QuanTri";
+export default async function P({ searchParams }: { searchParams: Promise<{ t?: string; pk?: string; tab?: string }> }) { const { t, pk, tab } = await searchParams; return <Page title="Quản trị dữ liệu — thêm · sửa · gỡ · nhập CSV · xuất CSV · lịch sử">{(s) => <QuanTri sess={s} initialTable={t} initialPk={pk} initialTab={tab} />}</Page>; }

@@ -1,0 +1,80 @@
+"use client";
+import { useEffect, useMemo, useState } from "react";
+import { fmt } from "@/lib/client";
+import type { Sess } from "@/components/Shell";
+import { RecordsTable } from "@/components/AnyChart";
+type T = { table: string; pk: string; label: string; group: string; farmScoped: boolean; softDelete: string | null; canWrite: boolean; codePrefix?: string };
+type Col = { name: string; type: string; kind: string };
+const SYS = new Set(["created_at", "updated_at", "created_by", "updated_by", "org_id", "pin_hash"]);
+const EVENT_TABLES = [["inventory_moves", "Nhập/xuất kho"], ["crop_logs", "Nhật ký ruộng"], ["feed_logs", "Cho ăn"], ["animal_events", "Sự kiện vật nuôi"], ["batch_logs", "Mẻ khu D/D5"], ["sales", "Bán hàng"], ["weigh_tickets", "Phiếu cân"], ["gate_logs", "Cổng"], ["sensor_reads", "Cảm biến"], ["checklist_runs", "Checklist"]];
+
+/** QUẢN TRỊ DỮ LIỆU: mọi bảng danh mục → xem · tìm · THÊM · SỬA · GỠ (mềm, giữ vết) · NHẬP CSV · XUẤT CSV · LỊCH SỬ (audit_log gửi admin) */
+export default function QuanTri({ sess, initialTable, initialPk, initialTab }: { sess: Sess; initialTable?: string; initialPk?: string; initialTab?: string }) {
+  const [tables, setTables] = useState<T[]>([]); const [table, setTable] = useState(initialTable ?? "facilities"); const [tab, setTab] = useState<"ds" | "them" | "nhap" | "lichsu">(initialTab === "nhap" ? "nhap" : "ds");
+  const [meta, setMeta] = useState<{ cols: Col[]; canWrite: boolean; table: T } | null>(null); const [rows, setRows] = useState<Record<string, unknown>[]>([]); const [total, setTotal] = useState(0); const [q, setQ] = useState(""); const [inactive, setInactive] = useState(false); const [all, setAll] = useState(false);
+  const [edit, setEdit] = useState<Record<string, unknown> | null>(null); const [msg, setMsg] = useState(""); const [hist, setHist] = useState<Record<string, unknown>[]>([]); const [histPk, setHistPk] = useState<string | null>(initialPk ?? null);
+  useEffect(() => { fetch("/api/admin/_tables").then((r) => r.json()).then((j) => setTables(j.tables ?? [])); }, []);
+  const load = async () => { const j = await fetch(`/api/admin/${table}?q=${encodeURIComponent(q)}${inactive ? "&inactive=1" : ""}${all ? "&all=1" : ""}&limit=300`).then((r) => r.json()); setRows(j.rows ?? []); setTotal(j.total ?? 0); };
+  useEffect(() => { fetch(`/api/admin/${table}?meta=1`).then((r) => r.json()).then(setMeta); setEdit(null); load(); if (initialPk && table === initialTable) { setTab("lichsu"); } // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, inactive, all]);
+  useEffect(() => { if (tab === "lichsu") fetch(`/api/admin/${table}?history=1${histPk ? `&pk=${encodeURIComponent(histPk)}` : ""}`).then((r) => r.json()).then((j) => setHist(j.rows ?? [])); }, [tab, table, histPk]);
+  const t = tables.find((x) => x.table === table); const groups = [...new Set(tables.map((x) => x.group))];
+  const cols = useMemo(() => (meta?.cols ?? []).filter((c) => !SYS.has(c.name)), [meta]);
+  const showCols = cols.slice(0, 12);
+  const save = async () => { if (!edit) return; const j = await fetch(`/api/admin/${table}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row: edit }) }).then((r) => r.json()); if (j.ok) { setMsg(`${j.action === "INSERT" ? "Đã thêm" : "Đã sửa"} ${String(j.row?.[t?.pk ?? "id"] ?? "")} — lịch sử đã ghi & gửi admin`); setEdit(null); setTab("ds"); load(); } else setMsg(`${j.error}: ${j.detail ?? ""}`); };
+  const remove = async (pk: string, restore = false) => { if (!restore && !confirm(`Gỡ ${pk}? (gỡ mềm — dữ liệu và lịch sử vẫn giữ, admin được báo)`)) return; const j = await fetch(`/api/admin/${table}?pk=${encodeURIComponent(pk)}${restore ? "&restore=1" : ""}`, { method: "DELETE" }).then((r) => r.json()); setMsg(j.ok ? (restore ? `Đã khôi phục ${pk}` : `Đã gỡ ${pk}`) : `${j.error}: ${j.detail ?? ""}`); load(); };
+  return (
+    <div className="space-y-3">
+      <div className="card grid sm:grid-cols-3 gap-2 items-end">
+        <div className="sm:col-span-2"><label className="text-xs text-stone-500">Bảng dữ liệu ({tables.length}) — chỉ vai được phân quyền mới thêm/sửa/gỡ; mọi thay đổi ghi lịch sử và gửi admin</label><select className="input" value={table} onChange={(e) => { setTable(e.target.value); setTab("ds"); setHistPk(null); }}>{groups.map((g) => <optgroup key={g} label={g}>{tables.filter((x) => x.group === g).map((x) => <option key={x.table} value={x.table}>{x.label} {x.canWrite ? "" : "(chỉ xem)"}</option>)}</optgroup>)}</select></div>
+        <div className="flex gap-2 flex-wrap">{[["ds", `Danh sách (${total})`], ["them", "＋ Thêm"], ["nhap", "⬆ Nhập CSV"], ["lichsu", "🕘 Lịch sử"]].map(([k, l]) => <button key={k} disabled={(k === "them" || k === "nhap") && !meta?.canWrite} className={`px-3 py-2 rounded-xl font-semibold text-sm disabled:opacity-40 ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => { setTab(k as typeof tab); if (k === "them") setEdit({}); }}>{l}</button>)}</div>
+      </div>
+      {msg && <div className="text-sm bg-green-50 border border-green-200 rounded-xl px-3 py-2">{msg}</div>}
+      {tab === "ds" && <div className="card p-0 overflow-auto">
+        <div className="px-3 py-2 flex flex-wrap gap-2 items-center bg-stone-100 rounded-t-2xl text-sm"><input className="input !w-64 !py-1" placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /><button className="underline" onClick={load}>tìm</button>
+          <label><input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} /> hiện cả đã gỡ</label>{t?.farmScoped && ["owner", "it_engineer", "auditor"].includes(sess.role) && <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> mọi trại</label>}
+          <a className="ml-auto underline" href={`/api/admin/${table}?csv=1${all ? "&all=1" : ""}${inactive ? "&inactive=1" : ""}`}>⬇ Xuất CSV</a><a className="underline" href={`/api/import/csv?template=${table}`}>⬇ File mẫu</a></div>
+        <table className="tbl text-sm"><thead><tr>{showCols.map((c) => <th key={c.name} className="pl-2">{c.name}</th>)}<th></th></tr></thead><tbody>
+          {rows.map((r) => { const pk = String(r[t?.pk ?? "id"]); const dead = r.active === false || ["ARCHIVED", "NGUNG", "HUY"].includes(String(r.status)); return <tr key={pk} className={dead ? "opacity-50" : ""}>{showCols.map((c) => <td key={c.name} className="pl-2 max-w-[220px] truncate">{fmtCell(r[c.name], c)}</td>)}<td className="whitespace-nowrap text-xs">{meta?.canWrite && <button className="underline mr-2" onClick={() => { setEdit({ ...r }); setTab("them"); }}>sửa</button>}{meta?.canWrite && t?.softDelete && (dead ? <button className="underline mr-2 text-green-700" onClick={() => remove(pk, true)}>khôi phục</button> : <button className="underline mr-2 text-red-700" onClick={() => remove(pk)}>gỡ</button>)}<button className="underline" onClick={() => { setHistPk(pk); setTab("lichsu"); }}>lịch sử</button></td></tr>; })}
+        </tbody></table>{!rows.length && <div className="p-3 text-stone-500 text-sm">Chưa có bản ghi.</div>}</div>}
+      {tab === "them" && edit && <div className="card"><h3 className="font-bold">{edit[t?.pk ?? "id"] ? `Sửa ${String(edit[t?.pk ?? "id"])}` : `Thêm mới vào ${t?.label}`}</h3>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-2">{cols.map((c) => { const v = edit[c.name]; const isPk = c.name === (t?.pk ?? "id"); const isJson = c.type === "jsonb"; const isBool = c.type === "boolean"; const isNum = ["numeric", "integer", "bigint", "double precision", "smallint", "real"].includes(c.type); const isDate = c.type === "date"; const isTs = c.type.startsWith("timestamp"); const isArr = c.type === "ARRAY";
+          return <label key={c.name} className={`text-sm ${isJson ? "sm:col-span-2" : ""}`}><span className="text-xs text-stone-500">{c.name}{isPk ? ` (khóa${t?.codePrefix ? ", để trống = tự sinh" : ""})` : ""} · {c.type}</span>
+            {isBool ? <select className="input" value={v == null ? "" : String(v)} onChange={(e) => setEdit({ ...edit, [c.name]: e.target.value === "" ? null : e.target.value === "true" })}><option value="">—</option><option value="true">Có</option><option value="false">Không</option></select>
+              : isJson ? <textarea className="input font-mono text-xs" rows={3} value={typeof v === "string" ? v : v == null ? "" : JSON.stringify(v)} onChange={(e) => setEdit({ ...edit, [c.name]: e.target.value })} />
+                : <input className="input" type={isNum ? "number" : isDate ? "date" : "text"} step="any" placeholder={isArr ? "a, b, c" : isTs ? "YYYY-MM-DDTHH:mm" : ""} value={isArr && Array.isArray(v) ? v.join(", ") : v == null ? "" : isTs && typeof v === "string" ? v.slice(0, 16) : String(v)} onChange={(e) => setEdit({ ...edit, [c.name]: e.target.value })} disabled={isPk && !!rows.find((r) => r[c.name] === v) && !!v && edit === rows.find((r) => r[c.name] === v)} />}
+          </label>; })}
+          {table === "staff" && !edit.id && <label className="text-sm"><span className="text-xs text-stone-500">pin (mặc định 1234)</span><input className="input" value={String(edit.pin ?? "")} onChange={(e) => setEdit({ ...edit, pin: e.target.value })} /></label>}
+        </div>
+        <div className="flex gap-2 mt-3"><button className="btn-primary !py-2" onClick={save}>Lưu</button><button className="btn-secondary !py-2" onClick={() => { setEdit(null); setTab("ds"); }}>Hủy</button></div></div>}
+      {tab === "nhap" && <ImportCsv table={table} tables={tables} onDone={load} />}
+      {tab === "lichsu" && <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-stone-100 rounded-t-2xl text-sm flex gap-2 items-center"><b>Lịch sử thay đổi {t?.label}{histPk ? ` · ${histPk}` : ""}</b>{histPk && <button className="underline" onClick={() => setHistPk(null)}>xem toàn bảng</button>}<span className="ml-auto text-xs text-stone-500">Mọi thêm/sửa/gỡ đều ghi trước–sau, ai, lúc nào; admin nhận thông báo</span></div>
+        <table className="tbl text-xs"><thead><tr><th className="pl-2">Lúc</th><th>Hành động</th><th>Khóa</th><th>Ai</th><th>Cột đổi</th><th>Trước → Sau</th></tr></thead><tbody>{hist.map((h) => <tr key={String(h.id)}><td className="pl-2 whitespace-nowrap">{fmt.dt(h.ts)}</td><td><span className={h.action === "INSERT" ? "b-grn" : h.action === "SOFT_DELETE" || h.action === "DELETE" ? "b-red" : "b-yel"}>{String(h.action)}</span></td><td className="font-mono">{String(h.pk)}</td><td>{String(h.by_staff ?? "SYSTEM")} <span className="text-stone-400">{String(h.by_role ?? "")}</span></td><td>{(h.changed_cols as string[] | null)?.join(", ") ?? ""}</td><td className="max-w-[420px] truncate">{diffText(h.before as Record<string, unknown> | null, h.after as Record<string, unknown> | null, h.changed_cols as string[] | null)}</td></tr>)}</tbody></table>{!hist.length && <div className="p-3 text-stone-500 text-sm">Chưa có lịch sử.</div>}</div>}
+    </div>);
+}
+function fmtCell(v: unknown, c: Col): string { if (v == null) return ""; if (c.type === "boolean") return v ? "✓" : "✗"; if (typeof v === "object") return JSON.stringify(v).slice(0, 60); if (c.type.startsWith("timestamp")) return fmt.dt(String(v)); if (c.type === "date") return fmt.d(String(v)); if (["numeric", "double precision", "real"].includes(c.type)) return fmt.n(v, 2); return String(v); }
+function diffText(b: Record<string, unknown> | null, a: Record<string, unknown> | null, cols: string[] | null): string { if (!b) return a ? "mới: " + JSON.stringify(a).slice(0, 200) : ""; if (!a) return "xóa: " + JSON.stringify(b).slice(0, 200); return (cols ?? []).map((k) => `${k}: ${JSON.stringify(b[k])} → ${JSON.stringify(a[k])}`).join(" · ").slice(0, 300); }
+
+/** Nhập CSV: chọn bảng (danh mục hoặc sự kiện) → tải mẫu → chọn file → XEM TRƯỚC (kiểm lỗi từng dòng) → GHI (nhật ký import_batches, báo admin) */
+export function ImportCsv({ table, tables, onDone }: { table?: string; tables?: T[]; onDone?: () => void }) {
+  const [tb, setTb] = useState(table ?? "inventory_moves"); const [file, setFile] = useState<File | null>(null); const [upsert, setUpsert] = useState(false); const [res, setRes] = useState<{ mode: string; rows_total: number; rows_ok: number; rows_err: number; errors: { row: number; error: string }[]; preview: Record<string, unknown>[]; batch?: string; error?: string; detail?: string } | null>(null); const [busy, setBusy] = useState(false);
+  useEffect(() => { if (table) setTb(table); }, [table]);
+  const run = async (mode: "preview" | "commit") => { if (!file) return; setBusy(true); const fd = new FormData(); fd.set("file", file); fd.set("table", tb); fd.set("mode", mode); if (upsert) fd.set("upsert", "1"); const j = await fetch("/api/import/csv", { method: "POST", body: fd }).then((r) => r.json()); setRes(j); setBusy(false); if (mode === "commit" && j.batch) onDone?.(); };
+  return (<div className="card space-y-2">
+    <h3 className="font-bold">Nhập dữ liệu từ CSV/Excel (lưu file .csv UTF-8) — đối xứng với xuất</h3>
+    <div className="flex flex-wrap gap-2 items-end text-sm">
+      <label>Bảng<select className="input !w-72" value={tb} onChange={(e) => { setTb(e.target.value); setRes(null); }}><optgroup label="Sự kiện (append-only, qua kiểm tra như ghi tay)">{EVENT_TABLES.map(([k, l]) => <option key={k} value={k}>{l} ({k})</option>)}</optgroup><optgroup label="Danh mục">{(tables ?? []).filter((x) => x.canWrite).map((x) => <option key={x.table} value={x.table}>{x.label} ({x.table})</option>)}</optgroup></select></label>
+      <a className="underline" href={`/api/import/csv?template=${tb}`}>⬇ Tải file mẫu đúng cột</a>
+      <input type="file" accept=".csv,text/csv" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setRes(null); }} />
+      {(tables ?? []).find((x) => x.table === tb) && <label><input type="checkbox" checked={upsert} onChange={(e) => setUpsert(e.target.checked)} /> ghi đè nếu trùng khóa</label>}
+      <button className="btn-secondary !py-2" disabled={!file || busy} onClick={() => run("preview")}>1) Xem trước & kiểm lỗi</button>
+      <button className="btn-primary !py-2" disabled={!file || busy || !res || res.mode !== "preview" || res.rows_ok === 0} onClick={() => run("commit")}>2) Ghi vào hệ thống</button>
+    </div>
+    <div className="text-xs text-stone-500">Quy ước: ngày giờ ISO (2026-08-18T07:30) · số dùng dấu chấm thập phân · mảng cách nhau bởi | · JSON trong ngoặc kép. Sự kiện nhập vào giữ nguyên luật append-only, idempotent (nhập lại cùng lô không trùng), có nhật ký lô nhập và báo admin.</div>
+    {res && <div className={`rounded-xl p-3 text-sm ${res.error ? "bg-red-50" : res.mode === "commit" ? "bg-green-50" : "bg-amber-50"}`}>
+      {res.error ? <b>{res.error}: {res.detail}</b> : <b>{res.mode === "commit" ? "ĐÃ GHI" : "XEM TRƯỚC"} · {res.rows_total} dòng · {res.rows_ok} hợp lệ · {res.rows_err} lỗi {res.batch ? `· lô ${res.batch.slice(0, 8)}` : ""}</b>}
+      {res.errors?.length ? <ul className="mt-1 max-h-40 overflow-auto list-disc pl-5">{res.errors.map((e, i) => <li key={i}>Dòng {e.row}: {e.error}</li>)}</ul> : null}
+      {res.preview?.length ? <div className="mt-2 overflow-auto"><div className="text-xs text-stone-500">20 dòng đầu sau khi chuẩn hóa:</div><RecordsTable rows={res.preview} /></div> : null}
+    </div>}
+  </div>);
+}

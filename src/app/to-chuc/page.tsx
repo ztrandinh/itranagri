@@ -1,0 +1,2 @@
+import { Page } from "@/components/withSession"; import ToChuc from "@/components/panels/ToChuc";
+export default async function P({ searchParams }: { searchParams: Promise<{ tab?: string; p?: string }> }) { const { tab, p } = await searchParams; return <Page title="Tổ chức — phòng ban · chức năng · quy trình A–Z · đầu vào/đầu ra · event bus · hồ sơ">{(s) => <ToChuc sess={s} initialTab={tab} initialProcess={p} />}</Page>; }

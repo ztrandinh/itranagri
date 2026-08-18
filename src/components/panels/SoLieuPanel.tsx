@@ -3,12 +3,20 @@ import { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, ReferenceLine } from "recharts";
 import type { Sess } from "@/components/Shell";
 import { fmt } from "@/lib/client";
+import { AnyExplorer } from "@/components/AnyChart";
 type M = { code: string; name: string; unit: string; group: string; dims?: string[]; norm?: string };
 type Row = { t: string; dim: string | null; v: number };
 const COLORS = ["#166534", "#0369a1", "#b45309", "#7e22ce", "#be123c", "#0f766e", "#4d7c0f", "#a16207", "#1d4ed8", "#9f1239"];
 const label = (t: string, bucket: string) => { const d = new Date(t); return bucket === "day" || bucket === "week" ? d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : bucket === "month" ? `T${d.getMonth() + 1}/${d.getFullYear()}` : bucket === "quarter" ? `Q${Math.floor(d.getMonth() / 3) + 1}/${d.getFullYear()}` : String(d.getFullYear()); };
 
-export default function SoLieuPanel({ sess, initialMetric }: { sess: Sess; initialMetric?: string }) {
+export default function SoLieuPanel({ sess, initialMetric, initialTab }: { sess: Sess; initialMetric?: string; initialTab?: string }) {
+  const [top, setTop] = useState<"kpi" | "any">(initialTab === "any" ? "any" : "kpi");
+  return (<div className="space-y-3">
+    <div className="flex gap-2">{[["kpi", "Chỉ số nghiệp vụ (catalog)"], ["any", "📈 Mọi trường dữ liệu (tự động)"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold ${top === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTop(k as typeof top)}>{l}</button>)}</div>
+    {top === "any" ? <AnyExplorer /> : <MetricExplorer sess={sess} initialMetric={initialMetric} />}
+  </div>);
+}
+function MetricExplorer({ sess, initialMetric }: { sess: Sess; initialMetric?: string }) {
   const [metrics, setMetrics] = useState<M[]>([]); const [metric, setMetric] = useState(initialMetric ?? "feed_kg"); const [bucket, setBucket] = useState("day"); const [dim, setDim] = useState(""); const [chart, setChart] = useState<"bar" | "line" | "cum">("bar"); const [compare, setCompare] = useState(false);
   const [from, setFrom] = useState(new Date(Date.now() - 30 * 86400e3).toISOString().slice(0, 10)); const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
   const [rows, setRows] = useState<Row[]>([]); const [prev, setPrev] = useState<Row[]>([]); const [err, setErr] = useState<string | null>(null); const [drill, setDrill] = useState<{ t: string; dimval: string | null; rows: Record<string, unknown>[] } | null>(null); const [norm, setNorm] = useState<number | null>(null);

@@ -57,6 +57,18 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
     spec.onDone?.();
   }
 
+  /** Đọc cân qua Web Bluetooth (Android Chrome): thiết bị phát số qua đặc tính notify (UART/GATT), parse số đầu tiên. Cấu hình service/characteristic ở settings ble.scale (mặc định Nordic UART). */
+  async function readBleScale(key: string) {
+    try {
+      const nav = navigator as Navigator & { bluetooth?: { requestDevice: (o: unknown) => Promise<{ gatt?: { connect: () => Promise<{ getPrimaryService: (s: string) => Promise<{ getCharacteristic: (c: string) => Promise<{ startNotifications: () => Promise<void>; addEventListener: (e: string, f: (ev: Event) => void) => void; }> }> }> } }> } };
+      if (!nav.bluetooth) { setMsg("Trình duyệt không hỗ trợ Bluetooth (dùng Android Chrome)"); return; }
+      const svc = localStorage.getItem("ble.service") ?? "6e400001-b5a3-f393-e0a9-e50e24dcca9e", chr = localStorage.getItem("ble.char") ?? "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+      const dev = await nav.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [svc] });
+      const server = await dev.gatt!.connect(); const ch = await (await server.getPrimaryService(svc)).getCharacteristic(chr);
+      await ch.startNotifications(); setMsg("Đang đọc cân… (đứng yên 2 giây)");
+      ch.addEventListener("characteristicvaluechanged", (ev: Event) => { const dv = (ev.target as unknown as { value: DataView }).value; const txt = new TextDecoder().decode(dv); const m = txt.match(/-?\d+(?:[.,]\d+)?/); if (m) { setVals((v0) => ({ ...v0, [key]: Number(m[0].replace(",", ".")) })); setMsg(`Cân: ${m[0]}`); } });
+    } catch (e) { setMsg("BLE: " + (e as Error).message); }
+  }
   async function compress(file: File): Promise<Blob> {
     // nén ảnh phía máy (≤1280px, JPEG 0.8) — mạng trại yếu, ảnh ≤300KB
     try { const bmp = await createImageBitmap(file); const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height)); const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((res) => cv.toBlob((b) => res(b ?? file), "image/jpeg", 0.8)); } catch { return file; }
@@ -103,6 +115,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
                   <input type="number" inputMode="decimal" className="input text-center text-2xl font-bold" value={(vals[f.key] as number) ?? ""} min={f.min} max={f.max} step={f.step ?? "any"} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) })} />
                   <button className="btn-secondary !px-4" onClick={() => setVals({ ...vals, [f.key]: Number(vals[f.key] ?? 0) + (f.step ?? 1) })}>+</button>
                   {f.unit && <span className="text-stone-600 w-16">{f.unit}</span>}
+                  {f.unit === "kg" && <button type="button" className="btn-secondary !px-3 !py-2 !text-sm" title="Đọc từ cân Bluetooth" onClick={() => readBleScale(f.key)}>⚖ BLE</button>}
                 </div>)}
               {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} />}
               {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} />}
