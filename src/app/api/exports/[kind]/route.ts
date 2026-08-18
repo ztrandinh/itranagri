@@ -119,6 +119,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
           files["03_certifications.csv"] = csv(await q("select * from certifications where (farm_id=$1 or farm_id is null) and standard_code=$2", [farm, std]));
           return zipRes(`audit-${std}-${farm}.zip`, files);
         }
+        case "stock-card": return csvRes(`the-kho-${sku ?? "all"}-${farm}.csv`, await q("select * from v_stock_card where farm_id=$1 and ($2::text is null or sku=$2) and ts::date between $3 and $4 order by sku, lot_id, ts", [farm, sku, from, to]));
         case "recon": return csvRes(`doi-soat-${farm}.csv`, await q("select * from recon_results where farm_id=$1 and period between $2 and $3 order by period, rule_code", [farm, from, to]));
         case "epcis": {
           if (!lot) throw new Error("ERR_LOT_REQUIRED");

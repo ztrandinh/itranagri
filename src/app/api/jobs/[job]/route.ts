@@ -53,7 +53,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
     if (job === "dispatch" || job === "recon" || job === "all") { out[`dispatch:${f}`] = await dispatchEvents(); out[`channels:${f}`] = await deliverChannels(); }
     if (job === "channels") out[`channels:${f}`] = await deliverChannels();
     if (job === "agg") out[`agg:${f}`] = await backfillAgg(f, Number(url.searchParams.get("days") ?? 35));
-    if (job === "tasks" || job === "all") { out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks_v2($1) as n", [f])).rows[0].n; out[`monitor:${f}`] = (await adminPool().query("select gen_monitoring_tasks($1) as n", [f])).rows[0].n; out[`compliance:${f}`] = (await adminPool().query("select gen_compliance_tasks($1) as n", [f])).rows[0].n; await adminPool().query("select refresh_compliance_gaps()"); }
+    if (job === "tasks" || job === "all") { out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks_v2($1) as n", [f])).rows[0].n; out[`monitor:${f}`] = (await adminPool().query("select gen_monitoring_tasks($1) as n", [f])).rows[0].n; out[`compliance:${f}`] = (await adminPool().query("select gen_compliance_tasks($1) as n", [f])).rows[0].n; out[`cyclecount:${f}`] = (await adminPool().query("select gen_cycle_counts($1) as n", [f])).rows[0].n; await adminPool().query("select refresh_compliance_gaps()"); }
     await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),true,$3)", [f, job, JSON.stringify({ date, keys: Object.keys(out).filter((k) => k.endsWith(":" + f)) })]);
   }
   return NextResponse.json({ ok: true, date, out });

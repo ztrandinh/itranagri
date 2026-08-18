@@ -43,7 +43,7 @@ export const EVENT_SCHEMAS = {
   inventory_moves: z.object({
     ...base, warehouse_id: z.string(), sku: z.string(), lot_id: z.string().nullable().optional(), lot_no: z.string().nullable().optional(),
     direction: z.union([z.literal(1), z.literal(-1)]), qty: num.positive(), unit: z.string().nullable().optional(), unit_cost: num.nullable().optional(),
-    reason: z.string(), from_to: z.string().nullable().optional(), weigh_point: z.string().nullable().optional(), ref_type: z.string().nullable().optional(), ref_id: z.string().nullable().optional(),
+    reason: z.string(), from_to: z.string().nullable().optional(), weigh_point: z.string().nullable().optional(), ref_type: z.string().nullable().optional(), ref_id: z.string().nullable().optional(), bin_id: z.string().nullable().optional(), to_bin_id: z.string().nullable().optional(),
   }),
   weigh_tickets: z.object({ ...base, scale_device_id: z.string().nullable().optional(), plate: z.string().nullable().optional(), gross_kg: num.nullable().optional(), tare_kg: num.nullable().optional(), net_kg: num, purpose: z.string().nullable().optional(), sku: z.string().nullable().optional(), partner_id: z.string().nullable().optional(), photo_urls: strArr }),
   gate_logs: z.object({ ...base, plate: z.string(), direction: z.enum(["VAO","RA"]), weighed: z.boolean().default(false), anolyte_wash: z.boolean().default(false), purpose: z.string().nullable().optional(), driver: z.string().nullable().optional(), photo_urls: strArr }),

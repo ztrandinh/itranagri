@@ -2,13 +2,14 @@
 import type { ThreeTapSpec, Option } from "@/components/ThreeTap";
 
 export type Ref = {
-  animals: Record<string, unknown>[]; groups: Record<string, unknown>[]; warehouses: Record<string, unknown>[]; products: Record<string, unknown>[];
+  animals: Record<string, unknown>[]; groups: Record<string, unknown>[]; warehouses: Record<string, unknown>[]; products: Record<string, unknown>[]; bins?: Record<string, unknown>[];
   plots: Record<string, unknown>[]; recipes: Record<string, unknown>[]; locations: Record<string, unknown>[]; sops: Record<string, unknown>[]; devices: Record<string, unknown>[]; partners: Record<string, unknown>[];
 };
 const s = (v: unknown) => (v == null ? "" : String(v));
 const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): Option[] =>
   r.animals.filter((a) => !["CHET", "XUAT"].includes(s(a.status)) && (!filter || filter(a))).map((a) => ({ id: s(a.id), label: `${s(a.visual_tag) || s(a.id)} · ${s(a.id).slice(-5)}`, sub: `${s(a.status)} · ${s(a.location_name) || s(a.group_name)}`, meta: { rfid: s(a.rfid), visual_tag: s(a.visual_tag) } }));
 const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups.filter((g) => !kinds || kinds.includes(s(g.kind))).map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
+const binOpts = (r: Ref): Option[] => (r.bins ?? []).map((b) => ({ id: s(b.id), label: `${s(b.warehouse_code)} · ${s(b.code)}`, sub: s(b.zone) }));
 const whOpts = (r: Ref, codes?: string[]): Option[] => r.warehouses.filter((w) => !codes || codes.includes(s(w.code))).map((w) => ({ id: s(w.id), label: `${s(w.code)} ${s(w.name)}`.slice(0, 40) }));
 const prodOpts = (r: Ref, kinds?: string[]): Option[] => r.products.filter((p) => !kinds || kinds.includes(s(p.kind))).map((p) => ({ id: s(p.sku), label: s(p.name), sub: `${s(p.sku)} · ${s(p.unit)}` }));
 const locOpts = (r: Ref, kinds?: string[]): Option[] => r.locations.filter((l) => !kinds || kinds.includes(s(l.kind))).map((l) => ({ id: s(l.id), label: s(l.name), sub: s(l.code) }));
@@ -153,6 +154,7 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
         { key: "warehouse_id", label: "Kho", type: "choice", options: whOpts(r), required: true },
         { key: "qty", label: "Số lượng", type: "number", min: 0, step: 1, required: true },
         { key: "lot_no", label: "Số lô (NCC / mẻ)", type: "text", required: true, placeholder: "R2608-03" },
+        { key: "bin_id", label: "Vị trí bin (kệ/pallet)", type: "choice", options: binOpts(r) },
         { key: "unit_cost", label: "Đơn giá", type: "number", unit: "đ", min: 0, step: 100 },
         { key: "reason", label: "Lý do", type: "choice", options: [{ id: "NHAP_MUA", label: "Mua" }, { id: "NHAP_SX", label: "Sản xuất" }, { id: "TRA", label: "Trả lại" }, { id: "CHUYEN", label: "Chuyển đến" }], required: true },
         { key: "weigh_point", label: "Điểm ghi", type: "choice", options: [{ id: "CAN_CAU_D", label: "Cân cầu D" }, { id: "CUA_KHO", label: "Cửa kho quét" }, { id: "CAN_CONG", label: "Cân cổng" }] },
@@ -164,6 +166,7 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       fields: [
         { key: "warehouse_id", label: "Kho", type: "choice", options: whOpts(r), required: true },
         { key: "qty", label: "Số lượng", type: "number", min: 0, step: 1, required: true },
+        { key: "bin_id", label: "Lấy từ bin", type: "choice", options: binOpts(r) },
         { key: "lot_no", label: "Số lô (FEFO gợi ý)", type: "text", placeholder: "để trống = lô hết hạn trước" },
         { key: "reason", label: "Lý do", type: "choice", options: [{ id: "XUAT_CHO_AN", label: "Cho ăn" }, { id: "XUAT_SX", label: "Sản xuất" }, { id: "XUAT_BAN", label: "Bán" }, { id: "CHUYEN", label: "Chuyển đi" }, { id: "HUY", label: "Hủy/hỏng" }], required: true },
         { key: "from_to", label: "Đến đâu", type: "text", placeholder: "khu / khách / lệnh SX" },
