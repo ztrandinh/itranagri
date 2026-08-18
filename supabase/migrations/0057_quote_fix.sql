@@ -8,3 +8,4 @@ declare q record; v_id text; begin
   values (v_id, q.farm_id, q.partner_id, 1, current_date, coalesce(q.valid_until, current_date+3), q.lines, q.total, 'NHAP', app_staff(), 'Từ báo giá '||q.id, jsonb_build_object('quote_id', q.id));
   update quotes set status='THANH_DON', order_id=v_id, accepted_at=coalesce(accepted_at, now()) where id=p_quote;
   return v_id; end $$;
+alter table dunning_log enable row level security; drop policy if exists p_all on dunning_log; create policy p_all on dunning_log for all using (can_see_farm(farm_id)) with check (true);
