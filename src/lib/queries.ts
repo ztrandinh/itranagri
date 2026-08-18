@@ -73,6 +73,7 @@ export const QUERIES: Record<string, { sql: string; params?: string[] }> = {
   icfs_score: { sql: "select * from icfs_score($1)" }, icfs_summary: { sql: "select * from v_icfs_summary order by farm_id" },
   compliance: { sql: "select * from v_compliance where farm_id=$1" }, standards: { sql: "select * from standards where active order by position" }, standard_requirements: { sql: "select * from standard_requirements order by standard_code, id" },
   certifications: { sql: "select * from certifications where farm_id=$1 or farm_id is null order by valid_to desc nulls last" }, compliance_checks: { sql: "select * from compliance_checks where farm_id=$1 order by checked_at desc limit 500" },
+  variable_catalog: { sql: "select * from variable_catalog order by domain, position" },
   me: { sql: "select id, full_name, role, dept, position, position_code, farm_id, farm_ids from staff where id=app_staff()" },
   process_runs: { sql: "select * from v_process_runs where farm_id=$1 order by status='DANG_CHAY' desc, started_at desc limit 200" },
   process_run_steps: { sql: "select s.*, r.process_code from process_run_steps s join process_runs r on r.id=s.run_id where r.farm_id=$1 and r.status='DANG_CHAY' order by s.run_id, s.step_no" },
