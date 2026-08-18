@@ -37,6 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
         const { readdir, stat, unlink } = await import("node:fs/promises"); const keepDays = Number(process.env.BACKUP_KEEP_DAYS ?? 30); for (const d of [dumpDir, join(dumpDir, f)]) { try { for (const fn of await readdir(d)) { const p = join(d, fn); const st = await stat(p); if (st.isFile() && Date.now() - st.mtimeMs > keepDays * 86400e3) await unlink(p); } } catch { /* */ } }
       } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; }
     }
+    if (job === "all") { try { out[`depreciation:${f}`] = (await adminPool().query("select run_depreciation($1, date_trunc('month', now())::date) as n", [f])).rows[0].n; } catch (e) { out[`depreciation:${f}`] = `skip ${(e as Error).message.slice(0, 40)}`; } }
     if (job === "kpi") out[`kpi:${f}`] = (await adminPool().query("select compute_staff_kpi($1, date_trunc('month', now())::date) as n", [f])).rows[0].n;
     if (job === "all") { await adminPool().query("select compute_staff_kpi($1, date_trunc('month', now())::date)", [f]); }
     if (job === "dispatch" || job === "recon" || job === "all") { out[`dispatch:${f}`] = await dispatchEvents(); out[`channels:${f}`] = await deliverChannels(); }

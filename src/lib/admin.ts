@@ -85,6 +85,9 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "sales_returns", pk: "id", label: "Trả hàng / credit note", group: "Kinh doanh", farmScoped: true, softDelete: "status", writeRoles: [...MGR, "accountant", "worker", "team_lead", "tech_head"], codePrefix: "TH" },
   { table: "production_orders", pk: "id", label: "Lệnh sản xuất", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: [...OPS, "team_lead"], codePrefix: "LSX" },
   { table: "stock_reservations", pk: "id", label: "Giữ hàng theo đơn", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: OPS },
+  { table: "fixed_assets", pk: "id", label: "Kế toán · Tài sản cố định", group: "Kế toán", farmScoped: true, softDelete: "status", writeRoles: ["owner", "director", "accountant"], codePrefix: "TS" },
+  { table: "payroll_runs", pk: "id", label: "Kế toán · Bảng lương (kỳ)", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
+  { table: "payslips", pk: "id", label: "Kế toán · Phiếu lương", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);

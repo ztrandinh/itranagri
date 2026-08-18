@@ -2,6 +2,7 @@
 import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
+import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -50,6 +51,7 @@ export function NhanSuPanel({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <ProductionPanel sess={sess} />
+      <PayrollPanel sess={sess} />
       <AttendancePanel sess={sess} />
       <KpiLuongPanel sess={sess} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><KpiTile l="Nhân sự đang làm" v={st.rows?.length ?? "—"} /><KpiTile l="Khám SK / ATTP sắp hạn (30n)" v={(st.rows ?? []).filter((r) => due(r.health_check_due) || due(r.food_safety_training_due)).length} /><KpiTile l="Công nhân 7 ngày không ghi" v={(st.rows ?? []).filter((r) => r.role === "worker" && Number(r.records_30d) === 0).length} warn={(st.rows ?? []).some((r) => r.role === "worker" && Number(r.records_30d) === 0) ? "yel" : null} /><KpiTile l="SOP ban hành" v={(sops.rows ?? []).filter((s) => s.status === "BAN_HANH").length} sub="chứng chỉ nội bộ theo SOP" /></div>
@@ -86,6 +88,7 @@ export function KeToanPanel({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <GlPanel sess={sess} />
+      <AssetsPanel sess={sess} />
       <PlPanel sess={sess} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><KpiTile l="Chi chờ duyệt / thiếu chữ ký 2" v={(exp.rows ?? []).filter((e) => ["CHO_DUYET","DUYET_1"].includes(String(e.status))).length} /><KpiTile l="PO chờ duyệt" v={(po.rows ?? []).filter((p) => p.po_status === "CHO_DUYET").length} /><KpiTile l="Công nợ >30 ngày" v={fmt.vnd((aging.rows ?? []).reduce((a, r) => a + Number(r.d30p ?? 0), 0))} warn={(aging.rows ?? []).some((r) => Number(r.d30p) > 0) ? "red" : null} /><KpiTile l="RC10 tiền vs hàng (kỳ gần nhất)" v={String((recon.rows ?? []).find((r) => r.rule_code === "RC10")?.status ?? "—")} /></div>
       <div className="grid md:grid-cols-2 gap-3">
