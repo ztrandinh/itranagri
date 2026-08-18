@@ -1,6 +1,7 @@
 "use client";
 import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
+import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -48,6 +49,7 @@ export function NhanSuPanel({ sess }: { sess: Sess }) {
   const due = (d: unknown) => d && new Date(String(d)) < new Date(Date.now() + 30 * 86400e3);
   return (
     <div className="space-y-3">
+      <ProductionPanel sess={sess} />
       <AttendancePanel sess={sess} />
       <KpiLuongPanel sess={sess} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><KpiTile l="Nhân sự đang làm" v={st.rows?.length ?? "—"} /><KpiTile l="Khám SK / ATTP sắp hạn (30n)" v={(st.rows ?? []).filter((r) => due(r.health_check_due) || due(r.food_safety_training_due)).length} /><KpiTile l="Công nhân 7 ngày không ghi" v={(st.rows ?? []).filter((r) => r.role === "worker" && Number(r.records_30d) === 0).length} warn={(st.rows ?? []).some((r) => r.role === "worker" && Number(r.records_30d) === 0) ? "yel" : null} /><KpiTile l="SOP ban hành" v={(sops.rows ?? []).filter((s) => s.status === "BAN_HANH").length} sub="chứng chỉ nội bộ theo SOP" /></div>

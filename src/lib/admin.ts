@@ -82,6 +82,9 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "intl_payments", pk: "id", label: "XNK · Thanh toán quốc tế", group: "Xuất nhập khẩu", farmScoped: false, softDelete: null, writeRoles: ACC },
   { table: "rd_observations", pk: "id", label: "R&D · Quan sát", group: "R&D", farmScoped: true, softDelete: "status", writeRoles: [...OPS, "worker"] },
   { table: "transfer_checklists", pk: "id", label: "Nhân rộng · Checklist chuyển giao", group: "Nhân rộng", farmScoped: false, softDelete: null, writeRoles: ["owner", "director"] },
+  { table: "sales_returns", pk: "id", label: "Trả hàng / credit note", group: "Kinh doanh", farmScoped: true, softDelete: "status", writeRoles: [...MGR, "accountant", "worker", "team_lead", "tech_head"], codePrefix: "TH" },
+  { table: "production_orders", pk: "id", label: "Lệnh sản xuất", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: [...OPS, "team_lead"], codePrefix: "LSX" },
+  { table: "stock_reservations", pk: "id", label: "Giữ hàng theo đơn", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: OPS },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);

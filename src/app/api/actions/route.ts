@@ -268,6 +268,9 @@ export async function POST(req: Request) {
           return { ok: true, ...r.rows[0].r };
         }
         case "gen_monitoring": { const r = await c.query("select gen_monitoring_tasks($1) as n", [s.farmId]); return { ok: true, n: r.rows[0].n }; }
+        case "reserve_order": { const r = await c.query("select gen_production_from_shortage($1,$2) as lsx", [b.id, s.staffId]); const sh = await c.query("select jsonb_agg(jsonb_build_object('sku',sku,'short',(select (l->>'qty')::numeric from orders o, jsonb_array_elements(o.lines) l where o.id=$1 and l->>'sku'=p.sku limit 1) - coalesce((select sum(qty) from stock_reservations x where x.order_id=$1 and x.sku=p.sku and x.status='GIU'),0))) as short from (select distinct sku from production_orders where order_id=$1 and status in ('MOI','DANG_LAM')) p", [b.id]); return { ok: true, lsx: r.rows[0].lsx, short: sh.rows[0].short ?? [] }; }
+        case "ship_order": { const r = await c.query("select ship_order($1,$2) as n", [b.id, s.staffId]); return { ok: true, n: r.rows[0].n }; }
+        case "approve_return": { if (!["director","owner","accountant","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("select approve_return($1,$2)", [b.id, s.staffId]); return { ok: true }; }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });
