@@ -44,6 +44,7 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "quotes", pk: "id", label: "Bán hàng · báo giá", group: "Bán hàng", farmScoped: true, softDelete: "status", writeRoles: [...OPS, "worker", "accountant"], codePrefix: "BG" },
   { table: "sales_targets", pk: "id", label: "Bán hàng · chỉ tiêu & hoa hồng NVKD", group: "Bán hàng", farmScoped: true, softDelete: null, writeRoles: [...MGR, "accountant"], codePrefix: "ST" },
   { table: "contract_deliveries", pk: "id", label: "Bán hàng · lịch giao hợp đồng bao tiêu", group: "Bán hàng", farmScoped: true, softDelete: "status", writeRoles: OPS },
+  { table: "pos_shifts", pk: "id", label: "Bán hàng · Ca POS (mở/chốt · đối chiếu két)", group: "Bán hàng", farmScoped: true, softDelete: null, writeRoles: [...OPS, "worker", "team_lead", "accountant"] },
   { table: "bins", pk: "id", label: "Kho · vị trí bin (kệ/tầng/ô/pallet)", group: "Kho", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "BIN" },
   { table: "stock_policies", pk: "id", label: "Kho · chính sách tồn (ROP/min-max/ngày, ABC, chu kỳ kiểm kê)", group: "Kho", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "SP" },
   { table: "vehicles", pk: "id", label: "Vận tải · đội xe", group: "Kho", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "XE" },
