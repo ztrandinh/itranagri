@@ -38,6 +38,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
       } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; }
     }
     if (job === "all") { try { out[`depreciation:${f}`] = (await adminPool().query("select run_depreciation($1, date_trunc('month', now())::date) as n", [f])).rows[0].n; } catch (e) { out[`depreciation:${f}`] = `skip ${(e as Error).message.slice(0, 40)}`; } }
+    if (job === "reports" || job === "all") { // báo cáo định kỳ theo report_schedules → notifications (app + email/zalo qua channels)
+      const scheds = (await adminPool().query("select * from report_schedules where active and (farm_id=$1 or farm_id is null)", [f])).rows; const now = new Date(); const dow = now.getDay(); const dom = now.getDate(); let sentN = 0;
+      for (const sc of scheds) { const due = sc.cron === "daily" || (sc.cron === "weekly" && dow === 1) || (sc.cron === "monthly" && dom === 3) || job === "reports"; if (!due) continue; if (sc.last_sent && new Date(sc.last_sent).toDateString() === now.toDateString() && job !== "reports") continue;
+        const { resolveRecipients } = await import("@/lib/notify"); const recips = await resolveRecipients(f, sc.recipients ?? ["owner"]); const base = process.env.PUBLIC_URL ?? "";
+        const icfs = (await adminPool().query("select pct, level from v_icfs_summary where farm_id=$1", [f])).rows[0]; const red = Number((await adminPool().query("select count(*) from alerts where farm_id=$1 and level='DO' and acked_at is null", [f])).rows[0].count); const cash = (await adminPool().query("select cash_end from v_cashflow_forecast where farm_id=$1 order by week_start limit 1", [f])).rows[0];
+        const title = sc.kind === "pl-thang" ? `Báo cáo tháng ${now.getMonth() + 1}/${now.getFullYear()} — ${f}` : `Báo cáo tuần — ${f} — ${now.toLocaleDateString("vi-VN")}`;
+        const body = `ICFS ${icfs?.pct ?? "—"}% (${icfs?.level ?? ""}) · cảnh báo ĐỎ mở ${red} · số dư dự báo tuần này ${Number(cash?.cash_end ?? 0).toLocaleString("vi-VN")} đ · xem/in: ${base}/in/bao-cao-tuan/all?farm=${f} · P&L/ngân sách/dòng tiền: ${base}/ke-toan`;
+        for (const sid of recips) { await adminPool().query("insert into notifications(farm_id,staff_id,level,title,body,link,source,source_id,channels) values ($1,$2,'INFO',$3,$4,$5,'report',$6,$7)", [f, sid, title, body, `/in/bao-cao-tuan/all?farm=${f}`, `${sc.id}:${now.toISOString().slice(0, 10)}`, sc.channels ?? ["app"]]); sentN++; }
+        await adminPool().query("update report_schedules set last_sent=now() where id=$1", [sc.id]); }
+      out[`reports:${f}`] = sentN; }
     if (job === "kpi") out[`kpi:${f}`] = (await adminPool().query("select compute_staff_kpi($1, date_trunc('month', now())::date) as n", [f])).rows[0].n;
     if (job === "all") { await adminPool().query("select compute_staff_kpi($1, date_trunc('month', now())::date)", [f]); }
     if (job === "dispatch" || job === "recon" || job === "all") { out[`dispatch:${f}`] = await dispatchEvents(); out[`channels:${f}`] = await deliverChannels(); }

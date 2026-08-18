@@ -3,6 +3,7 @@ import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
+import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
 import { useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -87,6 +88,8 @@ export function KeToanPanel({ sess }: { sess: Sess }) {
   const from = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to = new Date().toISOString().slice(0, 10);
   return (
     <div className="space-y-3">
+      <CashflowPanel />
+      <BudgetPanel sess={sess} />
       <GlPanel sess={sess} />
       <AssetsPanel sess={sess} />
       <PlPanel sess={sess} />

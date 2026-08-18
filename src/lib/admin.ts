@@ -88,6 +88,8 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "fixed_assets", pk: "id", label: "Kế toán · Tài sản cố định", group: "Kế toán", farmScoped: true, softDelete: "status", writeRoles: ["owner", "director", "accountant"], codePrefix: "TS" },
   { table: "payroll_runs", pk: "id", label: "Kế toán · Bảng lương (kỳ)", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
   { table: "payslips", pk: "id", label: "Kế toán · Phiếu lương", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
+  { table: "budgets", pk: "id", label: "Kế toán · Ngân sách", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant"] },
+  { table: "report_schedules", pk: "id", label: "Lịch gửi báo cáo tự động", group: "Cấu hình", farmScoped: true, softDelete: "active", writeRoles: ["owner", "director", "it_engineer"] },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);
