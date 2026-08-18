@@ -70,6 +70,7 @@ export const QUERIES: Record<string, { sql: string; params?: string[] }> = {
   farm_settings: { sql: "select farm_id, key, value, version, updated_by, updated_at from settings where farm_id in ('GLOBAL',$1) order by key, (farm_id=$1) desc, version desc" },
   staff_all: { sql: "select id, full_name, role, dept, position, phone, farm_id, farm_ids, active from staff order by farm_id nulls first, role, id" },
   farms: { sql: "select f.*, r.name as region_name from farms f left join regions r on r.id=f.region_id order by f.id" },
+  icfs_score: { sql: "select * from icfs_score($1)" }, icfs_summary: { sql: "select * from v_icfs_summary order by farm_id" },
   compliance: { sql: "select * from v_compliance where farm_id=$1" }, standards: { sql: "select * from standards where active order by position" }, standard_requirements: { sql: "select * from standard_requirements order by standard_code, id" },
   certifications: { sql: "select * from certifications where farm_id=$1 or farm_id is null order by valid_to desc nulls last" }, compliance_checks: { sql: "select * from compliance_checks where farm_id=$1 order by checked_at desc limit 500" },
   me: { sql: "select id, full_name, role, dept, position, position_code, farm_id, farm_ids from staff where id=app_staff()" },

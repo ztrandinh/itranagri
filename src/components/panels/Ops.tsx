@@ -1,6 +1,7 @@
 "use client";
 import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
+import { KhachMessages } from "@/components/panels/Extra";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import ThreeTap from "@/components/ThreeTap";
@@ -64,6 +65,7 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((c) => <KpiTile key={c} l={`Kênh ${c}`} v={tot ? `${Math.round((100 * (byChannel[String(c)] ?? 0)) / tot)}%` : "—"} sub={fmt.vnd(byChannel[String(c)] ?? 0)} warn={tot && (byChannel[String(c)] ?? 0) / tot > 0.4 ? "yel" : null} />)}</div>
       <div className="text-xs text-stone-500">Luật: không kênh nào &gt;40% doanh thu một SKU · ≥70% sản lượng có hợp đồng trước · công nợ ≤15 ngày, &gt;30 ngày ngừng giao · giá sàn (bảng giá SAN) — bán dưới sàn cần GĐ duyệt.</div>
       <div className="flex gap-2 overflow-x-auto">{[["ban", "Bán / giao"], ["don", `Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["hd", "Hợp đồng bao tiêu"], ["nn", "Nhận nuôi / chăm sóc hộ"], ["crm", "CRM · khách tiềm năng"], ["pos", "POS cửa hàng"], ["kenh", "Kênh · khuyến mãi"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      {tab === "nn" && <KhachMessages />}
       {tab === "crm" && <CrmPanel sess={sess} />}
       {tab === "pos" && <PosPanel sess={sess} />}
       {tab === "kenh" && <KenhPanel />}
