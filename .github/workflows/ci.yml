@@ -1,0 +1,30 @@
+name: CI
+on: { push: { branches: [main] }, pull_request: {} }
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      pg:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: itranos, POSTGRES_DB: itranos }
+        ports: ["54499:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        run: pnpm db:migrate
+      - name: Lint & types
+        run: pnpm lint && pnpm exec tsc --noEmit
+      - name: Tests
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        run: pnpm test
+      - name: Build
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        run: pnpm build

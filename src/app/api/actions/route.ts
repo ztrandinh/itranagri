@@ -87,10 +87,14 @@ export async function POST(req: Request) {
           await c.query("update expense_requests set status='DUYET', approver1=$2, approved1_at=now() where id=$1", [b.id, s.staffId]); return { ok: true, status: "DUYET" };
         }
         case "change_pin": {
-          if (!/^\d{4,8}$/.test(String(b.new_pin))) throw new Error("ERR_PIN_FORMAT");
+          // Chính sách PIN: công nhân ≥4 số; quản lý/kế toán/IT/chủ ≥6 số; không trùng 1234/0000/1111…; không trùng PIN cũ
+          const np = String(b.new_pin); const minLen = ["owner","director","accountant","it_engineer","auditor","tech_head"].includes(s.role) ? 6 : 4;
+          if (!new RegExp(`^\\d{${minLen},8}$`).test(np)) throw new Error(`ERR_PIN_FORMAT: PIN phải ${minLen}–8 chữ số`);
+          if (/^(\d)\1+$/.test(np) || ["1234","123456","12345678","0000","1111","4321","654321"].includes(np)) throw new Error("ERR_PIN_WEAK: PIN quá dễ đoán");
+          if (String(b.old_pin) === np) throw new Error("ERR_PIN_SAME");
           const ok = (await c.query("select (pin_hash = crypt($2, pin_hash)) as ok from staff where id=$1", [s.staffId, String(b.old_pin)])).rows[0]?.ok;
           if (!ok) throw new Error("ERR_BAD_CREDENTIALS");
-          await c.query("update staff set pin_hash=crypt($2, gen_salt('bf')) where id=$1", [s.staffId, String(b.new_pin)]); return { ok: true };
+          await c.query("update staff set pin_hash=crypt($2, gen_salt('bf')), pin_changed_at=now(), must_change_pin=false where id=$1", [s.staffId, np]); return { ok: true };
         }
         case "revoke_sessions": {
           if (!["director", "owner", "it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
@@ -254,6 +258,8 @@ export async function POST(req: Request) {
           const r = await c.query("insert into api_keys(org_id,farm_id,name,key_hash,scopes,created_by) values ($1,$2,$3,$4,$5,$6) returning id", [s.orgId, b.farm_id ?? s.farmId, b.name ?? "key", h, Array.isArray(b.scopes) ? b.scopes : ["ingest"], s.staffId]);
           return { ok: true, id: r.rows[0].id, key: raw, note: "Lưu khóa này ngay — hệ thống chỉ giữ sha256" };
         }
+        case "unlock_staff": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update staff set locked_until=null where id=$1", [b.staff_id]); await c.query("delete from login_attempts where login in (select login from staff where id=$1)", [b.staff_id]); return { ok: true }; }
+        case "reset_pin": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const tmp = String(Math.floor(100000 + Math.random() * 900000)); await c.query("update staff set pin_hash=crypt($2, gen_salt('bf')), must_change_pin=true, locked_until=null where id=$1", [b.staff_id, tmp]); await c.query("update sessions set revoked_at=now() where staff_id=$1 and revoked_at is null", [b.staff_id]); return { ok: true, temp_pin: tmp, note: "PIN tạm — nhân viên phải đổi ngay khi đăng nhập" }; }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });

@@ -9,11 +9,15 @@ export type Session = Ctx & { staffName: string; position: string | null; farmNa
 
 export async function login(loginId: string, pin: string, deviceId?: string): Promise<Session | null> {
   const r = await adminPool().query(
-    `select s.id, s.org_id, s.farm_id, s.role, s.full_name, s.position, s.farm_ids, s.active,
+    `select s.id, s.org_id, s.farm_id, s.role, s.full_name, s.position, s.farm_ids, s.active, s.locked_until, s.must_change_pin, s.pin_changed_at,
             (s.pin_hash = crypt($2, s.pin_hash)) as ok
        from staff s where (s.login=$1 or s.phone=$1)`,
     [loginId, pin]);
   const s = r.rows[0];
+  // khóa sau 5 lần sai trong 15 phút (15 phút), ghi nhật ký đăng nhập
+  const fails = Number((await adminPool().query("select count(*) as n from login_attempts where login=$1 and not ok and ts > now() - interval '15 minutes'", [loginId])).rows[0].n);
+  if (fails >= 5 || (s?.locked_until && new Date(s.locked_until) > new Date())) { await adminPool().query("insert into login_attempts(login, ok) values ($1,false)", [loginId]); throw new Error("ERR_LOCKED: sai quá 5 lần — thử lại sau 15 phút hoặc nhờ quản trị mở khóa"); }
+  await adminPool().query("insert into login_attempts(login, ok) values ($1,$2)", [loginId, !!(s && s.ok && s.active)]);
   if (!s || !s.ok || !s.active) return null;
   const farmIds: string[] = s.farm_ids?.length ? s.farm_ids : s.farm_id ? [s.farm_id] : [];
   const farmId = s.farm_id ?? farmIds[0] ?? "";

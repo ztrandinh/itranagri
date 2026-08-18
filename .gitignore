@@ -9,3 +9,5 @@ tsconfig.tsbuildinfo
 # tài liệu nội bộ — chỉ đẩy khi repo private
 docs/bo-goc/
 docs/starter/
+backups/
+data/

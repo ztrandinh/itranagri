@@ -1,0 +1,7 @@
+node_modules
+.next
+backups
+data
+public/uploads
+.env
+.git
