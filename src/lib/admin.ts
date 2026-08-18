@@ -17,6 +17,7 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "gs_field_days", pk: "id", label: "Giám sát · ngày đi ca thật", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "auditor"] },
   { table: "supervisor_ratings", pk: "id", label: "Giám sát · trưởng phòng chấm ngược GS", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "tech_head", "team_lead"] },
   { table: "staff_delegations", pk: "id", label: "Thay người / ủy quyền khi nghỉ", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "tech_head", "team_lead"] },
+  { table: "dependent_claims", pk: "id", label: "Lương · khai người phụ thuộc (giảm trừ gia cảnh) chờ duyệt", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant", "it_engineer"] },
   { table: "salary_scales", pk: "id", label: "Lương · thang lương vị trí/vai (lớp 1 = thang × hệ số bậc)", group: "Nhân sự", farmScoped: false, softDelete: "active", writeRoles: ["owner", "director", "accountant"] },
   { table: "headcount_plans", pk: "id", label: "Định biên theo năm (kế hoạch nhân sự & quỹ lương)", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant", "it_engineer"] },
   { table: "gs_block_sops", pk: "block", label: "Giám sát · SOP cốt lõi theo khối (điều kiện khối đạt)", group: "Nhân sự", farmScoped: false, softDelete: null, writeRoles: ["owner", "director", "auditor", "it_engineer"] },
