@@ -260,6 +260,14 @@ export async function POST(req: Request) {
         }
         case "unlock_staff": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update staff set locked_until=null where id=$1", [b.staff_id]); await c.query("delete from login_attempts where login in (select login from staff where id=$1)", [b.staff_id]); return { ok: true }; }
         case "reset_pin": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const tmp = String(Math.floor(100000 + Math.random() * 900000)); await c.query("update staff set pin_hash=crypt($2, gen_salt('bf')), must_change_pin=true, locked_until=null where id=$1", [b.staff_id, tmp]); await c.query("update sessions set revoked_at=now() where staff_id=$1 and revoked_at is null", [b.staff_id]); return { ok: true, temp_pin: tmp, note: "PIN tạm — nhân viên phải đổi ngay khi đăng nhập" }; }
+        case "intake_herd": {
+          if (!["worker","team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          if (!Array.isArray(b.animals) || !b.animals.length || b.animals.length > 2000) throw new Error("ERR_EMPTY: cần 1–2000 con");
+          const r = await c.query("select intake_herd($1,$2,$3,$4) as r", [s.farmId, s.staffId, JSON.stringify(b.lot ?? {}), JSON.stringify(b.animals)]);
+          await c.query("select gen_monitoring_tasks($1)", [s.farmId]);
+          return { ok: true, ...r.rows[0].r };
+        }
+        case "gen_monitoring": { const r = await c.query("select gen_monitoring_tasks($1) as n", [s.farmId]); return { ok: true, n: r.rows[0].n }; }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });

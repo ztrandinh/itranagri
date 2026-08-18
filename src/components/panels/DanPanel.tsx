@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
+import { HerdIntake, MonitoringRing } from "@/components/panels/HerdIntake";
 
 type A = { id: string; visual_tag: string | null; rfid: string | null; species: string; breed: string | null; sex: string | null; status: string; location_name: string | null; group_name: string | null; group_id: string | null; location_id: string | null; last_weight_kg: number | null; withdrawal_until: string | null; tag_pending: boolean; attention: string | null; open_tasks: number };
 type Filt = { q: string; attention: boolean; location: string; group: string; status: string; species: string };
@@ -10,7 +11,7 @@ type Filt = { q: string; attention: boolean; location: string; group: string; st
 /** Đàn theo TẦNG: trại → khu/chuồng → đàn → cá thể (phân trang server, mặc định lọc "cần chú ý" khi quy mô lớn) */
 export default function DanPanel({ sess }: { sess: Sess }) {
   const locs = useData("location_summary"); const groups = useData("animal_groups"); const lots = useData("intake_lots"); const herd = useData("herd"); const cycles = useData("cycles"); const locations = useData("locations");
-  const [tab, setTab] = useState<"tong" | "cathe" | "dan" | "lo" | "chuky">("tong");
+  const [tab, setTab] = useState<"tong" | "cathe" | "dan" | "lo" | "chuky" | "nhaplo" | "theodoi">("tong");
   const [f, setF] = useState<Filt>({ q: "", attention: false, location: "", group: "", status: "", species: "" });
   const [page, setPage] = useState(0); const [rows, setRows] = useState<A[]>([]); const [total, setTotal] = useState(0); const [sel, setSel] = useState<string[]>([]); const [showNew, setShowNew] = useState(false);
   const LIMIT = 50;
@@ -25,10 +26,12 @@ export default function DanPanel({ sess }: { sess: Sess }) {
   const goto = (patch: Partial<Filt>) => { setF({ ...f, ...patch }); setPage(0); setTab("cathe"); };
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto">{[["tong", "Tổng quan"], ["cathe", `Cá thể${tab === "cathe" ? ` (${total})` : ""}`], ["dan", "Đàn / nhóm"], ["lo", "Lô nhập"], ["chuky", "Chu kỳ"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
+      <div className="flex gap-2 overflow-x-auto">{[["tong", "Tổng quan"], ["cathe", `Cá thể${tab === "cathe" ? ` (${total})` : ""}`], ["theodoi", "🔄 Vòng theo dõi"], ["nhaplo", "⬆ Nhập lô đàn"], ["dan", "Đàn / nhóm"], ["lo", "Lô nhập"], ["chuky", "Chu kỳ"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
         {canWrite && <button className="ml-auto btn-secondary !py-2 !text-base whitespace-nowrap" onClick={() => setShowNew(!showNew)}>+ Con mới</button>}</div>
       {showNew && <NewAnimal groups={groups.rows ?? []} lots={lots.rows ?? []} locations={locations.rows ?? []} onDone={() => { setShowNew(false); locs.reload(); }} />}
 
+      {tab === "nhaplo" && <HerdIntake sess={sess} onDone={() => { locs.reload(); lots.reload(); }} />}
+      {tab === "theodoi" && <MonitoringRing />}
       {tab === "tong" && (<div className="space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="kpi"><div className="l">Tổng đàn cá thể (bò/dê)</div><div className="v">{fmt.n(totalHead)}</div><div className="text-xs">{(herd.rows ?? []).map((r) => `${r.status}: ${r.head_count}`).join(" · ")}</div></div>

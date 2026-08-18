@@ -76,6 +76,8 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "notification_deliveries", pk: "id", label: "Nhật ký gửi Zalo/SMS/Email", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
   { table: "webhook_deliveries", pk: "id", label: "Nhật ký webhook", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
   { table: "login_attempts", pk: "ts", label: "Nhật ký đăng nhập", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
+  { table: "monitoring_params", pk: "id", label: "Vòng thông số theo dõi vật nuôi (theo loài/lớp)", group: "Đối tượng", farmScoped: false, softDelete: "active", writeRoles: ["owner", "director", "it_engineer", "tech_head"] },
+  { table: "intake_lots", pk: "id", label: "Lô nhập đàn", group: "Trại", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "tech_head", "team_lead"], codePrefix: "LN" },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);
