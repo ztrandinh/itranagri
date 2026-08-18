@@ -41,7 +41,12 @@ Cộng thêm: luân chuyển GS theo quý phá quan hệ lâu ngày; GS bị ch�
 ## F. Điểm cống hiến (công khai)
 `v_contribution` = KPI tháng đạt ×10 · điểm GS/10 ×2 · buổi dạy ×5 · sáng kiến duyệt ×20 · lần thay người ×8 (settings `contrib.*`) — dùng làm điểm cộng khi tranh ghế, không thay tiêu chí.
 
-## G. Việc còn lại (chưa làm, cần anh chốt)
-- Gắn `salary_coef` vào bảng lương thật (payroll_runs) — hiện chỉ hiển thị hệ số; cần thang bảng lương đăng ký Sở LĐ + phụ lục HĐLĐ.
-- Định biên theo kế hoạch năm (số ghế/bậc dự kiến trong quỹ lương S&OP).
-- Chấm thi SOP cho GS theo khối: hiện dựa `training_tests` bất kỳ SOP của phòng trong khối; nên định nghĩa "SOP cốt lõi khối" riêng.
+## G. Việc còn lại → đã xử lý ở mục H (0091). Còn treo: in phụ lục HĐLĐ theo thang lương; định biên gắn quỹ lương S&OP tự động.
+
+## H. Bổ sung 19/08 (0090–0091) — GS hằng ngày theo quy trình phòng · lỗi GS · cơ chế lương–thưởng 4 lớp · định biên · SOP cốt lõi khối
+- **Quy trình phòng → bộ tiêu chí kiểm**: `sync_process_criteria()` sinh `SC-P-<mã quy trình>` (136 tiêu chí MANUAL từ `processes`/`process_steps.control`, tần suất NGAY/TUAN/THANG) + 5 tiêu chí riêng cho **trưởng phòng** (`role_scope='TRUONG_PHONG'`: tự kiểm/giao việc, dạy đủ giờ, CAPA đúng hạn, việc phòng không quá hạn, lỗi lặp).
+- **GS1 kiểm HẰNG NGÀY, không chờ việc**: tab *Hôm nay của GS* (`gs_today`) — mỗi phòng được phân công: quy trình đến hạn kiểm (Đạt/Lỗi 1 chạm), con người (thợ + trưởng phòng, kiểm lần cuối, lỗi auto), lỗi hệ thống phát hiện chưa được GS ghi (24h), lỗi GS tháng này / ngưỡng.
+- **Lỗi của GS** (`gs_omissions`, máy ghi, GS không sửa được; job đêm `gen_gs_omissions`): KHONG_KIEM (ngày làm việc <N lượt/phòng), BO_SOT_LOI (auto không đạt mà GS không ghi/xác nhận trong 24h), KHONG_KIEM_TRUONG_PHONG (tuần không kiểm trưởng phòng), KHONG_XU_LY_LOI (lỗi có biện pháp >7 ngày không chấm lại). Vượt `gs.omissions_max_month` (3) → **mất thưởng tháng** (bonus_eval), điểm lỗi GS trừ thưởng; trưởng phòng bị trừ theo lỗi lặp/CAPA quá hạn của phòng (`bonus.head_*`).
+- **Cơ chế lương–thưởng 4 lớp**: L1 = `salary_scales` (vị trí A1–A14/vai) × hệ số bậc (`pay_base`) × ngày công — **đã gắn vào `compute_payroll` thật**, ghi nguồn trong payslip.detail; L2 = KPI tháng + thưởng điều kiện (bonus_eval, có lỗi GS/trưởng phòng); L3 = phụ cấp ghế then chốt (`key_positions.allowance`), biệt phái GS (`pay.gs_secondment_allowance`), hồ sơ; L4 = thưởng cống hiến quý (`close_contribution_bonus` → bonus_ledger THUONG_QUY → trả tháng đầu quý sau). Mọi người xem "Lương của tôi tính thế nào" ở Tài khoản; HCNS xem tab *Cơ chế lương–thưởng · định biên*.
+- **Định biên theo năm**: `headcount_plans` (+ `suggest_headcount` từ thực tế) → `v_headcount` (định biên vs thực tế vs quỹ L1).
+- **SOP cốt lõi theo khối GS**: `gs_block_sops` — khối đạt khi đậu ĐỦ SOP cốt lõi (thay cho "bất kỳ SOP của phòng").
