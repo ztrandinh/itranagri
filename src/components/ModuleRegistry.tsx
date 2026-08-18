@@ -1,0 +1,31 @@
+"use client";
+import ModulePanel, { type ModTab } from "@/components/ModulePanel";
+const vnd = (n: number) => n.toLocaleString("vi-VN") + " đ";
+type R = Record<string, unknown>;
+export const MODULES: Record<string, { intro: string; tabs: ModTab[] }> = {
+  "xnk": { intro: "Luồng xuất khẩu A–Z: hồ sơ thị trường (yêu cầu chứng nhận/dư lượng/nhãn) → HĐ ngoại/LC → sản xuất theo spec (lô + COA) → bộ chứng từ (Invoice, PL, CO, Phyto/Health, Halal, B/L, bảo hiểm) → tờ khai hải quan → giao → thanh toán quốc tế & tỷ giá → landed cost. Nhập khẩu: giấy phép → HĐ → vận chuyển → kiểm dịch → thông quan → nhập kho.", tabs: [
+  { table: "trade_contracts", label: "Hợp đồng ngoại", cols: ["code", "direction", "partner_id", "market_id", "incoterm", "currency", "total_value", "signed_on", "delivery_to", "status"], statusCol: "status", flow: ["NHAP", "DAM_PHAN", "KY", "SAN_XUAT", "GIAO", "THANH_TOAN", "HOAN_TAT", "HUY"], kpi: (r) => [["HĐ", String(r.length)], ["Xuất", String(r.filter((x) => x.direction === "XUAT").length)], ["Nhập", String(r.filter((x) => x.direction === "NHAP").length)], ["Giá trị (quy đổi)", vnd(r.reduce((a, x) => a + Number(x.total_value ?? 0) * Number(x.fx_rate ?? 1), 0))]], children: { table: "shipments", fk: "contract_id", label: "Lô hàng của HĐ", cols: ["code", "mode", "container_no", "etd", "eta", "port_discharge", "status"] } },
+  { table: "shipments", label: "Lô hàng", cols: ["code", "contract_id", "mode", "container_no", "bl_number", "etd", "eta", "port_load", "port_discharge", "weight_kg", "status"], statusCol: "status", flow: ["KE_HOACH", "DONG_HANG", "DA_XUAT", "TREN_DUONG", "THONG_QUAN", "GIAO_XONG"], children: { table: "trade_documents", fk: "shipment_id", label: "Bộ chứng từ (Invoice · PL · CO · Phyto/Health · Halal · B/L · Bảo hiểm · LC · Tờ khai · COA)", cols: ["kind", "number", "issued_on", "expires_on", "status", "file"] } },
+  { table: "trade_documents", label: "Chứng từ", cols: ["shipment_id", "contract_id", "kind", "number", "issued_on", "expires_on", "status", "file"], statusCol: "status", flow: ["NHAP", "DA_CO", "DA_NOP", "HET_HAN"] },
+  { table: "customs_declarations", label: "Tờ khai hải quan", cols: ["id", "shipment_id", "number", "declared_on", "duties", "vat", "status", "cleared_on"], statusCol: "status", flow: ["NHAP", "DA_NOP", "LUONG_XANH", "LUONG_VANG", "LUONG_DO", "THONG_QUAN"] },
+  { table: "intl_payments", label: "Thanh toán QT", cols: ["contract_id", "direction", "amount", "currency", "fx_rate", "amount_vnd", "method", "paid_on", "bank_ref"], kpi: (r) => [["Thu (VND)", vnd(r.filter((x) => x.direction === "THU").reduce((a, x) => a + Number(x.amount_vnd ?? 0), 0))], ["Chi (VND)", vnd(r.filter((x) => x.direction === "CHI").reduce((a, x) => a + Number(x.amount_vnd ?? 0), 0))]] },
+  { table: "landed_costs", label: "Landed cost", cols: ["shipment_id", "kind", "amount", "currency", "amount_vnd", "note"], kpi: (r) => [["Tổng landed (VND)", vnd(r.reduce((a, x) => a + Number(x.amount_vnd ?? 0), 0))]] },
+  { table: "market_profiles", label: "Thị trường", cols: ["id", "country", "name", "incoterm_default", "currency", "notes"] },
+  { table: "trade_partners", label: "Đối tác QT", cols: ["id", "kind", "name", "country", "tax_id", "rating", "active"] },
+  { table: "import_permits", label: "Giấy phép nhập", cols: ["id", "kind", "number", "issuer", "issued_on", "expires_on", "scope", "status"], statusCol: "status", flow: ["XIN", "HIEU_LUC", "HET_HAN"] },
+  { table: "fx_rates", label: "Tỷ giá", cols: ["day", "currency", "rate", "source"] },
+] },
+  "rd": { intro: "Mỗi đề tài có giả thuyết + KPI đo được + nhánh đối chứng; quan sát ghi theo nhánh/cá thể; mẫu lab gắn đề tài; kết luận → bài tri thức → SOP/định mức mới → chuyển giao trại/hộ.", tabs: [
+  { table: "rd_trials", label: "Đề tài / thử nghiệm", cols: ["code", "title", "domain", "status", "start_date", "end_date", "budget", "owner_id", "decision"], statusCol: "status", flow: ["DE_XUAT", "DUYET", "DANG_CHAY", "KET_THUC", "HUY"], kpi: (r) => [["Đề tài", String(r.length)], ["Đang chạy", String(r.filter((x) => x.status === "DANG_CHAY").length)], ["Kết thúc", String(r.filter((x) => x.status === "KET_THUC").length)]], children: { table: "rd_trial_arms", fk: "trial_id", label: "Nhánh (đối chứng / thử nghiệm)", cols: ["id", "name", "is_control", "group_id", "plot_id", "n", "treatment"] } },
+  { table: "rd_trial_arms", label: "Nhánh", cols: ["id", "trial_id", "name", "is_control", "group_id", "plot_id", "n", "treatment"] },
+  { table: "lab_samples", label: "Mẫu lab", cols: ["code", "kind", "taken_at", "subject_ref", "lab_partner", "result_at", "verdict", "trial_id", "status"], statusCol: "status", flow: ["DA_LAY", "DA_GUI", "CO_KET_QUA", "HUY"] },
+  { table: "knowledge_articles", label: "Tri thức", cols: ["id", "title", "domain", "tags", "trial_id", "version", "status", "created_at"], statusCol: "status", flow: ["NHAP", "BAN_HANH", "LOI_THOI"] },
+] },
+  "nhan-rong": { intro: "Gói mẫu theo dải diện tích (<3 ha vệ tinh · 3–10 · 10–30 campus · 30–60 · HUB) gồm SOP/BM/KPI/thiết kế/đào tạo + phí; điểm triển khai đi qua Tiếp cận → Khảo sát → Ký HĐ → Xây dựng → Chuyển giao → Vận hành; sau go-live theo dõi bằng ICFS (/chuan) và cùng ITRAN OS.", tabs: [
+  { table: "franchise_sites", label: "Điểm triển khai", cols: ["id", "partner_name", "province", "s_ha", "package_id", "stage", "contract_no", "signed_on", "go_live", "farm_id"], statusCol: "stage", flow: ["TIEP_CAN", "KHAO_SAT", "KY_HD", "XAY_DUNG", "CHUYEN_GIAO", "VAN_HANH"], kpi: (r) => [["Điểm", String(r.length)], ["Đang vận hành", String(r.filter((x) => x.stage === "VAN_HANH").length)], ["Tổng ha", String(r.reduce((a, x) => a + Number(x.s_ha ?? 0), 0))]], children: { table: "transfer_checklists", fk: "site_id", label: "Checklist chuyển giao", cols: ["item", "category", "done", "done_at", "done_by", "evidence"] } },
+  { table: "franchise_packages", label: "Gói mẫu trại", cols: ["id", "name", "scale_band", "fee_initial", "fee_royalty_pct", "version", "status"], statusCol: "status", flow: ["NHAP", "BAN_HANH", "NGUNG"] },
+  { table: "transfer_checklists", label: "Checklist", cols: ["site_id", "category", "item", "done", "done_at", "done_by"] },
+] },
+};
+export function ModuleByKey({ k }: { k: string }) { const m = MODULES[k]; return <ModulePanel intro={m.intro} tabs={m.tabs} />; }
+void (0 as unknown as R);

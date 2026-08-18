@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { HerdIntake, MonitoringRing } from "@/components/panels/HerdIntake";
+import ChartIcon from "@/components/ChartIcon";
 
 type A = { id: string; visual_tag: string | null; rfid: string | null; species: string; breed: string | null; sex: string | null; status: string; location_name: string | null; group_name: string | null; group_id: string | null; location_id: string | null; last_weight_kg: number | null; withdrawal_until: string | null; tag_pending: boolean; attention: string | null; open_tasks: number };
 type Filt = { q: string; attention: boolean; location: string; group: string; status: string; species: string };
@@ -59,7 +60,7 @@ export default function DanPanel({ sess }: { sess: Sess }) {
             <td className="pl-2"><input type="checkbox" checked={sel.includes(a.id)} onChange={(e) => setSel(e.target.checked ? [...sel, a.id] : sel.filter((x) => x !== a.id))} /></td>
             <td className="font-bold"><Link className="underline" href={`/dan/${a.id}`}>{a.visual_tag ?? "—"}</Link></td><td className="font-mono text-xs">{a.id}</td><td className="text-sm">{a.breed} {a.sex}</td><td><span className={["BENH", "CACH_LY"].includes(a.status) ? "b-yel" : "b-gray"}>{a.status}</span></td>
             <td className="text-sm">{a.location_name}<br /><span className="text-stone-500">{a.group_name}</span></td><td className="text-right">{fmt.n(a.last_weight_kg)}</td>
-            <td className="text-sm">{a.attention && <span className="b-yel">{a.attention}</span>} {Number(a.open_tasks) > 0 && <span className="b-gray">{a.open_tasks} việc</span>}</td></tr>)}
+            <td className="text-sm">{a.attention && <span className="b-yel">{a.attention}</span>} {Number(a.open_tasks) > 0 && <span className="b-gray">{a.open_tasks} việc</span>}</td><td><ChartIcon type="animal" id={String(a.id)} label={String(a.visual_tag ?? a.id)} /></td></tr>)}
           {!rows.length && <tr><td colSpan={8} className="p-4 text-stone-500">Không có con nào khớp.</td></tr>}</tbody></table>
           <div className="flex items-center gap-2 px-3 py-2 text-sm"><span>{total} con · trang {page + 1}/{Math.max(1, Math.ceil(total / LIMIT))}</span><button className="btn-secondary !py-1 !px-3 !text-sm" disabled={page === 0} onClick={() => setPage(page - 1)}>←</button><button className="btn-secondary !py-1 !px-3 !text-sm" disabled={(page + 1) * LIMIT >= total} onClick={() => setPage(page + 1)}>→</button></div></div>
       </div>)}
