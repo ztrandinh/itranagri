@@ -17,6 +17,7 @@ export type Field =
 export type ThreeTapSpec = {
   table: string;
   title: string;
+  record?: { code: string; name: string; std: string };
   targetLabel: string;               // "Quét/chọn con bò", "Chọn kho"…
   targetKey: string;                 // tên trường nhận id đối tượng (animal_id, warehouse_id…)
   targets: Option[];                 // danh sách chọn (đã tải)

@@ -15,9 +15,28 @@ const prodOpts = (r: Ref, kinds?: string[]): Option[] => r.products.filter((p) =
 const locOpts = (r: Ref, kinds?: string[]): Option[] => r.locations.filter((l) => !kinds || kinds.includes(s(l.kind))).map((l) => ({ id: s(l.id), label: s(l.name), sub: s(l.code) }));
 
 /** Danh sách form theo vai/vị trí — mã form → spec */
+/** Bản đồ hồ sơ chuẩn theo bảng ghi (mirror records_catalog) — để công nhân biết đang ghi vào sổ gì, phục vụ chuẩn nào */
+export const RECORD_MAP: Record<string, { code: string; name: string; std: string }> = {
+  feed_logs: { code: "HS-THUC-AN", name: "Hồ sơ thức ăn & công thức", std: "NĐ 13/2020 (TACN) · ATTP" },
+  animal_events: { code: "HS-THU-Y", name: "Sổ dịch bệnh – thuốc – vaccine", std: "Luật Thú y · TT 12/2020 (ngưng thuốc)" },
+  crop_logs: { code: "HS-CANH-TAC", name: "Nhật ký sản xuất trồng trọt", std: "VietGAP (TCVN 11892-1) · hữu cơ" },
+  irrigation_logs: { code: "HS-DAT-NUOC", name: "Hồ sơ đất – nước – môi trường", std: "VietGAP · QCVN 08/09" },
+  pest_scouting: { code: "HS-CANH-TAC", name: "Nhật ký BVTV – IPM – PHI", std: "VietGAP (cách ly PHI)" },
+  soil_tests: { code: "HS-DAT-NUOC", name: "Hồ sơ đất – nước", std: "VietGAP · hữu cơ" },
+  harvests: { code: "HS-THU-HOACH", name: "Hồ sơ thu hoạch & sơ chế", std: "VietGAP thu hoạch · ATTP" },
+  weigh_tickets: { code: "HS-THU-HOACH", name: "Phiếu cân thu hoạch", std: "VietGAP · ATTP" },
+  batch_logs: { code: "HS-ATTP", name: "Hồ sơ ATTP / HACCP / mẻ", std: "HACCP · ISO 22000 · TT 38/2018" },
+  inventory_moves: { code: "HS-KHO", name: "Thẻ kho – nhập xuất tồn – FEFO", std: "TT 200/133 · ATTP lô/hạn" },
+  stocktakes: { code: "HS-KHO", name: "Kiểm kê kho", std: "TT 200/133" },
+  sales: { code: "HS-BAN-HANG", name: "Hồ sơ bán hàng – công nợ", std: "Luật TM · TT 78/2021 HĐĐT" },
+  gate_logs: { code: "HS-KHO", name: "Nhật ký cổng – cân", std: "An ninh · truy xuất" },
+  checklist_runs: { code: "HS-ATTP", name: "Checklist ca theo SOP", std: "ATTP · HACCP" },
+  incidents: { code: "HS-ATTP", name: "Sự cố / near-miss", std: "ATTP · môi trường" },
+  paper_scans: { code: "HS-PHAP-LY", name: "Số hóa phiếu giấy BM01–BM10", std: "Lưu trữ · đối chiếu seri" },
+};
 export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec> {
   const nowIso = () => new Date().toISOString();
-  return {
+  const _defs: Record<string, ThreeTapSpec> = {
     // A1 · TMR cho ăn
     feed_tmr: {
       table: "feed_logs", title: "Mẻ TMR / cho ăn", targetLabel: "Chọn khu / đàn nhận", targetKey: "dest_group_id",
@@ -213,6 +232,8 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       build: (t, v) => { const { serial_no, photo_urls, ...rest } = v as Record<string, unknown> & { photo_urls?: string[] }; return { ...rest, serial: `${farmId}-${t.id}-${String(serial_no).padStart(6, "0")}`, photo_url: photo_urls?.[0] ?? null }; },
     },
   };
+  for (const k in _defs) _defs[k].record = RECORD_MAP[_defs[k].table];
+  return _defs;
 }
 
 /** Form gợi ý theo vị trí (Phụ lục A) */
