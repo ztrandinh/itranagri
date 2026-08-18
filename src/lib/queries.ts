@@ -1,5 +1,6 @@
 /** Whitelist truy vấn đọc cho UI/AI (read-only, đã qua RLS). $1 = farm_id luôn. */
-export const QUERIES: Record<string, { sql: string; params?: string[] }> = {
+export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: boolean; ttl?: number }> = {
+  cache_status: { sql: "select farm_id, refreshed_at, (select dirty_at from cache_dirty d where d.farm_id=$1) as dirty_at from cache_kv where farm_id=$1 and key='warehouse_fill'" },
   tasks_today: { sql: "select t.*, s.full_name as assignee_name from tasks t left join staff s on s.id=t.assignee_id where t.farm_id=$1 and t.status in ('MO','DANG_LAM','TREO') and t.due_at <= now() + interval '2 days' order by case t.priority when 'KHAN' then 0 when 'CAO' then 1 when 'BINH_THUONG' then 2 else 3 end, t.due_at limit 300" },
   tasks_all: { sql: "select * from tasks where farm_id=$1 order by status, due_at desc limit 500" },
   shift_notes: { sql: "select n.*, s.full_name as by_name from shift_notes n left join staff s on s.id=n.created_by where n.farm_id=$1 and n.ts >= now()-interval '3 days' order by n.ts desc" },
@@ -131,8 +132,8 @@ export const QUERIES: Record<string, { sql: string; params?: string[] }> = {
   stock_groups: { sql: "select g.*, (select count(*) from products p where p.stock_group=g.code and p.active) as n_items, (select count(*) from products p where p.stock_group=g.code and p.active and p.reserve) as n_reserve from stock_groups g order by g.position" },
   reserve_catalog: { sql: "select p.sku, p.name, p.unit, p.kind, p.stock_group, p.reserve, p.shelf_life_days from products p where p.active and p.kind not in ('DICH_VU','CONG_CU') order by p.stock_group, p.name" },
   stock_projection: { sql: "select * from stock_projection($1, $2, coalesce($3::int, 90))", params: ["sku", "days"] },
-  herd_forecast_series: { sql: "select h.horizon, f.* from (values (0),(30),(60),(90)) h(horizon), lateral herd_forecast($1, h.horizon) f order by f.class_code, h.horizon" },
-  feed_forecast_series: { sql: "select h.horizon, sum(f.kg_day_forecast) as kg_day, sum(f.head_forecast) as head from (values (0),(30),(60),(90)) h(horizon), lateral feed_forecast($1, h.horizon) f group by h.horizon order by h.horizon" },
+  herd_forecast_series: { sql: "select x.* from cache_kv k, jsonb_to_recordset(k.payload) as x(horizon int, class_code text, class_name text, head_now numeric, head_forecast numeric, births numeric, exits numeric) where k.farm_id=$1 and k.key='herd_forecast_series' order by class_code, horizon", cache: true },
+  feed_forecast_series: { sql: "select x.* from cache_kv k, jsonb_to_recordset(k.payload) as x(horizon int, kg_day numeric, head numeric) where k.farm_id=$1 and k.key='feed_forecast_series' order by horizon", cache: true },
   my_supervision: { sql: "select a.*, coalesce(a.target_dept, s.full_name) as target_label from supervision_assignments a left join staff s on s.id=a.target_staff_id where a.farm_id=$1 and a.active and (a.supervisor_id=app_staff() or app_role() in ('owner','director','auditor','it_engineer')) order by a.id" },
   supervision_targets: { sql: "select s.id, s.full_name, s.dept, s.position_code, s.role from staff s join supervision_assignments a on a.farm_id=s.farm_id and a.active and (a.target_staff_id=s.id or (a.target_staff_id is null and (a.target_dept=s.dept or a.target_dept is null))) where s.farm_id=$1 and s.active and s.role in ('worker','team_lead') and (a.supervisor_id=app_staff() or app_role() in ('owner','director','auditor','it_engineer')) group by s.id order by s.dept, s.id" },
   supervision_criteria: { sql: "select * from supervision_criteria where active order by position, id" },
@@ -145,8 +146,8 @@ export const QUERIES: Record<string, { sql: string; params?: string[] }> = {
   competency_matrix: { sql: "select vc.staff_id, vc.full_name, vc.dept, count(*) as n_sop, count(*) filter (where level in ('THUAN_THUC','DAY_DUOC')) as mastered, count(*) filter (where level='THUC_HANH') as practicing, count(*) filter (where level='CHUA_HOC') as not_started, round(100.0*count(*) filter (where level in ('THUAN_THUC','DAY_DUOC'))/count(*),0) as pct from v_training_curriculum vc where vc.farm_id=$1 group by 1,2,3 order by pct desc" },
   bonus_eval: { sql: "select * from bonus_eval($1, coalesce(nullif($2,''), to_char(current_date,'YYYY-MM')))", params: ["period"] },
   bonus_ledger: { sql: "select b.*, s.full_name from bonus_ledger b join staff s on s.id=b.staff_id where b.farm_id=$1 order by b.period desc, b.staff_id" },
-  stock_dashboard: { sql: "select * from v_stock_dashboard where farm_id=$1 order by block, case flag when 'HET' then 0 when 'THIEU_SOM' then 1 when 'CHAM_ROP' then 2 when 'AM_30_NGAY' then 3 else 9 end, days_left nulls last" },
-  warehouse_fill: { sql: "select * from v_warehouse_fill where farm_id=$1 order by block, code" },
+  stock_dashboard: { sql: "select * from cache_stock_dashboard where farm_id=$1 order by block, case flag when 'HET' then 0 when 'THIEU_SOM' then 1 when 'CHAM_ROP' then 2 when 'AM_30_NGAY' then 3 else 9 end, days_left nulls last" },
+  warehouse_fill: { sql: "select x.* from cache_kv k, jsonb_to_recordset(k.payload) as x(farm_id text, warehouse_id text, code text, name text, block text, area text, unit_kind text, capacity numeric, qty numeric, pct_full numeric, skus int, bins int) where k.farm_id=$1 and k.key='warehouse_fill' order by block, code", cache: true },
   tool_stock: { sql: "select * from v_tool_stock where farm_id=$1 order by warehouse_code, tool_group, name" },
   tool_issued: { sql: "select * from v_tool_issued where farm_id=$1 order by overdue desc, issued_at desc" },
   tool_catalog: { sql: "select sku, name, unit, tool_group, life_months, ref_price, needs_cert from products where kind='CONG_CU' and active order by tool_group, name" },

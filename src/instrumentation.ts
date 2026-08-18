@@ -11,6 +11,8 @@ export async function register() {
   setInterval(async () => { const now = new Date(); const hm = now.toTimeString().slice(0, 5); const day = now.toISOString().slice(0, 10);
     if (hm === "01:15" && lastNight !== day) { lastNight = day; for (const f of await farms()) { await call("all", f); await call("backup", f); } }
     if (hm === "06:00" && lastMorning !== day) { lastMorning = day; for (const f of await farms()) await call("tasks", f); }
+    if (now.getMinutes() % 5 === 0 && now.getSeconds() < 30) { for (const f of await farms()) await call("cache", f); }
+    if (hm === "02:30" && now.getDay() === 0 && lastMorning !== "maint" + day) { for (const f of await farms()) { await call("maint", f); break; } }
   }, 30e3);
   console.log("[ITRAN OS] scheduler on: dispatch mỗi phút · jobs/all+backup 01:15 · tasks 06:00");
 }
