@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import AnyChart, { RecordsTable } from "@/components/AnyChart";
+import Attachments from "@/components/Attachments";
 type R = Record<string, unknown>;
 /** Cấu hình 360: đối tượng → bảng nguồn thuộc tính + các biểu đồ/sự kiện liên quan (lọc theo cột khóa). Thêm đối tượng = thêm 1 mục. */
 const CFG: Record<string, { label: string; table: string; pk: string; charts: { title: string; table: string; col: string; agg?: "sum" | "avg" | "count"; dim?: string; filter: string; unit?: string; extra?: Record<string, string> }[]; events: { table: string; filter: string; label: string }[]; links?: (id: string) => { href: string; label: string }[] }> = {
@@ -35,6 +36,7 @@ export default function Obj360({ sess, type, id }: { sess: Sess; type: string; i
       <div className="card"><div className="flex items-center gap-2 flex-wrap"><span className="b-yel">{cfg.label}</span><b className="text-xl">{String(row?.name ?? row?.full_name ?? row?.title ?? row?.visual_tag ?? id)}</b><span className="font-mono text-sm text-stone-500">{id}</span><span className="ml-auto flex gap-2 text-sm">{cfg.links?.(id).map((l) => <a key={l.href} className="underline" href={l.href}>{l.label}</a>)}<a className="underline" href={`/quan-tri?t=${cfg.table}&pk=${encodeURIComponent(id)}`}>lịch sử</a></span></div>
         {err && <div className="text-red-700 text-sm">{err}</div>}
         {row ? <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-1 mt-2 text-sm">{attrs.slice(0, 36).map(([k, v]) => <div key={k} className="rounded-lg bg-stone-50 px-2 py-1"><div className="text-[10px] text-stone-500">{k}</div><div className="truncate font-semibold" title={String(typeof v === "object" ? JSON.stringify(v) : v)}>{typeof v === "object" ? JSON.stringify(v).slice(0, 40) : /^\d{4}-\d\d-\d\dT/.test(String(v)) ? fmt.dt(String(v)) : String(v)}</div></div>)}</div> : <div className="text-stone-500 text-sm mt-1">Đang tải thuộc tính…</div>}</div>
+      <Attachments refTable={cfg.table} refId={id} />
       {cfg.charts.length > 0 && <div className="grid md:grid-cols-2 gap-3">{cfg.charts.map((ch) => <div key={ch.title} className="card"><AnyChart title={ch.title} table={ch.table} col={ch.col} agg={ch.agg ?? "sum"} dim={ch.dim ?? null} filters={{ [ch.filter]: id, ...(ch.extra ?? {}) }} bucket="week" from={new Date(Date.now() - 90 * 86400e3).toISOString().slice(0, 10)} height={200} compare /></div>)}</div>}
       {Object.entries(ev).map(([label, rows]) => <div key={label} className="card p-0 overflow-auto"><div className="px-3 py-2 bg-stone-100 rounded-t-2xl font-bold">{label} — {rows.length} bản ghi gần nhất</div><RecordsTable rows={rows} /></div>)}
       <div className="text-xs text-stone-500">Trang 360 của {sess.farmId}: mọi số liệu ở đây đều là bản ghi gốc, bấm vào cột/điểm để xem ai ghi lúc nào. Muốn thêm số liệu cho đối tượng này → ghi bằng form 3 chạm (Ca của tôi) hoặc nhập CSV.</div>

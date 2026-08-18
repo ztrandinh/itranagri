@@ -69,6 +69,13 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "compliance_checks", pk: "id", label: "Tự đánh giá / NC", group: "Chất lượng", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "auditor", "tech_head"] },
   { table: "variable_catalog", pk: "code", label: "Biến đầu vào/đầu ra (chăn nuôi · trồng trọt)", group: "Đối tượng", farmScoped: false, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "tech_head"] },
   { table: "api_keys", pk: "id", label: "Khóa API (IoT ingest / tích hợp)", group: "Tích hợp", farmScoped: true, softDelete: null, writeRoles: ["owner", "it_engineer"], hidden: ["key_hash"] },
+  { table: "attendance", pk: "id", label: "Chấm công", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant", "team_lead", "tech_head", "worker", "it_engineer"] },
+  { table: "leave_requests", pk: "id", label: "Nghỉ phép", group: "Nhân sự", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant", "team_lead", "tech_head", "worker", "it_engineer"] },
+  { table: "journal_entries", pk: "id", label: "Kế toán · bút toán (sổ nhật ký chung)", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
+  { table: "gl_accounts", pk: "code", label: "Kế toán · hệ thống tài khoản", group: "Kế toán", farmScoped: false, softDelete: "active", writeRoles: ["owner", "accountant"] },
+  { table: "notification_deliveries", pk: "id", label: "Nhật ký gửi Zalo/SMS/Email", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
+  { table: "webhook_deliveries", pk: "id", label: "Nhật ký webhook", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
+  { table: "login_attempts", pk: "ts", label: "Nhật ký đăng nhập", group: "Tích hợp", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer"] },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);
