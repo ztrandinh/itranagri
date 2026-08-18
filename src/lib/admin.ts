@@ -69,7 +69,6 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "products", pk: "sku", label: "Mặt hàng / SKU", group: "Danh mục", farmScoped: false, softDelete: "active", writeRoles: OPS },
   { table: "partners", pk: "id", label: "Đối tác (NCC / khách / hộ liên kết)", group: "Danh mục", farmScoped: false, softDelete: "active", writeRoles: OPS, codePrefix: "PT" },
   { table: "recipes", pk: "id", label: "Công thức TMR / thức ăn", group: "Danh mục", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "RCP" },
-  { table: "sops", pk: "code", label: "SOP", group: "Danh mục", farmScoped: false, softDelete: null, writeRoles: OPS },
   { table: "price_list", pk: "id", label: "Bảng giá", group: "Danh mục", farmScoped: true, softDelete: null, writeRoles: ACC },
   { table: "vaccine_schedules", pk: "id", label: "Lịch vaccine", group: "Thú y", farmScoped: false, softDelete: null, writeRoles: OPS },
   { table: "treatment_protocols", pk: "id", label: "Phác đồ điều trị", group: "Thú y", farmScoped: false, softDelete: null, writeRoles: OPS },
