@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { KpiTile } from "./Dashboards";
+import { usePrompt } from "@/components/ui/PromptDialog";
 
 /** P&L phân hệ theo tháng + chi phí cố định + import sao kê */
 export function PlPanel({ sess }: { sess: Sess }) {
@@ -77,8 +78,8 @@ export function KhachMessages() {
 
 /** Bộ lọc lưu (localStorage) dùng chung */
 export function SavedViews({ scope, current, onPick }: { scope: string; current: Record<string, unknown>; onPick: (v: Record<string, unknown>) => void }) {
-  const key = `views:${scope}`; const [views, setViews] = useState<{ name: string; v: Record<string, unknown> }[]>([]);
+  const key = `views:${scope}`; const [views, setViews] = useState<{ name: string; v: Record<string, unknown> }[]>([]); const { prompt, promptElement } = usePrompt();
   useEffect(() => { try { setViews(JSON.parse(localStorage.getItem(key) ?? "[]")); } catch { /* ignore */ } }, [key]);
-  const save = () => { const name = prompt("Tên bộ lọc:"); if (!name) return; const nv = [...views.filter((x) => x.name !== name), { name, v: current }]; setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); };
-  return <div className="flex flex-wrap gap-1 items-center text-sm"><span className="text-stone-500">Bộ lọc lưu:</span>{views.map((x) => <span key={x.name} className="b-gray cursor-pointer" onClick={() => onPick(x.v)}>{x.name} <button className="ml-1 text-red-700" onClick={(e) => { e.stopPropagation(); const nv = views.filter((y) => y.name !== x.name); setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); }}>×</button></span>)}<button className="underline" onClick={save}>+ lưu bộ lọc hiện tại</button></div>;
+  const save = async () => { const name = await prompt({ title: "Lưu bộ lọc", label: "Tên bộ lọc:", type: "text" }); if (!name) return; const nv = [...views.filter((x) => x.name !== name), { name, v: current }]; setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); };
+  return <div className="flex flex-wrap gap-1 items-center text-sm">{promptElement}<span className="text-stone-500">Bộ lọc lưu:</span>{views.map((x) => <span key={x.name} className="b-gray cursor-pointer" onClick={() => onPick(x.v)}>{x.name} <button className="ml-1 text-red-700" onClick={(e) => { e.stopPropagation(); const nv = views.filter((y) => y.name !== x.name); setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); }}>×</button></span>)}<button className="underline" onClick={save}>+ lưu bộ lọc hiện tại</button></div>;
 }

@@ -3,6 +3,7 @@ import Tabs from "@/components/Tabs";
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 
 const MODULES = [["bo", "Bò sinh sản + vỗ béo"], ["ga", "Gà 2 khối"], ["ras", "RAS/ao/bè"], ["de", "Dê"], ["trun", "Trùn/BSF/biogas/compost"], ["d5", "Xưởng D5"], ["cb", "Chế biến"], ["kd", "Bán hàng"], ["resort", "Resort/MICE"], ["rnd", "R&D"], ["xnk", "Xuất nhập khẩu"], ["custody", "Chăm sóc hộ/nhận nuôi"], ["vien", "Kinh tế viền"]];
 
@@ -13,13 +14,14 @@ export function CompanyPanel({ sess }: { sess: Sess }) {
   const [ns, setNs] = useState<Record<string, string>>({ role: "worker" }); const [msg, setMsg] = useState("");
   const isOwner = ["owner", "it_engineer"].includes(sess.role);
   const mods = (f.modules as Record<string, boolean>) ?? {};
+  const { confirm, confirmElement } = useConfirm();
   return (
-    <div className="space-y-3">
+    <div className="space-y-3">{confirmElement}
       <Tabs items={[["trai", `Trại (${farms.rows?.length ?? 0})`], ["moi", "+ Khai báo trại mới"], ["ns", "Nhân sự & phân trại"], ["caidat", "Cài đặt · định mức theo trại"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {tab === "trai" && <div className="grid md:grid-cols-2 gap-3">{(farms.rows ?? []).map((fm) => { const m = (fm.modules as Record<string, boolean>) ?? {}; return <div key={String(fm.id)} className="card"><div className="flex items-center gap-2"><span className="text-2xl font-black">{String(fm.id)}</span><span className="font-semibold">{String(fm.name)}</span><span className={`ml-auto ${fm.status === "ACTIVE" ? "b-grn" : "b-gray"}`}>{String(fm.status)}</span></div>
         <div className="text-sm text-stone-600 mt-1">{String(fm.region_name ?? fm.region_id ?? "—")} · {String(fm.province ?? "")} · {String(fm.kind)} · S {String(fm.s_ha ?? "?")} ha · K {String(fm.k_factor ?? "?")} · {String(fm.legal_entity ?? "")}</div>
         <div className="flex flex-wrap gap-1 mt-2">{MODULES.map(([k, l]) => <button key={k} disabled={!isOwner && sess.role !== "director"} className={`text-xs rounded-full px-2 py-0.5 border ${m[k] ? "bg-green-100 border-green-400 text-green-900" : "bg-stone-100 text-stone-500"}`} title={l} onClick={async () => { await act("update_farm", { id: fm.id, modules: { ...m, [k]: !m[k] } }); farms.reload(); }}>{m[k] ? "✓ " : ""}{l}</button>)}</div>
-        <div className="flex gap-2 mt-2 text-sm flex-wrap"><a className="underline font-semibold" href={`/hq/trai/${fm.id}`}>📋 Hồ sơ trại (diện tích · hạ tầng · nhân sự)</a><button className="underline" onClick={async () => { await fetch("/api/auth/switch-farm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ farm_id: fm.id }) }); location.href = "/gd"; }}>Vào trại →</button><a className="underline" href={`/api/exports/all?farm=${fm.id}`}>Xuất toàn bộ dữ liệu trại</a>{isOwner && fm.status === "ACTIVE" && <button className="underline text-red-700" onClick={async () => { if (confirm(`Lưu trữ (đóng) trại ${fm.id}? Dữ liệu giữ nguyên, chỉ ẩn khỏi vận hành.`)) { await act("update_farm", { id: fm.id, status: "ARCHIVED" }); farms.reload(); } }}>Lưu trữ</button>}</div></div>; })}</div>}
+        <div className="flex gap-2 mt-2 text-sm flex-wrap"><a className="underline font-semibold" href={`/hq/trai/${fm.id}`}>📋 Hồ sơ trại (diện tích · hạ tầng · nhân sự)</a><button className="underline" onClick={async () => { await fetch("/api/auth/switch-farm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ farm_id: fm.id }) }); location.href = "/gd"; }}>Vào trại →</button><a className="underline" href={`/api/exports/all?farm=${fm.id}`}>Xuất toàn bộ dữ liệu trại</a>{isOwner && fm.status === "ACTIVE" && <button className="underline text-red-700" onClick={async () => { if (await confirm({ title: `Lưu trữ (đóng) trại ${fm.id}? Dữ liệu giữ nguyên, chỉ ẩn khỏi vận hành.`, danger: true })) { await act("update_farm", { id: fm.id, status: "ARCHIVED" }); farms.reload(); } }}>Lưu trữ</button>}</div></div>; })}</div>}
       {tab === "moi" && <div className="card space-y-2">
         <h3 className="font-bold">Khai báo trại mới — tự sinh 9 kho, 12 trung tâm chi phí, khu mặc định, quỹ, năm tài chính; kế thừa SKU/SOP/KPI/alert/RC toàn công ty; dữ liệu tách hoàn toàn theo `farm_id` (RLS)</h3>
         {!isOwner && <div className="text-red-700 text-sm">Chỉ chủ đầu tư / KS công nghệ được khai báo trại.</div>}

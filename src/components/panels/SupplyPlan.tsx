@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 type R = Record<string, unknown>;
 const adm = (t: string, row: R) => fetch(`/api/admin/${t}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row }) }).then((r) => r.json());
 /** BAN KẾ HOẠCH — chuỗi cung–cầu: đàn (thật/kịch bản) → khẩu phần/ngày → nguyên liệu/kỳ → so tồn kho + PO + thu hoạch dự kiến → ha cần trồng vs đang trồng → thiếu → BAN HÀNH xuống phòng ban */
@@ -10,12 +11,13 @@ export default function SupplyPlan({ sess }: { sess: Sess }) {
   const [sel, setSel] = useState<string>(""); const [edit, setEdit] = useState<R | null>(null); const [msg, setMsg] = useState("");
   const fd = useData("plan_feed_demand", { scenario: sel }, [sel]); const sp = useData("plan_supply", { scenario: sel }, [sel]);
   const canW = ["owner", "director", "tech_head"].includes(sess.role);
+  const { confirm, confirmElement } = useConfirm();
   const cur = (scs.rows ?? []).find((s) => s.id === sel);
   const H = (edit?.herd as R[] | null) ?? [];
   const save = async () => { if (!edit) return; const j = await adm("plan_scenarios", { ...edit, herd: H.filter((h) => Number(h.head) > 0), horizon_days: Number(edit.horizon_days ?? 180), safety_pct: Number(edit.safety_pct ?? 10), status: "NHAP" }); setMsg(j.ok ? `Đã lưu kịch bản ${j.row?.id ?? ""} — bảng dưới đã tính lại` : `${j.error}: ${j.detail ?? ""}`); if (j.ok) { setSel(String(j.row?.id ?? edit.id ?? "")); setEdit(null); scs.reload(); fd.reload(); sp.reload(); } };
-  const publish = async () => { if (!sel) return; if (!confirm("Ban hành kế hoạch → tạo việc cho Trồng trọt (trồng thêm ha), Mua hàng (PO bù), D5 (kg/ngày) và thông báo phòng ban?")) return; const j = await act("publish_plan", { id: sel }); setMsg(j.ok ? `Đã ban hành: ${j.n} việc gửi các bộ phận (xem Việc/Thông báo)` : String(j.error)); scs.reload(); ptasks.reload(); };
+  const publish = async () => { if (!sel) return; if (!(await confirm({ title: "Ban hành kế hoạch → tạo việc cho Trồng trọt (trồng thêm ha), Mua hàng (PO bù), D5 (kg/ngày) và thông báo phòng ban?", danger: true }))) return; const j = await act("publish_plan", { id: sel }); setMsg(j.ok ? `Đã ban hành: ${j.n} việc gửi các bộ phận (xem Việc/Thông báo)` : String(j.error)); scs.reload(); ptasks.reload(); };
   const totFeedDay = (fd.rows ?? []).reduce((a, r) => a + Number(r.kg_per_day), 0); const totShort = (sp.rows ?? []).filter((r) => Number(r.shortage_kg) > 0);
-  return <div className="space-y-3">
+  return <div className="space-y-3">{confirmElement}
     <div className="card"><div className="flex flex-wrap items-center gap-2"><b>Kịch bản đàn</b><select className="input !w-auto min-w-[260px]" value={sel} onChange={(e) => setSel(e.target.value)}><option value="">— Đàn THẬT hiện tại (animals + nhóm) · 180 ngày —</option>{(scs.rows ?? []).map((s) => <option key={String(s.id)} value={String(s.id)}>{String(s.name)} · {String(s.horizon_days)} ngày {s.status === "BAN_HANH" ? "· ĐÃ BAN HÀNH" : ""}</option>)}</select>
       {canW && <button className="btn-secondary !py-1.5 !px-3 text-sm" onClick={() => setEdit({ name: "Kịch bản mới", horizon_days: 180, safety_pct: 10, herd: (herd.rows ?? []).map((h) => ({ class_code: h.class_code, head: Number(h.head) })) })}>＋ Kịch bản (từ đàn thật)</button>}
       {canW && cur && <button className="btn-secondary !py-1.5 !px-3 text-sm" onClick={() => setEdit({ ...cur })}>✎ sửa</button>}

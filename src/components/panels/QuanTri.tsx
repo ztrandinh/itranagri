@@ -5,6 +5,7 @@ import type { Sess } from "@/components/Shell";
 import { RecordsTable } from "@/components/AnyChart";
 import Attachments from "@/components/Attachments";
 import ChartIcon from "@/components/ChartIcon";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 const T2TYPE: Record<string, string> = { animals: "animal", animal_groups: "group", plots: "plot", crop_seasons: "season", crops: "crop", species: "species", products: "product", staff: "staff", partners: "partner", devices: "device", facilities: "facility", locations: "location", warehouses: "warehouse", lots: "lot", processes: "process", departments: "department", hosp_bookings: "booking" };
 type T = { table: string; pk: string; label: string; group: string; farmScoped: boolean; softDelete: string | null; canWrite: boolean; codePrefix?: string };
 type Col = { name: string; type: string; kind: string };
@@ -24,10 +25,11 @@ export default function QuanTri({ sess, initialTable, initialPk, initialTab }: {
   const t = tables.find((x) => x.table === table); const groups = [...new Set(tables.map((x) => x.group))];
   const cols = useMemo(() => (meta?.cols ?? []).filter((c) => !SYS.has(c.name) && c.name !== "attrs"), [meta]); const hasAttrs = !!(meta?.cols ?? []).find((c) => c.name === "attrs"); const cfs = meta?.customFields ?? [];
   const showCols = cols.slice(0, 12);
+  const { confirm, confirmElement } = useConfirm();
   const save = async () => { if (!edit) return; const j = await fetch(`/api/admin/${table}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row: edit }) }).then((r) => r.json()); if (j.ok) { setMsg(`${j.action === "INSERT" ? "Đã thêm" : "Đã sửa"} ${String(j.row?.[t?.pk ?? "id"] ?? "")} — lịch sử đã ghi & gửi admin`); setEdit(null); setTab("ds"); load(); } else setMsg(`${j.error}: ${j.detail ?? ""}`); };
-  const remove = async (pk: string, restore = false) => { if (!restore && !confirm(`Gỡ ${pk}? (gỡ mềm — dữ liệu và lịch sử vẫn giữ, admin được báo)`)) return; const j = await fetch(`/api/admin/${table}?pk=${encodeURIComponent(pk)}${restore ? "&restore=1" : ""}`, { method: "DELETE" }).then((r) => r.json()); setMsg(j.ok ? (restore ? `Đã khôi phục ${pk}` : `Đã gỡ ${pk}`) : `${j.error}: ${j.detail ?? ""}`); load(); };
+  const remove = async (pk: string, restore = false) => { if (!restore && !(await confirm({ title: `Gỡ ${pk}? (gỡ mềm — dữ liệu và lịch sử vẫn giữ, admin được báo)`, danger: true }))) return; const j = await fetch(`/api/admin/${table}?pk=${encodeURIComponent(pk)}${restore ? "&restore=1" : ""}`, { method: "DELETE" }).then((r) => r.json()); setMsg(j.ok ? (restore ? `Đã khôi phục ${pk}` : `Đã gỡ ${pk}`) : `${j.error}: ${j.detail ?? ""}`); load(); };
   return (
-    <div className="space-y-3">
+    <div className="space-y-3">{confirmElement}
       <div className="card grid sm:grid-cols-3 gap-2 items-end">
         <div className="sm:col-span-2"><label className="text-xs text-stone-500">Bảng dữ liệu ({tables.length}) — chỉ vai được phân quyền mới thêm/sửa/gỡ; mọi thay đổi ghi lịch sử và gửi admin</label><select className="input" value={table} onChange={(e) => { setTable(e.target.value); setTab("ds"); setHistPk(null); }}>{groups.map((g) => <optgroup key={g} label={g}>{tables.filter((x) => x.group === g).map((x) => <option key={x.table} value={x.table}>{x.label} {x.canWrite ? "" : "(chỉ xem)"}</option>)}</optgroup>)}</select></div>
         <div className="flex gap-2 flex-wrap">{[["ds", `Danh sách (${total})`], ["them", "＋ Thêm"], ["nhap", "⬆ Nhập CSV"], ["lichsu", "🕘 Lịch sử"]].map(([k, l]) => <button key={k} disabled={(k === "them" || k === "nhap") && !meta?.canWrite} className={`px-3 py-2 rounded-xl font-semibold text-sm disabled:opacity-40 ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => { setTab(k as typeof tab); if (k === "them") setEdit({}); }}>{l}</button>)}</div>

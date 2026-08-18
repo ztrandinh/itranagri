@@ -2,19 +2,21 @@
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
 type R = Record<string, unknown>;
 const adminPost = (t: string, row: R) => fetch(`/api/admin/${t}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row }) }).then((r) => r.json());
 /** Nút xử lý đơn: NHẬP → Giữ hàng FEFO (thiếu → Lệnh SX tự sinh) → CHỐT → Phiếu soạn → Xuất kho (GIAO) → Hoàn tất */
 export function OrderActions({ o, onDone }: { o: R; onDone: () => void }) {
   const [msg, setMsg] = useState("");
+  const { confirm, confirmElement } = useConfirm();
   const st = String(o.status);
-  return (<span className="whitespace-nowrap text-xs">
+  return (<span className="whitespace-nowrap text-xs">{confirmElement}
     {["NHAP", "CHOT"].includes(st) && <button className="btn-secondary !py-1 !px-2 !text-xs mr-1" title="Giữ hàng theo FEFO; thiếu thì tự sinh lệnh sản xuất" onClick={async () => { const j = await act("reserve_order", { id: o.id }); setMsg(j.ok ? (j.short?.length ? `Thiếu: ${j.short.map((x: R) => `${x.sku} ${x.short}`).join(", ")} → ${j.lsx} lệnh SX` : "Đã giữ đủ hàng") : String(j.error)); onDone(); }}>Giữ hàng</button>}
     {st === "NHAP" && <button className="btn-secondary !py-1 !px-2 !text-xs mr-1" onClick={async () => { await act("order_status", { id: o.id, status: "CHOT" }); onDone(); }}>Chốt</button>}
     {["CHOT", "LENH_SX", "DONG_GOI"].includes(st) && <a className="underline mr-1" href={`/in/phieu-soan/${o.id}`} target="_blank">Phiếu soạn</a>}
     {["CHOT", "LENH_SX", "DONG_GOI"].includes(st) && <button className="btn-primary !py-1 !px-2 !text-xs mr-1" title="Xuất kho theo phiếu soạn (từng lô) → GIAO" onClick={async () => { const j = await act("ship_order", { id: o.id }); setMsg(j.ok ? `Đã xuất ${j.n} lô → GIAO` : String(j.error)); onDone(); }}>Xuất kho</button>}
     {st === "GIAO" && <button className="btn-secondary !py-1 !px-2 !text-xs mr-1" onClick={async () => { await act("order_status", { id: o.id, status: "HOAN_TAT" }); onDone(); }}>Hoàn tất</button>}
-    {!["HOAN_TAT", "HUY"].includes(st) && <button className="underline text-red-700" onClick={async () => { if (confirm("Hủy đơn?")) { await act("order_status", { id: o.id, status: "HUY" }); onDone(); } }}>hủy</button>}
+    {!["HOAN_TAT", "HUY"].includes(st) && <button className="underline text-red-700" onClick={async () => { if (await confirm({ title: "Hủy đơn?", danger: true })) { await act("order_status", { id: o.id, status: "HUY" }); onDone(); } }}>hủy</button>}
     {msg && <div className="text-emerald-700">{msg}</div>}
   </span>);
 }

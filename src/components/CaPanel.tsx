@@ -5,6 +5,7 @@ import ThreeTap from "@/components/ThreeTap";
 import { buildForms, formsForPosition, type Ref } from "@/lib/forms";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
+import { usePrompt } from "@/components/ui/PromptDialog";
 
 type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null };
 type Note = { id: string; ts: string; note: string; by_name: string; ack_by: string | null; dept: string | null };
@@ -16,6 +17,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const [form, setForm] = useState<string | null>(null);
   const [noteTxt, setNoteTxt] = useState("");
   const [tab, setTab] = useState<"viec" | "ghi" | "giaoca" | "gan_day">("viec");
+  const { prompt, promptElement } = usePrompt();
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows
     ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null,
     [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
@@ -28,6 +30,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const overdue = myTasks.filter((t) => new Date(t.due_at) < new Date() && t.status !== "XONG");
   return (
     <div className="space-y-4">
+      {promptElement}
       <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Gần đây"]]} />
       
       {tab === "viec" && (
@@ -45,7 +48,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                 {["KHAM_THAI", "CACH_LY_RA"].includes(t.kind) && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("animal_event"); setTab("ghi"); }}>Ghi sự kiện</button>}
                 {t.kind === "SO_HOA_GIAY" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/giay">Nhập từ phiếu</a>}
                 {t.kind === "ALERT" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/canh-bao">Xem cảnh báo</a>}
-                <button className="text-xs underline text-stone-500" onClick={async () => { const n = prompt("Treo sang ca sau — ghi chú:"); if (n != null) { await act("task_status", { id: t.id, status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
+                <button className="text-xs underline text-stone-500" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { id: t.id, status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
               </div>
             </div>))}
         </div>)}
