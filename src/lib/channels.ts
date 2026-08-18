@@ -2,6 +2,7 @@
  *  Cấu hình = dữ liệu trong bảng `integrations` (kind ZALO_OA | SMS | EMAIL; config jsonb; active). Không có cấu hình → ghi SKIPPED (không giả vờ đã gửi). Mọi lần gửi ghi vào notification_deliveries. */
 import { createHmac } from "node:crypto";
 import { adminPool } from "./db";
+import webpush from "web-push";
 type Cfg = Record<string, string>;
 async function integration(kind: string, farm: string | null): Promise<Cfg | null> {
   const r = (await adminPool().query("select config from integrations where kind=$1 and active and (farm_id=$2 or farm_id is null) order by (farm_id=$2) desc limit 1", [kind, farm])).rows[0];
@@ -23,6 +24,21 @@ async function sendEmail(cfg: Cfg, to: string, subject: string, text: string): P
   if ((cfg.provider ?? "resend") === "resend") { const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${cfg.api_key}` }, body: JSON.stringify({ from: cfg.from, to: [to], subject, text }) }); const j = await r.json(); if (!r.ok) throw new Error(`resend ${r.status}: ${JSON.stringify(j).slice(0, 120)}`); return String(j.id ?? "ok"); }
   const r = await fetch("https://api.sendgrid.com/v3/mail/send", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${cfg.api_key}` }, body: JSON.stringify({ personalizations: [{ to: [{ email: to }] }], from: { email: cfg.from }, subject, content: [{ type: "text/plain", value: text }] }) }); if (!r.ok) throw new Error(`sendgrid ${r.status}`); return "ok";
 }
+/** WEB PUSH: mọi notification mới (2 ngày) chưa push → gửi tới các subscription của staff (thông báo nổi trên điện thoại) */
+export async function deliverPush(limit = 300): Promise<{ sent: number; failed: number }> {
+  const pub = process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_KEY, priv = process.env.VAPID_PRIVATE_KEY; if (!pub || !priv) return { sent: 0, failed: 0 };
+  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:admin@itran.farm", pub, priv);
+  const p = adminPool(); let sent = 0, failed = 0;
+  const rows = (await p.query("select n.id, n.staff_id, n.title, n.body, n.link, n.level from notifications n where n.ts > now() - interval '2 days' and not exists (select 1 from notification_deliveries d where d.notification_id=n.id and d.channel='push') order by n.ts limit $1", [limit])).rows;
+  for (const n of rows) {
+    const subs = (await p.query("select * from push_subscriptions where staff_id=$1 and fail_count < 5", [n.staff_id])).rows;
+    if (!subs.length) { await p.query("insert into notification_deliveries(notification_id,channel,status,error) values ($1,'push','SKIPPED','không có subscription')", [n.id]); continue; }
+    for (const s of subs) { try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, JSON.stringify({ title: n.title, body: n.body ?? "", url: n.link ?? "/", level: n.level, id: n.id }), { TTL: 3600 }); await p.query("update push_subscriptions set last_ok=now(), fail_count=0 where id=$1", [s.id]); sent++; }
+      catch (e) { const code = (e as { statusCode?: number }).statusCode; if (code === 404 || code === 410) await p.query("delete from push_subscriptions where id=$1", [s.id]); else await p.query("update push_subscriptions set fail_count=fail_count+1 where id=$1", [s.id]); failed++; } }
+    await p.query("insert into notification_deliveries(notification_id,channel,to_addr,status,provider,sent_at) values ($1,'push',$2,$3,'webpush',now())", [n.id, `${subs.length} thiết bị`, failed ? "FAILED" : "SENT"]);
+  }
+  return { sent, failed };
+}
 /** Đẩy notifications có kênh zalo/sms/email chưa gửi → deliveries; rồi gửi hàng đợi (tối đa 3 lần thử) */
 export async function deliverChannels(limit = 200): Promise<{ queued: number; sent: number; failed: number; skipped: number }> {
   const p = adminPool(); let queued = 0, sent = 0, failed = 0, skipped = 0;
@@ -36,7 +52,7 @@ export async function deliverChannels(limit = 200): Promise<{ queued: number; se
     try { const ref = d.channel === "zalo" ? await sendZalo(cfg, d.to_addr, text) : d.channel === "sms" ? await sendSms(cfg, d.to_addr, text) : await sendEmail(cfg, d.to_addr, `[ITRAN OS] ${d.title}`, text); await p.query("update notification_deliveries set status='SENT', provider=$2, provider_ref=$3, sent_at=now(), attempts=attempts+1 where id=$1", [d.id, cfg.provider ?? d.channel, ref]); sent++; }
     catch (e) { await p.query("update notification_deliveries set status=case when attempts+1>=3 then 'FAILED' else 'QUEUED' end, error=$2, attempts=attempts+1 where id=$1", [d.id, (e as Error).message.slice(0, 300)]); failed++; }
   }
-  await deliverWebhooks();
+  await deliverWebhooks(); await deliverPush();
   return { queued, sent, failed, skipped };
 }
 /** WEBHOOK: mọi event_bus đã xử lý → POST tới webhooks có topics khớp (hoặc '*'), ký HMAC-SHA256 header x-itran-signature; ghi webhook_deliveries; thử lại ≤5 lần, tắt sau 20 lỗi liên tiếp */

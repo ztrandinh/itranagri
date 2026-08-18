@@ -1,0 +1,4 @@
+-- 0038 · Web Push subscriptions (thông báo nổi trên điện thoại kể cả khi đóng app) + health checks log
+create table if not exists push_subscriptions(id uuid primary key default gen_random_uuid(), staff_id text not null, endpoint text not null unique, p256dh text not null, auth text not null, ua text, created_at timestamptz default now(), last_ok timestamptz, fail_count int default 0);
+alter table push_subscriptions enable row level security; drop policy if exists p_all on push_subscriptions; create policy p_all on push_subscriptions for all using (staff_id=app_staff() or app_role() in ('owner','it_engineer')) with check (true); grant select, insert, update, delete on push_subscriptions to app_user;
+alter table notification_deliveries drop constraint if exists notification_deliveries_channel_check;

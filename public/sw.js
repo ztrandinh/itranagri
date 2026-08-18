@@ -19,3 +19,8 @@ self.addEventListener("fetch", (e) => {
   }
   e.respondWith(fetch(e.request).then(r => { const cp = r.clone(); caches.open(V).then(c => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request).then(r => r || caches.match("/offline"))));
 });
+
+// WEB PUSH: hiện thông báo nổi + mở đúng trang khi bấm
+self.addEventListener("push", (e) => { let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { title: "ITRAN OS", body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || "ITRAN OS", { body: d.body || "", icon: "/icon.svg", badge: "/icon.svg", tag: d.id || undefined, data: { url: d.url || "/" }, vibrate: d.level === "DO" ? [200, 100, 200] : [80], requireInteraction: d.level === "DO" })); });
+self.addEventListener("notificationclick", (e) => { e.notification.close(); const url = (e.notification.data && e.notification.data.url) || "/"; e.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((ws) => { for (const w of ws) { if ("focus" in w) { w.navigate(url); return w.focus(); } } return clients.openWindow(url); })); });

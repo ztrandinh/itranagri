@@ -1,4 +1,5 @@
 "use client";
+import QrScan from "@/components/QrScan";
 /** Component chuẩn "ghi 3 chạm": Bước 1 QUÉT/CHỌN đối tượng → Bước 2 CHỌN/NHẬP giá trị → Bước 3 XÁC NHẬN → enqueue (offline-first). */
 import { useEffect, useMemo, useState } from "react";
 import { enqueue, newClientRef } from "@/lib/offline";
@@ -89,8 +90,8 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
       {step === 1 && (
         <div>
           <label className="block text-sm text-stone-600 mb-1">{spec.targetLabel}</label>
-          <input className="input" autoFocus placeholder="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" value={search} onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { const exact = spec.targets.find((t) => t.id.toLowerCase() === search.trim().toLowerCase() || t.meta?.rfid === search.trim() || t.meta?.visual_tag?.toString().toLowerCase() === search.trim().toLowerCase()); if (exact) { setTarget(exact); setStep(2); } else if (spec.allowScanInput && search.trim()) { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); } } }} />
+          <div className="flex gap-2"><QrScan onResult={(v) => setSearch(v)} /><input className="input" autoFocus placeholder="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { const exact = spec.targets.find((t) => t.id.toLowerCase() === search.trim().toLowerCase() || t.meta?.rfid === search.trim() || t.meta?.visual_tag?.toString().toLowerCase() === search.trim().toLowerCase()); if (exact) { setTarget(exact); setStep(2); } else if (spec.allowScanInput && search.trim()) { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); } } }} /></div>
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-auto">
             {filtered.map((t) => (
               <button key={t.id} className="btn-secondary !py-3 !text-base flex-col items-start" onClick={() => { setTarget(t); setStep(2); }}>
