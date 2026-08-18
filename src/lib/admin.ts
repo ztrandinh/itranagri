@@ -90,6 +90,10 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "payslips", pk: "id", label: "Kế toán · Phiếu lương", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "accountant"] },
   { table: "budgets", pk: "id", label: "Kế toán · Ngân sách", group: "Kế toán", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "accountant"] },
   { table: "report_schedules", pk: "id", label: "Lịch gửi báo cáo tự động", group: "Cấu hình", farmScoped: true, softDelete: "active", writeRoles: ["owner", "director", "it_engineer"] },
+  { table: "controls", pk: "id", label: "Tuân thủ · Control (vật thật trong app)", group: "Chất lượng", farmScoped: false, softDelete: "active", writeRoles: ["owner", "it_engineer", "auditor", "tech_head"] },
+  { table: "clause_controls", pk: "requirement_id", label: "Tuân thủ · Điều khoản ↔ control", group: "Chất lượng", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer", "auditor", "tech_head"] },
+  { table: "compliance_gaps", pk: "id", label: "Tuân thủ · Gap", group: "Chất lượng", farmScoped: false, softDelete: "status", writeRoles: ["owner", "it_engineer", "auditor", "tech_head"] },
+  { table: "sops", pk: "code", label: "Thư viện SOP (L3)", group: "Danh mục", farmScoped: false, softDelete: "status", writeRoles: OPS },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);

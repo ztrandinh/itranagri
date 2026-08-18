@@ -106,6 +106,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
           return zipRes(`nhat-ky-san-xuat-${farm}-${season ?? "tat-ca"}.zip`, files);
         }
         case "harvest-log": return csvRes(`thu-hoach-${farm}.csv`, await q("select h.ts, h.plot_id, p.name as plot, h.crop, h.variety, h.qty_kg, h.moisture_pct, h.grade, h.harvest_lot, h.dest_warehouse_id, h.phi_ok, h.created_by from harvests h left join plots p on p.id=h.plot_id where h.farm_id=$1 and h.status='ACTIVE' and h.ts::date between $2 and $3 order by h.ts", [farm, from, to]));
+        case "audit-std": {
+          const std = u.searchParams.get("std") ?? "VIETGAP-TT"; const files: Record<string, string> = {};
+          const reqs = await q("select r.*, (select string_agg(cc.control_id, ',') from clause_controls cc where cc.requirement_id=r.id) as controls from standard_requirements r where standard_code=$1 order by clause", [std]);
+          files["00_dieu_khoan_control.csv"] = csv(reqs);
+          const ctls = await q("select c.* from controls c where c.id in (select cc.control_id from clause_controls cc join standard_requirements r on r.id=cc.requirement_id where r.standard_code=$1)", [std]);
+          files["01_controls.csv"] = csv(ctls);
+          for (const ctl of ctls) { try { const qq = String(ctl.evidence_query ?? ""); if (!/^\s*select/i.test(qq)) continue; const rows = await q(qq.includes("$1") ? qq : qq + " where $1::text is not null", [farm]); files[`evidence/${ctl.id}.csv`] = csv(rows); } catch (e) { files[`evidence/${ctl.id}.err.txt`] = (e as Error).message; } }
+          const tables = [...new Set(reqs.flatMap((r) => (r.evidence_tables as string[]) ?? []))].filter((t) => /^[a-z_]+$/.test(t));
+          for (const t of tables) { try { const hasFarm = (await q("select 1 from information_schema.columns where table_name=$1 and column_name='farm_id'", [t])).length > 0; const hasTs = (await q("select 1 from information_schema.columns where table_name=$1 and column_name='ts'", [t])).length > 0; const rows = await q(`select * from ${t} where 1=1 ${hasFarm ? "and farm_id=$1" : ""} ${hasTs ? "and ts::date between $2 and $3" : ""} limit 20000`, hasFarm && hasTs ? [farm, from, to] : hasFarm ? [farm] : hasTs ? [] : []); if (rows.length) files[`data/${t}.csv`] = csv(rows); } catch { /* bảng/view không có → bỏ */ } }
+          files["02_checks.csv"] = csv(await q("select c.* from compliance_checks c where c.farm_id=$1 and c.standard_code=$2 order by checked_at desc", [farm, std]));
+          files["03_certifications.csv"] = csv(await q("select * from certifications where (farm_id=$1 or farm_id is null) and standard_code=$2", [farm, std]));
+          return zipRes(`audit-${std}-${farm}.zip`, files);
+        }
         case "recon": return csvRes(`doi-soat-${farm}.csv`, await q("select * from recon_results where farm_id=$1 and period between $2 and $3 order by period, rule_code", [farm, from, to]));
         case "epcis": {
           if (!lot) throw new Error("ERR_LOT_REQUIRED");
