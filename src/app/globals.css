@@ -1,6 +1,18 @@
 @import "tailwindcss";
+/* Hệ token màu thống nhất (refresh 2026) — một nền, một màu viền, một màu chữ phụ */
+:root {
+  --bg: #f4f6f9;          /* nền chung, xám lạnh nhẹ */
+  --surface: #ffffff;     /* mặt thẻ */
+  --line: #e5e9f0;        /* viền nhạt đều */
+  --ink: #141b26;         /* chữ chính */
+  --muted: #5c6675;       /* chữ phụ (đạt contrast AA) */
+  --brand: #0f9d6b;       /* emerald thương hiệu */
+  --brand-strong: #0b7a53;
+}
 html { -webkit-tap-highlight-color: transparent; }
-body { background: #f8fafc; color: #0f172a; -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+/* Tiêu đề gọn: cân chữ, siết tracking nhẹ cho hiện đại */
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
 @layer components {
   .btn { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
   .btn-primary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700; }
@@ -25,3 +37,24 @@ body { background: #f8fafc; color: #0f172a; -webkit-font-smoothing: antialiased;
 .bg-green-50 { background-color: #ecfdf5 !important; } .bg-green-100 { background-color: #d1fae5 !important; } .hover\:bg-green-50:hover { background-color: #ecfdf5 !important; }
 .text-green-700 { color: #047857 !important; } .text-green-800 { color: #065f46 !important; } .text-green-900 { color: #064e3b !important; } .border-green-600 { border-color: #059669 !important; } .border-green-200 { border-color: #a7f3d0 !important; } .ring-green-600 { --tw-ring-color: #059669 !important; }
 .bg-stone-100 { background-color: #f1f5f9 !important; } .bg-stone-50 { background-color: #f8fafc !important; } .text-stone-500 { color: #64748b !important; } .text-stone-600 { color: #475569 !important; } .border-stone-200 { border-color: #e2e8f0 !important; }
+
+/* ĐỒNG NHẤT & GỌN (refresh 2026): thẻ/ô cùng một viền nhạt + bóng dịu; chữ phụ đủ tương phản; nền một tông */
+.card, .kpi, .tile { background: var(--surface); border-color: var(--line); box-shadow: 0 1px 2px rgba(20, 30, 45, .045); }
+.input { border-color: var(--line); }
+table.tbl th { background: #eef2f7; color: var(--muted); }
+table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--line); }
+/* chữ phụ dịu + đủ contrast (sửa slate-400 2.8:1 → ~4.6:1) */
+.text-slate-400 { color: #7a8494 !important; } .text-slate-500 { color: var(--muted) !important; } .text-stone-500 { color: var(--muted) !important; }
+/* nền vùng nội dung về một tông với body */
+.bg-slate-50 { background-color: var(--bg) !important; }
+
+/* ĐỒNG ĐỀU CỠ CHỮ (refresh 2026): chặn các cỡ nhỏ lẻ (10–11px) về mức tối thiểu 12px, line-height nhất quán */
+.text-\[10px\], .text-\[11px\] { font-size: 12px !important; line-height: 1.4 !important; }
+.text-xs { line-height: 1.45; } .text-sm { line-height: 1.5; }
+/* KHUNG TINH TẾ: bo góc mềm nhất quán, viền mảnh, bóng rất dịu; thẻ bấm được có hover nhẹ nhàng */
+.card, .kpi, .tile { border-radius: 14px; box-shadow: 0 1px 2px rgba(20, 30, 45, .05), 0 1px 1px rgba(20, 30, 45, .03); }
+.tile { transition: box-shadow .15s, border-color .15s, transform .05s; }
+.tile:hover { border-color: #bfe6d5; box-shadow: 0 6px 18px rgba(15, 157, 107, .10); }
+.kpi .v { color: var(--ink); } .kpi .l { color: var(--muted); letter-spacing: .04em; }
+/* nút bo góc mềm hơn cho hiện đại */
+.btn, .btn-primary, .btn-secondary, .btn-danger { border-radius: 12px; }
