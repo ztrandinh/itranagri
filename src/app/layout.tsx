@@ -7,7 +7,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "ITRAN OS", statusBarStyle: "default" },
 };
-export const viewport: Viewport = { themeColor: "#166534", width: "device-width", initialScale: 1, maximumScale: 1 };
+// Bỏ maximumScale để không chặn phóng to (WCAG 1.4.4 Resize text) — người thị lực kém phóng to được.
+export const viewport: Viewport = { themeColor: "#166534", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

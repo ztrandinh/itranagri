@@ -7,10 +7,12 @@ export function useData<T = Record<string, unknown>>(view: string | null, params
   const [rows, setRows] = useState<T[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
+  const [loading, setLoading] = useState(true);
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null) as [string, string][]).toString();
   const cacheKey = `data:${view}?${qs}`;
   const load = useCallback(async () => {
-    if (!view) return;
+    if (!view) { setLoading(false); return; }
+    setLoading(true);
     try {
       const r = await fetch(`/api/data/${view}?${qs}`);
       if (r.status === 401) { window.location.href = "/login"; return; }
@@ -20,11 +22,13 @@ export function useData<T = Record<string, unknown>>(view: string | null, params
     } catch {
       const c = await get<{ rows: T[] }>(cacheKey);
       if (c) { setRows(c.rows); setStale(true); } else setError("offline");
+    } finally {
+      setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, qs, ...deps]);
   useEffect(() => { void load(); }, [load]);
-  return { rows, error, stale, reload: load };
+  return { rows, error, stale, loading, reload: load };
 }
 
 export async function act(action: string, payload: Record<string, unknown>) {

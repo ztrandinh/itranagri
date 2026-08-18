@@ -33,6 +33,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   const [vals, setVals] = useState<Record<string, unknown>>({});
   const [search, setSearch] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
+  const [msgErr, setMsgErr] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   useEffect(() => { const d: Record<string, unknown> = {}; for (const f of spec.fields) if (f.type === "number" && f.default != null) d[f.key] = f.default; setVals(d); }, [spec.fields]);
@@ -47,15 +48,23 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   async function submit() {
     if (!target) return;
     setBusy(true);
-    const base: Record<string, unknown> = { client_ref: newClientRef(), ts: new Date().toISOString(), [spec.targetKey]: target.id, ...vals };
-    if (photoUrls.length) base.photo_urls = photoUrls;
-    if (spec.paper?.serial) { base.source = "PAPER"; base.paper_serial = spec.paper.serial; base.is_backfill = true; }
-    const ev = spec.build ? spec.build(target, base) : base;
-    await enqueue(spec.table, ev);
-    setBusy(false);
-    setMsg(`Đã ghi ${spec.title} · ${target.label} · ${new Date().toLocaleTimeString("vi-VN")}`);
-    setStep(1); setTarget(null); setSearch(""); setVals({}); setPhotoUrls([]);
-    spec.onDone?.();
+    try {
+      const base: Record<string, unknown> = { client_ref: newClientRef(), ts: new Date().toISOString(), [spec.targetKey]: target.id, ...vals };
+      if (photoUrls.length) base.photo_urls = photoUrls;
+      if (spec.paper?.serial) { base.source = "PAPER"; base.paper_serial = spec.paper.serial; base.is_backfill = true; }
+      const ev = spec.build ? spec.build(target, base) : base;
+      await enqueue(spec.table, ev);
+      setMsgErr(false);
+      setMsg(`Đã ghi ${spec.title} · ${target.label} · ${new Date().toLocaleTimeString("vi-VN")}`);
+      setStep(1); setTarget(null); setSearch(""); setVals({}); setPhotoUrls([]);
+      spec.onDone?.();
+    } catch (e) {
+      // Không để treo nút: validate (spec.build) hoặc enqueue có thể ném lỗi → báo rõ, giữ nguyên bước để sửa.
+      setMsgErr(true);
+      setMsg("Chưa ghi được: " + ((e as Error)?.message || "lỗi không xác định") + " — kiểm tra lại số liệu rồi thử lại.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   /** Đọc cân qua Web Bluetooth (Android Chrome): thiết bị phát số qua đặc tính notify (UART/GATT), parse số đầu tiên. Cấu hình service/characteristic ở settings ble.scale (mặc định Nordic UART). */
@@ -86,7 +95,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
         <h2 className="text-xl font-bold">{spec.title}</h2>
         <div className="text-sm text-stone-500">Bước {step}/3</div>
       </div>
-      {msg && <div className="mb-2 rounded-xl bg-green-50 border border-green-200 text-green-900 px-3 py-2">{msg}</div>}
+      {msg && <div role="status" aria-live="polite" className={`mb-2 rounded-xl border px-3 py-2 ${msgErr ? "bg-red-50 border-red-200 text-red-800" : "bg-green-50 border-green-200 text-green-900"}`}>{msg}</div>}
       {step === 1 && (
         <div>
           <label className="block text-sm text-stone-600 mb-1">{spec.targetLabel}</label>
