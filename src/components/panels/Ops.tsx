@@ -3,6 +3,7 @@ import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
 import { KhachMessages } from "@/components/panels/Extra";
 import { OrderActions, ReturnsPanel } from "@/components/panels/Fulfillment";
+import { EpiPanel } from "@/components/panels/Pedigree";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import ThreeTap from "@/components/ThreeTap";
@@ -117,6 +118,7 @@ export function SucKhoePanel({ sess }: { sess: Sess }) {
   const rows = hist.flatMap((x) => Array.from({ length: Number(x.n) }, () => ({ ts: new Date(2026, 0, 1, Number(x.h)).toISOString() })));
   return (
     <div className="space-y-4">
+      <EpiPanel />
       <p className="text-sm text-stone-600">7 bộ câu chất vấn (chủ đầu tư/GĐ/kế toán hỏi định kỳ). Số đỏ = phải xử lý.</p>
       <h3 className="font-bold">Bộ 1 · Nền có đúng không</h3>
       <div className="grid sm:grid-cols-3 gap-2"><Q q="Thêm trại F02 có phải sửa code?" v={`Không — ${String(r?.farms_total ?? "…")} trại trong bảng farms`} ok /><Q q="Đổi giờ cữ ăn/ngưỡng phải sửa code?" v={`Không — bảng settings (${String(r?.farm_setting_overrides ?? 0)} ghi đè theo trại)`} ok /><Q q="Có bản ghi nào bị UPDATE/DELETE?" v="Không — trigger chặn ở DB, chỉ supersede/void" ok /></div>

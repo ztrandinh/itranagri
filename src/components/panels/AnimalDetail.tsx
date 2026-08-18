@@ -5,6 +5,7 @@ import { buildForms, type Ref } from "@/lib/forms";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { MonitoringRing } from "@/components/panels/HerdIntake";
+import { PedigreePanel } from "@/components/panels/Pedigree";
 
 export default function AnimalDetail({ sess, code }: { sess: Sess; code: string }) {
   const a = useData("animal", { code }); const tags = useData("animal_tags", { code }); const parity = useData("animal_parity", { code });
@@ -43,6 +44,7 @@ export default function AnimalDetail({ sess, code }: { sess: Sess; code: string 
         </>) : grp ? (<div><div className="text-2xl font-black">{String(grp.name)}</div><div>{String(grp.id)} · {String(grp.kind)} · <b>{fmt.n(grp.head_count)} con</b> · {String(grp.location_name ?? "")}</div></div>) : <div>Đang tải…</div>}
       </div>
       {pinned && ["worker","team_lead","tech_head","director"].includes(sess.role) && <ThreeTap spec={pinned} />}
+      <PedigreePanel animalId={code} />
       <div className="card"><MonitoringRing animalId={code} />
       <div className="flex flex-wrap items-center gap-2 mb-2"><h3 className="font-bold">Hồ sơ sự kiện ({evTotal})</h3>{parity.rows?.[0] ? <span className="b-gray">lứa {String(parity.rows[0].parity)} · KC lứa {String(parity.rows[0].calving_interval_days ?? "—")} ngày</span> : null}<select className="input !w-auto !py-1 !text-sm ml-auto" value={evType} onChange={(e) => { setEvType(e.target.value); setEvPage(0); }}><option value="">Mọi loại</option>{["CAN","PHOI","KHAM_THAI","DE","CAI_SUA","DIEU_TRI","VACCINE","BENH","CHUYEN","GHI_CHU"].map((t) => <option key={t}>{t}</option>)}</select><button className="btn-secondary !py-1 !px-2 !text-sm" disabled={evPage === 0} onClick={() => setEvPage(evPage - 1)}>←</button><span className="text-sm">{evPage + 1}/{Math.max(1, Math.ceil(evTotal / 50))}</span><button className="btn-secondary !py-1 !px-2 !text-sm" disabled={(evPage + 1) * 50 >= evTotal} onClick={() => setEvPage(evPage + 1)}>→</button></div>
         <div className="overflow-auto"><table className="tbl"><thead><tr><th>Lúc</th><th>Sự kiện</th><th>Giá trị</th><th>Chi tiết</th><th>Người ghi</th><th>Nguồn</th></tr></thead><tbody>

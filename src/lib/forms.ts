@@ -37,8 +37,8 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       fields: [
         { key: "event_type", label: "Loại sự kiện", type: "choice", required: true, options: [
           { id: "DONG_DUC", label: "Động dục" }, { id: "PHOI", label: "Phối TTNT" }, { id: "KHAM_THAI", label: "Khám thai" }, { id: "DE", label: "Đẻ" }, { id: "CAI_SUA", label: "Cai sữa" },
-          { id: "CAN", label: "Cân" }, { id: "BENH", label: "Bệnh nghi" }, { id: "DIEU_TRI", label: "Điều trị" }, { id: "VACCINE", label: "Vaccine" }, { id: "CHUYEN", label: "Chuyển chuồng" }, { id: "CHET", label: "Chết" }, { id: "GHI_CHU", label: "Ghi chú" }] },
-        { key: "value", label: "Giá trị (kg cân / số liều / …)", type: "number", step: 1, min: 0 },
+          { id: "CAN", label: "Cân" }, { id: "BCS", label: "Thể trạng BCS (1–5)" }, { id: "VAT_SUA", label: "Vắt sữa (kg)" }, { id: "AN_THUA", label: "Ăn thừa (kg)" }, { id: "TAY_KY_SINH", label: "Tẩy ký sinh" }, { id: "BENH", label: "Bệnh nghi" }, { id: "DIEU_TRI", label: "Điều trị" }, { id: "VACCINE", label: "Vaccine" }, { id: "CHUYEN", label: "Chuyển chuồng" }, { id: "CHET", label: "Chết" }, { id: "GHI_CHU", label: "Ghi chú" }] },
+        { key: "value", label: "Giá trị (kg cân / BCS 1–5 / kg sữa / số liều …)", type: "number", step: 0.5, min: 0 },
         { key: "result", label: "Kết quả (khám thai + / −)", type: "choice", options: [{ id: "+", label: "Dương (+)" }, { id: "-", label: "Âm (−)" }] },
         { key: "vaccine_name", label: "Vaccine (nếu tiêm)", type: "choice", options: [{ id: "LMLM (lở mồm long móng)", label: "LMLM" }, { id: "Tụ huyết trùng", label: "Tụ huyết trùng" }, { id: "Viêm da nổi cục", label: "Viêm da nổi cục" }, { id: "Newcastle", label: "Newcastle" }, { id: "Gumboro", label: "Gumboro" }, { id: "Cúm gia cầm H5N1", label: "Cúm H5N1" }] },
         { key: "withdrawal_days", label: "Ngưng thuốc (ngày) — nếu điều trị", type: "number", min: 0, max: 90, step: 1 },
@@ -52,7 +52,7 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
         if (et === "CAN") { detail.gain_kg = null; }
         const wd = v.withdrawal_days ? new Date(Date.now() + Number(v.withdrawal_days) * 86400e3).toISOString().slice(0, 10) : null;
         const { result, withdrawal_days, note, vaccine_name, ...rest } = v; void result; void withdrawal_days; void note; void vaccine_name;
-        return { ...rest, event_type: et, unit: et === "CAN" ? "kg" : et === "VACCINE" || et === "DIEU_TRI" ? "lieu" : null, detail, withdrawal_until: et === "DIEU_TRI" || et === "VACCINE" ? wd : null };
+        return { ...rest, event_type: et, unit: et === "CAN" || et === "VAT_SUA" || et === "AN_THUA" ? "kg" : et === "BCS" ? "diem" : et === "VACCINE" || et === "DIEU_TRI" || et === "TAY_KY_SINH" ? "lieu" : null, detail, withdrawal_until: et === "DIEU_TRI" || et === "VACCINE" ? wd : null };
       },
     },
     // A3 · gà: trứng, chết, đếm
