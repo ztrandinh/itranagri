@@ -3,6 +3,7 @@ import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
 import { KhachMessages } from "@/components/panels/Extra";
 import { OrderActions, ReturnsPanel } from "@/components/panels/Fulfillment";
+import { GiaPanel, BaoGiaPanel, ChiTieuPanel, DiemPanel, CongNoPanel, LichHDPanel } from "@/components/panels/SalesMore";
 import { EpiPanel } from "@/components/panels/Pedigree";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -55,7 +56,7 @@ export function SopPanel({ code }: { code?: string }) {
 
 export function BanHangPanel({ sess }: { sess: Sess }) {
   const sales = useData("sales_recent"); const recv = useData("receivables"); const price = useData("price_list"); const orders = useData("orders"); const contracts = useData("contracts"); const cov = useData("contract_coverage"); const custody = useData("custody"); const aging = useData("receivable_aging");
-  const [tab, setTab] = useState<"ban" | "don" | "hd" | "nn" | "crm" | "pos" | "kenh" | "tra">(typeof window !== "undefined" && ["crm","pos","kenh","nhan-nuoi"].includes(new URLSearchParams(window.location.search).get("tab") ?? "") ? ((new URLSearchParams(window.location.search).get("tab") === "nhan-nuoi" ? "nn" : new URLSearchParams(window.location.search).get("tab")) as "crm") : "ban"); const [of, setOf] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"ban" | "don" | "hd" | "nn" | "crm" | "pos" | "kenh" | "tra" | "gia" | "bg" | "ct" | "diem" | "no" | "lich">(typeof window !== "undefined" && ["crm","pos","kenh","nhan-nuoi","gia","bg","ct","diem","no","lich","hd","don"].includes(new URLSearchParams(window.location.search).get("tab") ?? "") ? ((new URLSearchParams(window.location.search).get("tab") === "nhan-nuoi" ? "nn" : new URLSearchParams(window.location.search).get("tab")) as "crm") : "ban"); const [of, setOf] = useState<Record<string, string>>({});
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"), plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null, [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = ref ? buildForms(ref, sess.farmId) : null;
@@ -66,9 +67,10 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((c) => <KpiTile key={c} l={`Kênh ${c}`} v={tot ? `${Math.round((100 * (byChannel[String(c)] ?? 0)) / tot)}%` : "—"} sub={fmt.vnd(byChannel[String(c)] ?? 0)} warn={tot && (byChannel[String(c)] ?? 0) / tot > 0.4 ? "yel" : null} />)}</div>
       <div className="text-xs text-stone-500">Luật: không kênh nào &gt;40% doanh thu một SKU · ≥70% sản lượng có hợp đồng trước · công nợ ≤15 ngày, &gt;30 ngày ngừng giao · giá sàn (bảng giá SAN) — bán dưới sàn cần GĐ duyệt.</div>
-      <div className="flex gap-2 overflow-x-auto">{[["ban", "Bán / giao"], ["don", `Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Trả hàng"], ["hd", "Hợp đồng bao tiêu"], ["nn", "Nhận nuôi / chăm sóc hộ"], ["crm", "CRM · khách tiềm năng"], ["pos", "POS cửa hàng"], ["kenh", "Kênh · khuyến mãi"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <div className="flex gap-2 overflow-x-auto">{[["ban", "Bán / giao"], ["don", `Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Trả hàng"], ["hd", "Hợp đồng bao tiêu"], ["nn", "Nhận nuôi / chăm sóc hộ"], ["crm", "CRM · khách tiềm năng"], ["pos", "POS cửa hàng"], ["kenh", "Kênh · khuyến mãi"], ["gia", "💲 Giá theo khách · bậc CK"], ["bg", "📄 Báo giá"], ["ct", "🎯 Chỉ tiêu · hoa hồng"], ["diem", "⭐ Điểm thưởng"], ["no", "⏰ Công nợ hạn · nhắc nợ"], ["lich", "📅 Lịch giao HĐ"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
       {tab === "nn" && <KhachMessages />}
       {tab === "tra" && <ReturnsPanel sess={sess} />}
+      {tab === "gia" && <GiaPanel sess={sess} />}{tab === "bg" && <BaoGiaPanel sess={sess} />}{tab === "ct" && <ChiTieuPanel />}{tab === "diem" && <DiemPanel />}{tab === "no" && <CongNoPanel sess={sess} />}{tab === "lich" && <LichHDPanel />}
       {tab === "crm" && <CrmPanel sess={sess} />}
       {tab === "pos" && <PosPanel sess={sess} />}
       {tab === "kenh" && <KenhPanel />}
