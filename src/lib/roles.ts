@@ -11,7 +11,7 @@ export const VIEW_ROLES: Record<string, string[]> = Object.fromEntries([
 export const PAGE_ROLES: Record<string, string[]> = {
   "/ke-toan": FIN_ROLES, "/hq": ["owner", "director", "auditor", "it_engineer", "accountant"], "/nhan-su": ["owner", "director", "accountant", "it_engineer", "tech_head", "team_lead"],
   "/quan-tri": ["owner", "director", "it_engineer", "tech_head", "accountant", "auditor", "team_lead"], "/audit": ["owner", "director", "auditor", "it_engineer", "accountant"], "/doi-soat": ["owner", "director", "auditor", "it_engineer", "accountant", "tech_head"],
-  "/gd": ["owner", "director", "auditor", "it_engineer"], "/xnk": MGMT_ROLES, "/rd": MGMT_ROLES, "/nhan-rong": ["owner", "director", "it_engineer"], "/mua-hang": [...MGMT_ROLES, "team_lead", "worker"], "/giam-sat": [...MGMT_ROLES, "team_lead", "worker"],
+  "/gd": ["owner", "director", "auditor", "it_engineer"], "/xnk": MGMT_ROLES, "/rd": MGMT_ROLES, "/nhan-rong": ["owner", "director", "it_engineer"], "/mua-hang": [...MGMT_ROLES, "team_lead", "worker"], "/giam-sat": [...MGMT_ROLES, "team_lead", "worker"], "/marketing": [...MGMT_ROLES, "team_lead", "worker"],
 };
 export const _x = 0;
 export function canView(view: string, role: string) { const r = VIEW_ROLES[view]; return !r || r.includes(role); }
