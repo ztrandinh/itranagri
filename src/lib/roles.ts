@@ -1,6 +1,7 @@
 /** Phân quyền đọc theo VAI cho view nhạy cảm & trang: dữ liệu tài chính/lương/nhân sự chỉ vai quản lý/kế toán/kiểm toán; công nhân chỉ thấy phần vận hành liên quan */
 export const FIN_ROLES = ["owner", "director", "accountant", "auditor", "it_engineer"];
 export const MGMT_ROLES = ["owner", "director", "tech_head", "accountant", "auditor", "it_engineer"];
+// my_inbox / suggest_delegates / my_delegations: mọi vai (RLS + app_staff)
 export const VIEW_ROLES: Record<string, string[]> = Object.fromEntries([
   ...["gl_trial_balance", "gl_journal", "gl_entries", "gl_by_entity", "consolidated", "pl_month", "pl_summary", "budget_vs_actual", "budgets", "cashflow_forecast", "ap_summary", "ap_aging", "ar_summary", "ar_aging_rows", "receivable_aging", "receivables", "loans", "loan_schedule", "insurance", "insurance_claims", "vat_summary", "payment_calendar", "legal_entities", "expense_requests", "funds", "period_locks", "dunning_log", "sales_performance", "approval_matrix", "recon_latest", "kpi_owner_weekly", "batch_cost"].map((v) => [v, FIN_ROLES]),
   ...["payroll", "payslips", "payroll_runs", "staff_salaries", "attendance_all", "leave_requests_all", "staff_list_full"].map((v) => [v, ["owner", "director", "accountant", "it_engineer"]]),

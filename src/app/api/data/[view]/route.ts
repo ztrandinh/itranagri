@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ view: st
   for (const p of qd.params ?? []) args.push(url.searchParams.get(p));
   try {
     if (qd.cache || view === "stock_dashboard") { void ensureFarmCache(farm); }
-    const memKey = `${farm}|${sess.role}|${view}|${args.join(",")}`; const ttl = (qd.ttl ?? (HEAVY.has(view) ? 60 : 0)) * 1000; const hit = ttl ? MEM.get(memKey) : undefined;
+    const memKey = `${farm}|${sess.role}|${sess.staffId}|${view}|${args.join(",")}`; const ttl = (qd.ttl ?? (HEAVY.has(view) ? 60 : 0)) * 1000; const hit = ttl ? MEM.get(memKey) : undefined;
     if (hit && Date.now() - hit.at < ttl && !url.searchParams.has("fresh")) return NextResponse.json({ rows: hit.rows, cached: true }, { headers: { "x-cache": "HIT", "cache-control": "private, max-age=30" } });
     const rows = await withCtx(ctx, async (c) => (await c.query(qd.sql, args)).rows);
     if (ttl) { MEM.set(memKey, { at: Date.now(), rows }); if (MEM.size > 2000) MEM.delete(MEM.keys().next().value as string); }
