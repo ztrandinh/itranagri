@@ -45,8 +45,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
             files[`${t}.csv`] = csv(rows); schema[t] = rows[0] ? Object.keys(rows[0]) : [];
           }
           files["schema.json"] = JSON.stringify(schema, null, 2);
-          files["README.txt"] = `ITRAN OS · xuất toàn bộ dữ liệu trại ${farm} · ${new Date().toISOString()}\nDữ liệu thuộc công ty ITRAN FARM. Định dạng CSV UTF-8 (BOM), JSON trong ô = chuỗi JSON. Bảng sự kiện là append-only (status ACTIVE/SUPERSEDED/VOID).`;
-          return zipRes(`itranos-${farm}-all-${new Date().toISOString().slice(0, 10)}.zip`, files);
+          files["README.txt"] = `ITRAN AGRI · xuất toàn bộ dữ liệu trại ${farm} · ${new Date().toISOString()}\nDữ liệu thuộc công ty ITRAN FARM. Định dạng CSV UTF-8 (BOM), JSON trong ô = chuỗi JSON. Bảng sự kiện là append-only (status ACTIVE/SUPERSEDED/VOID).`;
+          return zipRes(`itranagri-${farm}-all-${new Date().toISOString().slice(0, 10)}.zip`, files);
         }
         case "audit-pack": {
           const files: Record<string, string> = {};
@@ -61,7 +61,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
           files["animals.csv"] = csv(await q("select * from animals where farm_id=$1", [farm]));
           files["withdrawal.csv"] = csv(await q("select e.animal_id, e.ts, e.detail->>'note' as note, e.withdrawal_until from animal_events e where e.farm_id=$1 and e.event_type in ('DIEU_TRI','VACCINE') and e.ts::date between $2 and $3 order by ts", [farm, from, to]));
           files["audit_anchors.csv"] = csv(await q("select * from audit_anchors where farm_id=$1 and day between $2 and $3 order by day", [farm, from, to]));
-          files["INDEX.md"] = `# Hồ sơ audit ITRAN OS\nTrại ${farm} · kỳ ${from} → ${to}${sku ? ` · SKU ${sku}` : ""} · sinh ${new Date().toISOString()} bởi ${s.staffId}\n\nMục lục: nhật ký sự kiện vật nuôi, cho ăn, ruộng, mẻ, kho, bán, checklist, sự cố, cổng, hiệu chuẩn, phiếu giấy, điều chỉnh, kiểm kê, đối soát RC, cảnh báo, SOP ban hành, chứng chỉ nhân sự, lô, đàn, ngưng thuốc, neo audit (hash ngày).\nNguyên tắc: không bản ghi = không tồn tại; sự kiện append-only; mọi bản ghi có người ghi + thời gian + nguồn (APP/PAPER/DEVICE/IMPORT).`;
+          files["INDEX.md"] = `# Hồ sơ audit ITRAN AGRI\nTrại ${farm} · kỳ ${from} → ${to}${sku ? ` · SKU ${sku}` : ""} · sinh ${new Date().toISOString()} bởi ${s.staffId}\n\nMục lục: nhật ký sự kiện vật nuôi, cho ăn, ruộng, mẻ, kho, bán, checklist, sự cố, cổng, hiệu chuẩn, phiếu giấy, điều chỉnh, kiểm kê, đối soát RC, cảnh báo, SOP ban hành, chứng chỉ nhân sự, lô, đàn, ngưng thuốc, neo audit (hash ngày).\nNguyên tắc: không bản ghi = không tồn tại; sự kiện append-only; mọi bản ghi có người ghi + thời gian + nguồn (APP/PAPER/DEVICE/IMPORT).`;
           return zipRes(`audit-pack-${farm}-${from}_${to}.zip`, files);
         }
         case "tt66": {
@@ -77,7 +77,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
           files["08_thuc_an.csv"] = csv(await q("select ts, dest_group_id, recipe_id, recipe_version, qty_kg, planned_kg, meal, created_by from feed_logs where farm_id=$1 and ts::date between $2 and $3 order by ts", [farm, from, to]));
           files["09_ban_giet_mo.csv"] = csv(await q("select s.ts, s.partner_id, p.name as khach, s.sku, s.lot_id, s.qty, s.unit, s.price, s.amount, s.channel from sales s left join partners p on p.id=s.partner_id where s.farm_id=$1 and s.ts::date between $2 and $3 order by ts", [farm, from, to]));
           files["10_su_co_dich.csv"] = csv(await q("select ts, code, kind, severity, description, classification, closed_at from incidents where farm_id=$1 and ts::date between $2 and $3 order by ts", [farm, from, to]));
-          files["README.txt"] = `Hồ sơ chăn nuôi theo cấu trúc Thông tư 66/2025/TT-BNNMT (trại ${farm}, kỳ ${from}→${to}). Sinh tự động từ ITRAN OS ${new Date().toISOString()}. Mọi dòng có người ghi/thời gian; bản ghi gốc không thể sửa xóa.`;
+          files["README.txt"] = `Hồ sơ chăn nuôi theo cấu trúc Thông tư 66/2025/TT-BNNMT (trại ${farm}, kỳ ${from}→${to}). Sinh tự động từ ITRAN AGRI ${new Date().toISOString()}. Mọi dòng có người ghi/thời gian; bản ghi gốc không thể sửa xóa.`;
           return zipRes(`ho-so-chan-nuoi-TT66-${farm}-${from}_${to}.zip`, files);
         }
         case "sales-tax": {

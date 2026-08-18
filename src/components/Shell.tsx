@@ -76,15 +76,15 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-900">
       <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-slate-900 text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
-        <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN OS"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
+        <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
         {SideNav}
         <div className="border-t border-slate-800 p-3 text-xs text-slate-400">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
       </aside>
-      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN OS<button className="ml-auto text-slate-400" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
+      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center gap-3 px-3">
           <button className="md:hidden text-2xl" onClick={() => setSide(true)} aria-label="Menu">☰</button>
-          <span className="md:hidden font-black text-emerald-700">ITRAN OS</span>
+          <span className="md:hidden font-black text-emerald-700">ITRAN AGRI</span>
           {sess.farmIds.length > 1 ? (
             <select className="rounded-lg border border-slate-300 bg-white text-sm px-2 py-1 font-semibold" value={sess.farmId}
               onChange={async (e) => { await fetch("/api/auth/switch-farm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ farm_id: e.target.value }) }); router.refresh(); window.location.reload(); }}>

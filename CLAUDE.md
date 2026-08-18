@@ -1,4 +1,4 @@
-# CLAUDE.md — ITRAN OS (Ray A · Next.js 16 + Postgres, chuẩn bị chạy trên Supabase)
+# CLAUDE.md — ITRAN AGRI (Ray A · Next.js 16 + Postgres, chuẩn bị chạy trên Supabase)
 
 ## Dự án
 Hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công ty mẹ → vùng → nhiều trại F0x). Nghiệp vụ gốc: `docs/bo-goc/` (FILE-GỐC v3.1, Quyển 1–5, Phụ lục A/B). Kế hoạch & kiến trúc: `docs/plan/00…10`. Starter/góp ý ràng buộc: `docs/starter/`. **Bộ gốc thắng về nghiệp vụ; kế hoạch thắng về công nghệ; góp ý v1.5 thắng khi mâu thuẫn với kế hoạch.**

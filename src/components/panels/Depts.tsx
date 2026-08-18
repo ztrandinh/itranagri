@@ -111,6 +111,6 @@ export function KeToanPanel({ sess }: { sess: Sess }) {
         <div className="card"><h3 className="font-bold">Quỹ trích tự động (từ doanh thu năm)</h3><table className="tbl"><tbody>{(funds.rows ?? []).map((f) => <tr key={String(f.kind)}><td>{String(f.kind)}</td><td>{String(f.pct)}% {String(f.base)}</td><td className="text-right">{f.accrued_ytd != null ? fmt.vnd(f.accrued_ytd) : "—"}</td></tr>)}</tbody></table>
           <h3 className="font-bold mt-3">Tuổi nợ</h3><table className="tbl"><thead><tr><th>Khách</th><th className="text-right">0–15</th><th className="text-right">16–30</th><th className="text-right">&gt;30</th></tr></thead><tbody>{(aging.rows ?? []).map((r) => <tr key={String(r.partner_id)}><td>{String(r.name)}</td><td className="text-right">{fmt.vnd(r.d0_15 ?? 0)}</td><td className="text-right">{fmt.vnd(r.d16_30 ?? 0)}</td><td className={`text-right ${Number(r.d30p) > 0 ? "text-red-700 font-bold" : ""}`}>{fmt.vnd(r.d30p ?? 0)}</td></tr>)}</tbody></table></div>
       </div>
-      <div className="text-xs text-stone-500">P&L phân hệ (giá thành theo CC/chu kỳ, giá chuyển 70%) — đợt kế tiếp khi có phân bổ chi phí; sổ thuế giữ ở MISA, ITRAN OS đẩy bảng kê.</div>
+      <div className="text-xs text-stone-500">P&L phân hệ (giá thành theo CC/chu kỳ, giá chuyển 70%) — đợt kế tiếp khi có phân bổ chi phí; sổ thuế giữ ở MISA, ITRAN AGRI đẩy bảng kê.</div>
     </div>);
 }

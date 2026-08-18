@@ -1,4 +1,4 @@
-# ITRAN OS — Hệ điều hành số trang trại tuần hoàn ITRAN FARM
+# ITRAN AGRI — Hệ điều hành số trang trại tuần hoàn ITRAN FARM
 
 Ray A (thực chiến): Next.js 16 · TypeScript · Postgres 17 (Supabase-ready, SQL migrations thuần) · offline-first PWA · RLS đa trại.
 
