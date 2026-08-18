@@ -42,3 +42,13 @@ export const fmt = {
   d: (v: unknown) => v ? new Date(String(v)).toLocaleDateString("vi-VN") : "—",
 };
 export function noAccent(s: string) { return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase(); }
+
+/** Che số điện thoại/PII: giữ 3 số đầu + 2 số cuối, giữa thay ••• (0901234567 → 090•••67).
+ *  Dùng cho danh sách khách/nhân sự với vai không được xem đầy đủ (privacy-by-default). */
+export function maskPhone(v: unknown): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "—";
+  const digits = s.replace(/\D/g, "");
+  if (digits.length < 6) return "•".repeat(s.length);
+  return digits.slice(0, 3) + "•••" + digits.slice(-2);
+}
