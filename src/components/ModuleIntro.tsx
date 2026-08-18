@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { MODULES } from "@/lib/modules";
 /** Giới thiệu chuẩn đầu mỗi trang: để làm gì · dành cho ai · quy trình · SOP · bắt đầu từ đâu — thu gọn được, nhớ theo người dùng (localStorage) */
 export default function ModuleIntro({ path }: { path: string }) {
-  const m = MODULES[path]; const [open, setOpen] = useState(true);
-  useEffect(() => { try { setOpen(localStorage.getItem("intro:" + path) !== "0"); } catch { /* ignore */ } }, [path]);
+  const m = MODULES[path]; const [open, setOpen] = useState(false);
+  // Mặc định THU GỌN cho gọn màn; chỉ mở nếu người dùng đã từng mở trang này (nhớ theo người).
+  useEffect(() => { try { setOpen(localStorage.getItem("intro:" + path) === "1"); } catch { /* ignore */ } }, [path]);
   if (!m) return null;
   const toggle = () => { const v = !open; setOpen(v); try { localStorage.setItem("intro:" + path, v ? "1" : "0"); } catch { /* ignore */ } };
   return <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2 mb-3 text-sm">

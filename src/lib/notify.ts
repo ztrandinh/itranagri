@@ -50,7 +50,9 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       const pref = (await p.query("select * from notification_prefs where staff_id=$1 and rule_code in ('*',$2) order by (rule_code='*') limit 1", [sid, String(pl.rule ?? e.topic)])).rows[0];
       if (pref?.muted) continue; if (pref && LV[level] < LV[String(pref.level_min)]) continue;
       const channels: string[] = pref?.channels ?? ["app"];
-      const dup = await p.query("select 1 from notifications where staff_id=$1 and source=$2 and source_id=$3", [sid, source, sourceId]);
+      // Chống spam thông báo: bỏ qua nếu trùng chính xác (source,source_id) HOẶC đã có 1 tin CÙNG NGUỒN+CÙNG TIÊU ĐỀ chưa đọc trong 24h
+      // (alert lặp sinh alert_id mới mỗi lần → nếu chỉ dedup theo source_id sẽ chất đống; gộp theo tiêu đề để 1 tin/ngày/người tới khi đọc).
+      const dup = await p.query("select 1 from notifications where staff_id=$1 and source=$2 and (source_id=$3 or (title=$4 and read_at is null and ts > now() - interval '24 hours'))", [sid, source, sourceId, title]);
       if (dup.rows[0]) continue;
       await p.query("insert into notifications(farm_id,staff_id,level,title,body,link,source,source_id,channels,sent) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [farm, sid, level, title, body, link, source, sourceId, channels, JSON.stringify({ app: new Date().toISOString(), zalo: channels.includes("zalo") ? "queued" : undefined, sms: channels.includes("sms") ? "queued" : undefined })]);
       n++;
