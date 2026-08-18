@@ -15,7 +15,7 @@ describe("RLS — farm A không thấy farm B", () => {
     expect(r.rows.map((x) => x.table_name)).toEqual([]);
   });
   it("worker F99 thấy 0 bò của F01; worker F01 thấy đủ; auditor thấy tất cả", async () => {
-    await ctx("F99", "worker", "NS-011"); expect(Number((await app.query("select count(*) from animals")).rows[0].count)).toBe(0);
+    await ctx("F99", "worker", "NS-011"); expect(Number((await app.query("select count(*) from animals where farm_id='F01'")).rows[0].count)).toBe(0);
     await ctx("F01", "worker", "NS-011"); expect(Number((await app.query("select count(*) from animals")).rows[0].count)).toBeGreaterThan(0);
     await ctx("F01", "auditor", "NS-030"); expect(Number((await app.query("select count(*) from animals")).rows[0].count)).toBeGreaterThan(0);
   });

@@ -8,6 +8,7 @@ import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
 import { FinanceMorePanel } from "@/components/panels/FinanceMore";
 import { useState } from "react";
+import DaoTaoThuong from "@/components/panels/DaoTaoThuong";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
@@ -51,11 +52,12 @@ export function ThuYPanel({ sess }: { sess: Sess }) {
 
 /** NHÂN SỰ */
 export function NhanSuPanel({ sess }: { sess: Sess }) {
+  const [nsTab, setNsTab] = useState<"dt" | "ns">("dt");
   const st = useData("staff_activity"); const sops = useData("sops");
   const canW = ["director","owner","it_engineer"].includes(sess.role);
   const due = (d: unknown) => d && new Date(String(d)) < new Date(Date.now() + 30 * 86400e3);
   return (
-    <div className="space-y-3">
+    <div className="space-y-3"><Tabs items={[["dt", "🎓 Đào tạo & Thưởng (giám sát · học · dạy · kiểm tra → lương)"], ["ns", "Hồ sơ nhân sự · chứng chỉ SOP · sức khỏe"]]} value={nsTab} onChange={(k) => setNsTab(k as typeof nsTab)} right={<a className="btn-secondary !py-1.5 !px-3 text-sm" href="/giam-sat">Giám sát →</a>} />{nsTab === "dt" && <DaoTaoThuong sess={sess} />}{nsTab === "ns" && <div className="space-y-3">
       <ProductionPanel sess={sess} />
       <PayrollPanel sess={sess} />
       <AttendancePanel sess={sess} />
@@ -65,7 +67,7 @@ export function NhanSuPanel({ sess }: { sess: Sess }) {
         {(st.rows ?? []).map((r) => <tr key={String(r.id)}><td className="pl-3 font-mono">{String(r.id)}</td><td>{String(r.full_name)}</td><td className="text-sm">{String(r.role)} · {String(r.position ?? "")}</td><td className="text-xs">{Array.isArray(r.sop_certs) && (r.sop_certs as string[]).length ? (r.sop_certs as string[]).join(", ") : <span className="text-amber-700">chưa</span>}</td><td className={due(r.health_check_due) ? "text-amber-700" : ""}>{fmt.d(r.health_check_due)}</td><td className={due(r.food_safety_training_due) ? "text-amber-700" : ""}>{fmt.d(r.food_safety_training_due)}</td><td className="text-right">{String(r.records_30d)}</td><td className="text-right">{String(r.checklists_green_30d)}/{String(r.checklists_30d)}</td><td className="text-right">{String(r.tasks_done_30d)}</td><td>{canW && <button className="underline text-xs" onClick={async () => { const c = prompt("Chứng chỉ SOP (mã cách nhau bởi dấu phẩy):", Array.isArray(r.sop_certs) ? (r.sop_certs as string[]).join(",") : ""); if (c == null) return; const h = prompt("Hạn khám SK (YYYY-MM-DD):", String(r.health_check_due ?? "").slice(0, 10)); const a = prompt("Hạn tập huấn ATTP (YYYY-MM-DD):", String(r.food_safety_training_due ?? "").slice(0, 10)); await act("update_staff", { staff_id: r.id, sop_certs: c.split(",").map((x) => x.trim()).filter(Boolean), health_check_due: h || null, food_safety_training_due: a || null }); st.reload(); }}>sửa</button>}</td></tr>)}
       </tbody></table></div>
       <div className="text-xs text-stone-500">Luật: không SOP ký = không giao việc; ma trận dự phòng ≥80% kỹ năng cho vị trí then chốt; lương 4 lớp (KPI tháng chấm từ bản ghi).</div>
-    </div>);
+    </div>}</div>);
 }
 
 /** THIẾT BỊ – MÁY MÓC – CÔNG NGHỆ */
