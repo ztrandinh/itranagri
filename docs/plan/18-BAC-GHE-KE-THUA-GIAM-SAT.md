@@ -41,10 +41,7 @@ Cộng thêm: luân chuyển GS theo quý phá quan hệ lâu ngày; GS bị ch�
 ## F. Điểm cống hiến (công khai)
 `v_contribution` = KPI tháng đạt ×10 · điểm GS/10 ×2 · buổi dạy ×5 · sáng kiến duyệt ×20 · lần thay người ×8 (settings `contrib.*`) — dùng làm điểm cộng khi tranh ghế, không thay tiêu chí.
 
-## G. Việc còn lại (chưa làm, cần anh chốt)
-- Gắn `salary_coef` vào bảng lương thật (payroll_runs) — hiện chỉ hiển thị hệ số; cần thang bảng lương đăng ký Sở LĐ + phụ lục HĐLĐ.
-- Định biên theo kế hoạch năm (số ghế/bậc dự kiến trong quỹ lương S&OP).
-- Chấm thi SOP cho GS theo khối: hiện dựa `training_tests` bất kỳ SOP của phòng trong khối; nên định nghĩa "SOP cốt lõi khối" riêng.
+## G. Việc còn lại → đã xử lý ở mục H (0091). Còn treo: in phụ lục HĐLĐ theo thang lương; định biên gắn quỹ lương S&OP tự động.
 
 ## H. Bổ sung 19/08 (0090–0091) — GS hằng ngày theo quy trình phòng · lỗi GS · cơ chế lương–thưởng 4 lớp · định biên · SOP cốt lõi khối
 - **Quy trình phòng → bộ tiêu chí kiểm**: `sync_process_criteria()` sinh `SC-P-<mã quy trình>` (136 tiêu chí MANUAL từ `processes`/`process_steps.control`, tần suất NGAY/TUAN/THANG) + 5 tiêu chí riêng cho **trưởng phòng** (`role_scope='TRUONG_PHONG'`: tự kiểm/giao việc, dạy đủ giờ, CAPA đúng hạn, việc phòng không quá hạn, lỗi lặp).
