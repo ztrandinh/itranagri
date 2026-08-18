@@ -93,7 +93,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-bold">{spec.title}</h2>
+        <div><h2 className="text-xl font-bold">{spec.title}</h2>{spec.record && <div className="text-xs text-emerald-700 mt-0.5" title={spec.record.std}>📋 Ghi vào hồ sơ: <b>{spec.record.name}</b> ({spec.record.code}) · {spec.record.std}</div>}</div>
         <div className="text-sm text-stone-500">Bước {step}/3</div>
       </div>
       {msg && <div role="status" aria-live="polite" className={`mb-2 rounded-xl border px-3 py-2 ${msgErr ? "bg-red-50 border-red-200 text-red-800" : "bg-green-50 border-green-200 text-green-900"}`}>{msg}</div>}

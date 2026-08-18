@@ -2,11 +2,12 @@
 import Tabs from "@/components/Tabs";
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
+import { BankReconPanel } from "@/components/panels/CloseoutBits";
 import type { Sess } from "@/components/Shell";
 type R = Record<string, unknown>;
 /** Tài chính nâng cao: phải trả NCC theo hạn + trả tiền, khoản vay + lịch + trả kỳ (GL 341/635), ma trận ủy quyền (dữ liệu), bảo hiểm + bồi thường, thuế GTGT, lịch thanh toán 13 tuần, hợp nhất đa pháp nhân */
 export function FinanceMorePanel({ sess }: { sess: Sess }) {
-  const [tab, setTab] = useState<"ap" | "vay" | "uyquyen" | "baohiem" | "thue" | "lich" | "hopnhat">("lich");
+  const [tab, setTab] = useState<"ap" | "vay" | "uyquyen" | "baohiem" | "thue" | "lich" | "hopnhat" | "bank">("lich");
   const ap = useData("ap_summary"); const apRows = useData("ap_aging"); const loans = useData("loans"); const [loanSel, setLoanSel] = useState<string | null>(null); const sched = useData(loanSel ? "loan_schedule" : null, { loan: loanSel ?? undefined }, [loanSel]);
   const am = useData("approval_matrix"); const ins = useData("insurance"); const claims = useData("insurance_claims"); const vat = useData("vat_summary"); const cal = useData("payment_calendar"); const les = useData("legal_entities");
   const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)); const cons = useData("consolidated", { period }, [period]); const byEnt = useData("gl_by_entity", { period }, [period]);
@@ -14,7 +15,8 @@ export function FinanceMorePanel({ sess }: { sess: Sess }) {
   const sum = (rows: R[] | null, k: string) => (rows ?? []).reduce((a, r) => a + Number(r[k] ?? 0), 0);
   const weeks = Array.from({ length: 13 }, (_, i) => { const d0 = new Date(); d0.setDate(d0.getDate() + i * 7); const d1 = new Date(d0); d1.setDate(d1.getDate() + 7); const rows = (cal.rows ?? []).filter((r) => { const d = new Date(String(r.due_date)); return d >= (i === 0 ? new Date(0) : d0) && d < d1; }); return { i, from: d0, rows, total: rows.reduce((a, r) => a + Number(r.amount ?? 0), 0) }; });
   return <div className="card">
-    <Tabs items={[["lich", "📆 Lịch thanh toán 13 tuần"], ["ap", `💸 Phải trả NCC (${fmt.vnd(sum(ap.rows, "unpaid"))})`], ["vay", `🏦 Vay & lãi (${(loans.rows ?? []).filter((l) => l.status === "DANG_VAY").length})`], ["baohiem", `🛡 Bảo hiểm (${(ins.rows ?? []).length})`], ["thue", "🧾 Thuế GTGT"], ["uyquyen", "✍ Ma trận ủy quyền"], ["hopnhat", "🏢 Hợp nhất pháp nhân"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+    <Tabs items={[["lich", "📆 Lịch thanh toán 13 tuần"], ["bank", "🏦 Sao kê & đối chiếu"], ["ap", `💸 Phải trả NCC (${fmt.vnd(sum(ap.rows, "unpaid"))})`], ["vay", `🏦 Vay & lãi (${(loans.rows ?? []).filter((l) => l.status === "DANG_VAY").length})`], ["baohiem", `🛡 Bảo hiểm (${(ins.rows ?? []).length})`], ["thue", "🧾 Thuế GTGT"], ["uyquyen", "✍ Ma trận ủy quyền"], ["hopnhat", "🏢 Hợp nhất pháp nhân"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+    {tab === "bank" && <BankReconPanel sess={sess} />}
     {msg && <div className="mt-2 text-sm text-emerald-700">{msg}</div>}
     {tab === "lich" && <div className="mt-3 space-y-2"><div className="grid grid-cols-13 gap-1 overflow-x-auto" style={{ gridTemplateColumns: "repeat(13, minmax(80px, 1fr))" }}>{weeks.map((w) => <div key={w.i} className={`rounded-lg p-1 text-center text-xs ${w.total > 0 ? "bg-amber-50 border border-amber-300" : "bg-stone-50"}`}><div className="text-stone-500">T{w.i + 1} · {w.from.getDate()}/{w.from.getMonth() + 1}</div><div className="font-bold">{w.total ? fmt.vnd(w.total) : "—"}</div><div className="text-[10px]">{w.rows.length ? `${w.rows.length} khoản` : ""}</div></div>)}</div>
       <table className="tbl text-sm"><thead><tr><th className="pl-3">Hạn</th><th>Loại</th><th>Ai</th><th>Tham chiếu</th><th className="text-right">Số tiền</th></tr></thead><tbody>{(cal.rows ?? []).map((r, i) => <tr key={i} className={new Date(String(r.due_date)) < new Date() ? "bg-red-50" : ""}><td className="pl-3">{fmt.d(String(r.due_date))}</td><td>{String(r.kind)}</td><td>{String(r.who ?? "")}</td><td className="font-mono text-xs">{String(r.ref)}</td><td className="text-right font-bold">{fmt.vnd(Number(r.amount))}</td></tr>)}</tbody></table><div className="text-xs text-stone-500">Gồm: PO đã duyệt/nhận chưa trả (hạn = ngày nhận + kỳ hạn NCC), chi đã duyệt chưa chi, kỳ vay, phí bảo hiểm tái tục, GTGT ước (nộp ngày 20 tháng sau). Đối chiếu với Dòng tiền dự báo ở trên.</div></div>}

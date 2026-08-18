@@ -1,14 +1,15 @@
 "use client";
 import Tabs from "@/components/Tabs";
 import { useState } from "react";
-import { useData, fmt } from "@/lib/client";
+import { useData, fmt, act } from "@/lib/client";
+import { QcHoldPanel } from "@/components/panels/CloseoutBits";
 import type { Sess } from "@/components/Shell";
 import AnyChart from "@/components/AnyChart";
 type R = Record<string, unknown>;
 const adm = (t: string, row: R) => fetch(`/api/admin/${t}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row }) }).then((r) => r.json());
 /** CHẾ BIẾN SÂU: kế hoạch SX tuần → MRP bung BOM đa cấp so tồn → thiếu hụt mua; bao bì 3 cấp; nhãn (thành phần/dị ứng/dinh dưỡng/HSD/claims); tem QR mẻ in hàng loạt; mẻ sơ chế/sấy/đóng gói + CCP */
 export default function CheBien({ sess }: { sess: Sess }) {
-  const [tab, setTab] = useState<"khsx" | "mrp" | "bom" | "baobi" | "nhan" | "tem" | "me">("khsx");
+  const [tab, setTab] = useState<"khsx" | "mrp" | "bom" | "baobi" | "nhan" | "tem" | "me" | "qc">("khsx");
   const plans = useData("production_plans"); const pos = useData("production_orders"); const [days, setDays] = useState("14"); const mrp = useData("mrp_run", { days }, [days]);
   const boms = useData("bom_headers"); const [bom, setBom] = useState<string | null>(null); const lines = useData(bom ? "bom_lines" : null, { bom: bom ?? undefined }, [bom]);
   const [exSku, setExSku] = useState(""); const [exQty, setExQty] = useState("100"); const ex = useData(exSku ? "mrp_explode" : null, { sku: exSku, qty: exQty }, [exSku, exQty]);
@@ -22,7 +23,8 @@ export default function CheBien({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><div className="kpi"><div className="l">Kế hoạch SX mở</div><div className="v">{(plans.rows ?? []).filter((r) => r.status !== "XONG").length}</div></div><div className="kpi"><div className="l">Lệnh SX từ đơn</div><div className="v">{(pos.rows ?? []).filter((r) => r.status !== "XONG").length}</div></div><div className="kpi"><div className="l">Thiếu hụt MRP ({days} ngày)</div><div className={`v ${short.length ? "text-red-700" : ""}`}>{short.length}</div></div><div className="kpi"><div className="l">BOM ban hành / Nhãn duyệt</div><div className="v">{(boms.rows ?? []).filter((r) => r.status === "BAN_HANH").length} / {(lb.rows ?? []).filter((r) => r.status === "DUYET").length}</div></div></div>
-      <Tabs items={[["khsx", "D5 & Chế biến · Kế hoạch SX tuần"], ["mrp", `D5 & Chế biến · MRP thiếu hụt (${short.length})`], ["bom", "D5 & Chế biến · BOM/định mức"], ["me", "Chế biến thực phẩm · Mẻ sơ chế/sấy/đóng gói + CCP"], ["baobi", "Chế biến thực phẩm · Bao bì 3 cấp"], ["nhan", "Chế biến thực phẩm · Nhãn (NĐ43/EU1169)"], ["tem", "Chế biến thực phẩm · Tem QR mẻ"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+      <Tabs items={[["khsx", "D5 & Chế biến · Kế hoạch SX tuần"], ["mrp", `D5 & Chế biến · MRP thiếu hụt (${short.length})`], ["bom", "D5 & Chế biến · BOM/định mức"], ["qc", "🔬 Giữ lô QC"], ["me", "Chế biến thực phẩm · Mẻ sơ chế/sấy/đóng gói + CCP"], ["baobi", "Chế biến thực phẩm · Bao bì 3 cấp"], ["nhan", "Chế biến thực phẩm · Nhãn (NĐ43/EU1169)"], ["tem", "Chế biến thực phẩm · Tem QR mẻ"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+      {tab === "qc" && <QcHoldPanel sess={sess} />}
       {msg && <div className="rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-sm">{msg}</div>}
       {tab === "khsx" && <div className="space-y-3">
         {canW && <div className="card"><b>Thêm kế hoạch SX tuần</b> <span className="text-xs text-stone-500">— nguồn: đơn hàng / dự báo / tồn min / hợp đồng; chuyển sang ĐANG SX → phát production.planned cho D5/Chế biến/Kho</span><div className="grid sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-2"><input className="input" type="date" value={String(pf.week_start)} onChange={(e) => setPf({ ...pf, week_start: e.target.value })} /><select className="input" value={String(pf.sku ?? "")} onChange={(e) => setPf({ ...pf, sku: e.target.value })}><option value="">Thành phẩm</option>{TP.map((p) => <option key={String(p.sku)} value={String(p.sku)}>{String(p.name)}</option>)}</select><input className="input" type="number" placeholder="Số lượng" value={String(pf.qty_plan ?? "")} onChange={(e) => setPf({ ...pf, qty_plan: e.target.value })} /><select className="input" value={String(pf.source)} onChange={(e) => setPf({ ...pf, source: e.target.value })}>{[["DON_HANG", "Đơn hàng"], ["DU_BAO", "Dự báo"], ["TON_KHO_MIN", "Tồn kho min"], ["HOP_DONG", "Hợp đồng bao tiêu"]].map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select><input className="input" placeholder="Dây chuyền (D5_TMR/DONG_GOI/SAY…)" value={String(pf.line ?? "")} onChange={(e) => setPf({ ...pf, line: e.target.value })} /><button className="btn-primary !py-2" disabled={!pf.sku || !pf.qty_plan} onClick={addPlan}>Thêm</button></div></div>}

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
+import { SupplierReturnPanel } from "@/components/panels/CloseoutBits";
 import type { Sess } from "@/components/Shell";
 import AnyChart from "@/components/AnyChart";
 import Tabs from "@/components/Tabs";
@@ -8,7 +9,7 @@ type R = Record<string, unknown>;
 const KINDS: [string, string][] = [["VAT_TU", "Vật tư / nguyên liệu"], ["GIONG", "Giống (cây/vật nuôi/tinh)"], ["THIET_BI", "Thiết bị / máy"], ["CONG_CU", "Công cụ – dụng cụ"], ["DICH_VU", "Dịch vụ"], ["TAI_SAN", "Tài sản (XDCB)"]];
 /** MUA HÀNG cho người mua: gợi ý cần mua (ROP + MRP + dự trữ) → tạo PO (mọi loại: vật tư, giống, thiết bị, công cụ) → duyệt theo ma trận → NHẬN HÀNG = nhập kho tự động (lô, NCC, HSD, COA) → biểu đồ mua theo tháng/nhóm */
 export default function MuaHang({ sess }: { sess: Sess }) {
-  const [tab, setTab] = useState<"goiy" | "tao" | "ds" | "nhan" | "bieudo">("goiy");
+  const [tab, setTab] = useState<"goiy" | "tao" | "ds" | "nhan" | "bieudo" | "tra">("goiy");
   const pos = useData("po_list"); const sug = useData("po_suggest"); const partners = useData("partners"); const products = useData("products"); const wh = useData("warehouses"); const pm = useData("purchases_month"); const groups = useData("stock_groups");
   const [f, setF] = useState<R>({ kind: "VAT_TU", lines: [] as R[] }); const [msg, setMsg] = useState(""); const [rcv, setRcv] = useState<R | null>(null); const [rl, setRl] = useState<R[]>([]);
   const L = (f.lines as R[]) ?? []; const canApprove = ["tech_head", "director", "accountant", "team_lead", "owner"].includes(sess.role);
@@ -20,7 +21,8 @@ export default function MuaHang({ sess }: { sess: Sess }) {
   const doReceive = async () => { if (!rcv) return; const j = await act("receive_po", { id: rcv.id, lines: rl.map((l) => ({ ...l, lot_no: l.lot_no || null, expiry: l.expiry || null, warehouse_id: l.warehouse_id || null })) }); setMsg(j.ok ? `Đã nhận ${j.n} dòng → nhập kho, sinh lô; công nợ NCC ghi nhận` : String(j.error)); if (j.ok) { setRcv(null); pos.reload(); setTab("ds"); } };
   const G = groups.rows ?? [];
   return <div className="space-y-3">
-    <Tabs items={[["goiy", `Gợi ý cần mua (${(sug.rows ?? []).length})`], ["tao", `Tạo PO${L.length ? ` (${L.length} dòng)` : ""}`], ["ds", `PO (${(pos.rows ?? []).filter((p) => !["DA_NHAN", "HUY", "TU_CHOI"].includes(String(p.po_status))).length} đang mở)`], ["nhan", "Nhận hàng → nhập kho"], ["bieudo", "📈 Biểu đồ mua"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+    <Tabs items={[["goiy", `Gợi ý cần mua (${(sug.rows ?? []).length})`], ["tao", `Tạo PO${L.length ? ` (${L.length} dòng)` : ""}`], ["ds", `PO (${(pos.rows ?? []).filter((p) => !["DA_NHAN", "HUY", "TU_CHOI"].includes(String(p.po_status))).length} đang mở)`], ["nhan", "Nhận hàng → nhập kho"], ["tra", "↩ Trả nhà cung cấp"], ["bieudo", "📈 Biểu đồ mua"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+    {tab === "tra" && <SupplierReturnPanel sess={sess} />}
     {msg && <div className="rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 text-sm">{msg}</div>}
     {tab === "goiy" && <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-slate-100 rounded-t-xl font-bold">Gợi ý cần mua — từ điểm đặt hàng lại (ROP), MRP (kế hoạch SX/đơn), dashboard dự trữ (dự kiến âm)</div><table className="tbl text-sm"><thead><tr><th className="pl-3">Nguồn</th><th>Mặt hàng</th><th className="text-right">Cần mua</th><th>NCC ưu tiên</th><th className="text-right">Lead</th><th></th></tr></thead><tbody>{(sug.rows ?? []).map((r, i) => <tr key={i}><td className="pl-3 text-xs">{String(r.src)}</td><td>{String(r.product_name)} <span className="font-mono text-xs text-slate-500">{String(r.sku)}</span></td><td className="text-right font-bold text-red-700">{fmt.n(Number(r.qty))}</td><td className="text-xs">{String(r.supplier_name ?? "")}</td><td className="text-right">{String(r.lead ?? "")}</td><td><button className="underline text-sm" onClick={() => { if (r.supplier_id && !f.supplier_id) setF({ ...f, supplier_id: r.supplier_id }); addLine(String(r.sku), Math.ceil(Number(r.qty))); }}>＋ vào PO</button></td></tr>)}</tbody></table>{!(sug.rows ?? []).length && <div className="p-3 text-sm text-slate-500">Không có gợi ý — mọi thứ đủ.</div>}</div>}
     {tab === "tao" && <div className="card"><div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-2"><select className="input" value={String(f.kind)} onChange={(e) => setF({ ...f, kind: e.target.value })}>{KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select><select className="input lg:col-span-2" value={String(f.supplier_id ?? "")} onChange={(e) => setF({ ...f, supplier_id: e.target.value })}><option value="">Nhà cung cấp</option>{(partners.rows ?? []).filter((p) => String(p.kind).includes("NCC")).map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name)}{p.approved ? " ✓" : " (chưa duyệt NCC)"}</option>)}</select><input className="input" type="date" value={String(f.expected_at ?? "")} onChange={(e) => setF({ ...f, expected_at: e.target.value })} title="Ngày hàng về dự kiến" /><input className="input" placeholder="Bộ phận yêu cầu (TT/D5/BO…)" value={String(f.dept ?? "")} onChange={(e) => setF({ ...f, dept: e.target.value })} /></div>

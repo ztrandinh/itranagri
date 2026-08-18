@@ -116,7 +116,7 @@ export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: b
   supplier_returns: { sql: "select r.*, p.name as supplier_name from supplier_returns r left join partners p on p.id=r.supplier_id where r.farm_id=$1 order by r.status='CHO' desc, r.created_at desc limit 200" },
   bank_recon: { sql: "select * from v_bank_reconciliation where farm_id=$1 order by txn_date desc limit 400" },
   sop_signoff: { sql: "select * from v_sop_signoff where dept is not null order by (need-signed) desc, dept limit 300" },
-  my_sop_todo: { sql: "select s.code, s.title, s.dept, s.version, s.video_url from sops s where s.status='BAN_HANH' and s.l3_no is null and (s.dept = (select dept from staff where id=app_staff()) or s.dept is null) and not exists (select 1 from sop_acknowledgments a where a.sop_code=s.code and a.sop_version=s.version and a.staff_id=app_staff() and a.kind='DOC_HIEU') order by s.code limit 100" },
+  my_sop_todo: { sql: "select code, title, dept, version, video_url from v_sop_signoff where (dept = (select dept from staff where id=app_staff()) or dept is null) and not exists (select 1 from sop_acknowledgments a where a.sop_code=v_sop_signoff.code and a.staff_id=app_staff() and a.kind='DOC_HIEU') order by code limit 100" },
   lots_sellable: { sql: "select id, sku, lot_no, status, expiry_date from lots where farm_id=$1 and status in ('KHA_DUNG','GIU_QC','CO_LAP') order by status='GIU_QC' desc, expiry_date limit 200" },
   gs_today: { sql: "select gs_today($1, app_staff()) as t" },
   gs_omissions_all: { sql: "select o.*, s.full_name from gs_omissions o join staff s on s.id=o.supervisor_id where o.farm_id=$1 order by o.day desc limit 300" },
