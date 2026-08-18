@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useMemo, useState } from "react";
 import { useData } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
@@ -22,7 +23,7 @@ export default function ToChuc({ sess, initialTab, initialProcess }: { sess: Ses
   const codes = D.map((x) => String(x.code));
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto">{[["sodo", `Phòng ban (${D.length})`], ["quytrinh", `Quy trình A–Z (${P.length})`], ["thietke", "🛠 Khai báo quy trình"], ["chay", "▶ Đang chạy"], ["phu", "Độ phủ theo đối tượng"], ["sop", `Thư viện SOP L1→L2→L3 (${(lib.rows ?? []).length})`], ["io", "Đầu vào ↔ đầu ra"], ["bus", `Event bus (${T.length})`], ["hoso", `Hồ sơ (${RC.length})`]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}{canW && <a className="ml-auto underline text-sm self-center whitespace-nowrap" href="/quan-tri?t=departments">✎ sửa trong Quản trị DL</a>}</div>
+      <Tabs items={[["sodo", `Tổ chức · Phòng ban (${D.length})`], ["io", "Tổ chức · Đầu vào ↔ đầu ra"], ["bus", `Tổ chức · Event bus (${T.length})`], ["quytrinh", `Quy trình · A–Z (${P.length})`], ["sop", `Quy trình · Thư viện SOP (${(lib.rows ?? []).length})`], ["thietke", "Quy trình · 🛠 Khai báo"], ["chay", "Quy trình · ▶ Đang chạy"], ["phu", "Quy trình · Độ phủ theo đối tượng"], ["hoso", `Hồ sơ · Danh mục (${RC.length})`]]} value={tab} onChange={(k) => setTab(k as typeof tab)} right={<>{canW && <a className="ml-auto underline text-sm self-center whitespace-nowrap" href="/quan-tri?t=departments">✎ sửa trong Quản trị DL</a>}</>} />
       {tab === "sodo" && <div className="space-y-3">
         <div className="card"><div className="font-bold mb-1">Sơ đồ liên kết phòng ban — mũi tên = luồng dữ liệu (đầu ra quy trình → phòng nhận), độ dày = số luồng; bấm phòng để lọc, rê chuột lên đường để xem gì · qua bảng nào</div><DeptGraph depts={D} io={IO} processes={P} focus={sel} onFocus={setSel} /></div>
         <div className="text-sm text-stone-600">Bấm phòng ban để xem chức năng nhiệm vụ · KPI · hồ sơ · quy trình · nhân sự · màn hình.</div>

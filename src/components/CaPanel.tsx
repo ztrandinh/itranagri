@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useEffect, useMemo, useState } from "react";
 import ThreeTap from "@/components/ThreeTap";
 import { buildForms, formsForPosition, type Ref } from "@/lib/forms";
@@ -27,10 +28,8 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const overdue = myTasks.filter((t) => new Date(t.due_at) < new Date() && t.status !== "XONG");
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto">
-        {[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Gần đây"]].map(([k, l]) => (
-          <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>))}
-      </div>
+      <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Gần đây"]]} />
+      
       {tab === "viec" && (
         <div className="space-y-2">
           {!myTasks.length && <div className="card text-stone-500">Không có việc đến hạn. Bấm "Ghi 3 chạm" để ghi việc thường ngày.</div>}

@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -27,8 +28,7 @@ export default function DanPanel({ sess }: { sess: Sess }) {
   const goto = (patch: Partial<Filt>) => { setF({ ...f, ...patch }); setPage(0); setTab("cathe"); };
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto">{[["tong", "Tổng quan"], ["cathe", `Cá thể${tab === "cathe" ? ` (${total})` : ""}`], ["theodoi", "🔄 Vòng theo dõi"], ["nhaplo", "⬆ Nhập lô đàn"], ["dan", "Đàn / nhóm"], ["lo", "Lô nhập"], ["chuky", "Chu kỳ"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}
-        {canWrite && <button className="ml-auto btn-secondary !py-2 !text-base whitespace-nowrap" onClick={() => setShowNew(!showNew)}>+ Con mới</button>}</div>
+      <Tabs items={[["tong", "Tổng quan"], ["cathe", `Cá thể${tab === "cathe" ? ` (${total})` : ""}`], ["theodoi", "🔄 Vòng theo dõi"], ["nhaplo", "⬆ Nhập lô đàn"], ["dan", "Đàn / nhóm"], ["lo", "Lô nhập"], ["chuky", "Chu kỳ"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} right={<>{canWrite && <button className="ml-auto btn-secondary !py-2 !text-base whitespace-nowrap" onClick={() => setShowNew(!showNew)}>+ Con mới</button>}</>} />
       {showNew && <NewAnimal groups={groups.rows ?? []} lots={lots.rows ?? []} locations={locations.rows ?? []} onDone={() => { setShowNew(false); locs.reload(); }} />}
 
       {tab === "nhaplo" && <HerdIntake sess={sess} onDone={() => { locs.reload(); lots.reload(); }} />}

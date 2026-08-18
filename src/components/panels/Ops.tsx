@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
 import { KhachMessages } from "@/components/panels/Extra";
@@ -67,7 +68,7 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((c) => <KpiTile key={c} l={`Kênh ${c}`} v={tot ? `${Math.round((100 * (byChannel[String(c)] ?? 0)) / tot)}%` : "—"} sub={fmt.vnd(byChannel[String(c)] ?? 0)} warn={tot && (byChannel[String(c)] ?? 0) / tot > 0.4 ? "yel" : null} />)}</div>
       <div className="text-xs text-stone-500">Luật: không kênh nào &gt;40% doanh thu một SKU · ≥70% sản lượng có hợp đồng trước · công nợ ≤15 ngày, &gt;30 ngày ngừng giao · giá sàn (bảng giá SAN) — bán dưới sàn cần GĐ duyệt.</div>
-      <div className="flex gap-2 overflow-x-auto">{[["ban", "Bán / giao"], ["don", `Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Trả hàng"], ["hd", "Hợp đồng bao tiêu"], ["nn", "Nhận nuôi / chăm sóc hộ"], ["crm", "CRM · khách tiềm năng"], ["pos", "POS cửa hàng"], ["kenh", "Kênh · khuyến mãi"], ["gia", "💲 Giá theo khách · bậc CK"], ["bg", "📄 Báo giá"], ["ct", "🎯 Chỉ tiêu · hoa hồng"], ["diem", "⭐ Điểm thưởng"], ["no", "⏰ Công nợ hạn · nhắc nợ"], ["lich", "📅 Lịch giao HĐ"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <Tabs items={[["ban", "Bán hàng · Bán / giao"], ["don", `Bán hàng · Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Bán hàng · Trả hàng"], ["bg", "Bán hàng · Báo giá"], ["gia", "Giá · Giá theo khách, bậc CK"], ["hd", "Hợp đồng · Bao tiêu"], ["lich", "Hợp đồng · Lịch giao"], ["nn", "Hợp đồng · Nhận nuôi / chăm sóc hộ"], ["crm", "Khách · CRM tiềm năng"], ["diem", "Khách · Điểm thưởng"], ["no", "Khách · Công nợ hạn, nhắc nợ"], ["pos", "Kênh · POS cửa hàng"], ["kenh", "Kênh · Online, khuyến mãi"], ["ct", "NVKD · Chỉ tiêu, hoa hồng"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {tab === "nn" && <KhachMessages />}
       {tab === "tra" && <ReturnsPanel sess={sess} />}
       {tab === "gia" && <GiaPanel sess={sess} />}{tab === "bg" && <BaoGiaPanel sess={sess} />}{tab === "ct" && <ChiTieuPanel />}{tab === "diem" && <DiemPanel />}{tab === "no" && <CongNoPanel sess={sess} />}{tab === "lich" && <LichHDPanel />}

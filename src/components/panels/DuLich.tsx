@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useState } from "react";
 import { useData, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
@@ -17,7 +18,7 @@ export default function DuLich({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">{[["Đến hôm nay", t?.arrivals], ["Đi hôm nay", t?.departures], ["Đang ở", t?.in_house], ["Phòng cần dọn", t?.rooms_dirty], ["Tiệc 7 ngày", `${t?.events_7d ?? 0} (${fmt.n(t?.event_pax_7d)} khách)`], ["Tour hôm nay", t?.tours_today], ["Doanh thu hôm nay", fmt.vnd(t?.revenue_today)], ["Phòng", `${(rooms.rows ?? []).length}`]].map(([l, v]) => <div key={String(l)} className="kpi !p-2"><div className="l">{String(l)}</div><div className="text-lg font-bold">{String(v ?? "—")}</div></div>)}</div>
-      <div className="flex gap-2 overflow-x-auto">{[["booking", "Booking lưu trú"], ["phong", "Sơ đồ phòng"], ["tiec", "Tiệc · Sự kiện · MICE"], ["tour", "Tour · Trải nghiệm"], ["dv", "Dịch vụ · Thực đơn"], ["kpi", "📈 KPI"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <Tabs items={[["booking", "Booking lưu trú"], ["phong", "Sơ đồ phòng"], ["tiec", "Tiệc · Sự kiện · MICE"], ["tour", "Tour · Trải nghiệm"], ["dv", "Dịch vụ · Thực đơn"], ["kpi", "📈 KPI"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {msg && <div className="text-sm bg-green-50 border border-green-200 rounded-xl px-3 py-2">{msg}</div>}
       {tab === "booking" && <div className="space-y-3">
         {canW && <div className="card"><div className="flex items-center"><b>Booking</b><button className="ml-auto btn-secondary !py-1 !px-3 !text-sm" onClick={() => setBf({ status: "GIU_CHO", pax_adult: 2, pax_child: 0, channel: "TRUC_TIEP", check_in: new Date().toISOString().slice(0, 10), check_out: new Date(Date.now() + 86400e3).toISOString().slice(0, 10) })}>＋ Đặt phòng</button></div>

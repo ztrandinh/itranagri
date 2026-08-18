@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
@@ -14,7 +15,7 @@ export function CompanyPanel({ sess }: { sess: Sess }) {
   const mods = (f.modules as Record<string, boolean>) ?? {};
   return (
     <div className="space-y-3">
-      <div className="flex gap-2 overflow-x-auto">{[["trai", `Trại (${farms.rows?.length ?? 0})`], ["moi", "+ Khai báo trại mới"], ["ns", "Nhân sự & phân trại"], ["caidat", "Cài đặt · định mức theo trại"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <Tabs items={[["trai", `Trại (${farms.rows?.length ?? 0})`], ["moi", "+ Khai báo trại mới"], ["ns", "Nhân sự & phân trại"], ["caidat", "Cài đặt · định mức theo trại"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {tab === "trai" && <div className="grid md:grid-cols-2 gap-3">{(farms.rows ?? []).map((fm) => { const m = (fm.modules as Record<string, boolean>) ?? {}; return <div key={String(fm.id)} className="card"><div className="flex items-center gap-2"><span className="text-2xl font-black">{String(fm.id)}</span><span className="font-semibold">{String(fm.name)}</span><span className={`ml-auto ${fm.status === "ACTIVE" ? "b-grn" : "b-gray"}`}>{String(fm.status)}</span></div>
         <div className="text-sm text-stone-600 mt-1">{String(fm.region_name ?? fm.region_id ?? "—")} · {String(fm.province ?? "")} · {String(fm.kind)} · S {String(fm.s_ha ?? "?")} ha · K {String(fm.k_factor ?? "?")} · {String(fm.legal_entity ?? "")}</div>
         <div className="flex flex-wrap gap-1 mt-2">{MODULES.map(([k, l]) => <button key={k} disabled={!isOwner && sess.role !== "director"} className={`text-xs rounded-full px-2 py-0.5 border ${m[k] ? "bg-green-100 border-green-400 text-green-900" : "bg-stone-100 text-stone-500"}`} title={l} onClick={async () => { await act("update_farm", { id: fm.id, modules: { ...m, [k]: !m[k] } }); farms.reload(); }}>{m[k] ? "✓ " : ""}{l}</button>)}</div>

@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useEffect, useMemo, useState } from "react";
 import { fmt } from "@/lib/client";
 import Attachments from "@/components/Attachments";
@@ -15,7 +16,7 @@ export default function ModulePanel({ tabs, intro }: { tabs: ModTab[]; intro?: s
   const kpis = t.kpi ? t.kpi(rows) : [];
   return (<div className="space-y-3">
     {intro && <div className="text-sm text-slate-600">{intro}</div>}
-    <div className="flex gap-2 overflow-x-auto">{tabs.map((x, i) => <button key={x.table} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${ti === i ? "bg-emerald-600 text-white" : "bg-white border"}`} onClick={() => setTi(i)}>{x.label}</button>)}</div>
+    <Tabs items={tabs.map((x, i) => [String(i), x.label] as [string, string])} value={String(ti)} onChange={(k) => setTi(Number(k))} />
     {kpis.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">{kpis.map(([l, v]) => <div key={l} className="kpi !p-2"><div className="l">{l}</div><div className="text-xl font-black">{v}</div></div>)}</div>}
     {t.flow && t.statusCol && <div className="flex flex-wrap gap-1 text-xs">{t.flow.map((s, i) => <span key={s} className={`rounded-full px-2 py-1 border ${rows.some((r) => r[t.statusCol!] === s) ? "bg-emerald-50 border-emerald-400" : "bg-white"}`}>{i + 1}. {s} <b>{rows.filter((r) => r[t.statusCol!] === s).length}</b></span>)}</div>}
     {msg && <div className="text-sm text-emerald-800">{msg}</div>}

@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useMemo, useState } from "react";
 import AnyChart from "@/components/AnyChart";
 import ChartIcon from "@/components/ChartIcon";
@@ -26,7 +27,7 @@ export default function KhoPanel({ sess }: { sess: Sess }) {
         <div className="kpi"><div className="l">FEFO đỏ (&lt;20% hạn)</div><div className={`v ${(fefo.rows?.length ?? 0) > 0 ? "text-red-700" : ""}`}>{fefo.rows?.length ?? "—"}</div></div>
         <div className="kpi"><div className="l">Điều chỉnh chờ duyệt</div><div className="v">{adj.rows?.length ?? "—"}</div></div>
       </div>
-      <div className="flex gap-2 overflow-x-auto">{[["ton", "Tồn kho"], ["ghi", "Nhập / Xuất"], ["kiemke", "Kiểm kê · Điều chỉnh"], ["so", "Ngày-tồn nguyên liệu"], ["bin", `📍 Vị trí bin (${(bins.rows ?? []).length})`], ["rop", `🔁 Bổ sung ROP (${(repl.rows ?? []).filter((r) => Number(r.suggest_qty) > 0).length})`], ["lanh", "❄ Kho lạnh"], ["van", `🚚 Vận tải (${(trips.rows ?? []).filter((t) => t.status !== "XONG" && t.status !== "HUY").length})`], ["ncc", "⭐ NCC scorecard"], ["the", "📒 Thẻ kho theo lô"], ["bieudo", "📈 Biểu đồ kho"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold whitespace-nowrap ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <Tabs items={[["ton", "Tồn · Tồn kho"], ["so", "Tồn · Ngày-tồn nguyên liệu"], ["the", "Tồn · Thẻ kho theo lô"], ["bieudo", "Tồn · 📈 Biểu đồ"], ["ghi", "Nhập/Xuất · Ghi nhập / xuất"], ["bin", `Nhập/Xuất · Vị trí bin (${(bins.rows ?? []).length})`], ["kiemke", "Kiểm soát · Kiểm kê, điều chỉnh"], ["rop", `Kiểm soát · Bổ sung ROP (${(repl.rows ?? []).filter((r) => Number(r.suggest_qty) > 0).length})`], ["lanh", "Kiểm soát · Kho lạnh"], ["van", `Vận tải · Chuyến xe (${(trips.rows ?? []).filter((t) => t.status !== "XONG" && t.status !== "HUY").length})`], ["ncc", "Vận tải · NCC scorecard"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {tab === "ton" && byWh.map(([wh, rows]) => { const bySku = new Map<string, Record<string, unknown>[]>(); for (const r of rows) bySku.set(String(r.sku), [...(bySku.get(String(r.sku)) ?? []), r]); return (
         <div key={wh} className="card p-0 overflow-auto"><div className="px-3 py-2 font-bold bg-stone-100 rounded-t-2xl flex justify-between"><span>{wh} · {String(warehouses.rows?.find((w) => w.code === wh)?.name ?? "")}</span><span className="text-sm font-normal">{bySku.size} mặt hàng · {rows.length} lô</span></div>
           <table className="tbl"><thead><tr><th className="pl-3">Hàng (bấm mở lô)</th><th className="text-right">Số lô</th><th className="text-right">Tồn</th><th>Hạn gần nhất</th><th className="text-right">Giá vốn BQ</th><th></th></tr></thead><tbody>

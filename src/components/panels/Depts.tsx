@@ -1,5 +1,7 @@
 "use client";
 import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
+import SupplyPlan from "@/components/panels/SupplyPlan";
+import Tabs from "@/components/Tabs";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
@@ -13,12 +15,13 @@ import { KpiTile } from "./Dashboards";
 
 /** KẾ HOẠCH — vụ (KH vs thực) · cho ăn 7 ngày (KH vs thực) */
 export function KeHoachPanel({ sess }: { sess: Sess }) {
+  const [khTab, setKhTab] = useState<"cc" | "vu">("cc");
   const sp = useData("season_plans"); const fp = useData("feed_plan_vs_actual"); const plots = useData("plots"); const cycles = useData("cycles");
   const [f, setF] = useState<Record<string, string>>({});
   const canW = ["team_lead","tech_head","director","owner"].includes(sess.role);
   const byDay = new Map<string, { plan: number; actual: number }>(); for (const r of fp.rows ?? []) { const k = String(r.day).slice(0, 10); const o = byDay.get(k) ?? { plan: 0, actual: 0 }; o.plan += Number(r.plan_kg); o.actual += Number(r.actual_kg); byDay.set(k, o); }
   return (
-    <div className="space-y-4">
+    <div className="space-y-3"><Tabs items={[["cc", "📊 Ban kế hoạch · Cung–cầu (đàn → thức ăn → đất → mua)"], ["vu", "Vụ & cho ăn · KH vs thực"]]} value={khTab} onChange={(k) => setKhTab(k as typeof khTab)} />{khTab === "cc" && <SupplyPlan sess={sess} />}{khTab !== "cc" && <div className="space-y-4">
       <div className="card"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">Cho ăn: kế hoạch (định mức × số con) vs thực — 7 ngày</h3>{canW && <button className="btn-secondary !py-1 !px-3 !text-sm ml-auto" onClick={async () => { await act("gen_feed_plans", {}); fp.reload(); }}>↻ Sinh KH 7 ngày tới</button>}</div>
         <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 mt-2">{[...byDay.entries()].sort().map(([d, v]) => <div key={d} className={`rounded-xl p-2 text-center ${v.actual === 0 ? "bg-stone-100" : Math.abs(v.actual - v.plan) / (v.plan || 1) > 0.05 ? "bg-amber-50 border border-amber-300" : "bg-green-50"}`}><div className="text-xs text-stone-500">{d.slice(5)}</div><div className="font-bold">{fmt.n(v.actual)}</div><div className="text-xs">KH {fmt.n(v.plan)}</div></div>)}</div>
         <table className="tbl mt-2"><thead><tr><th>Ngày</th><th>Đàn</th><th className="text-right">KH kg</th><th className="text-right">Thực kg</th><th className="text-right">Lệch</th></tr></thead><tbody>{(fp.rows ?? []).slice(0, 40).map((r, i) => { const d = Number(r.actual_kg) - Number(r.plan_kg); return <tr key={i}><td>{fmt.d(r.day)}</td><td>{String(r.group_name)}</td><td className="text-right">{fmt.n(r.plan_kg)}</td><td className="text-right font-bold">{fmt.n(r.actual_kg)}</td><td className={`text-right ${Math.abs(d) / (Number(r.plan_kg) || 1) > 0.05 && Number(r.actual_kg) > 0 ? "text-amber-700" : ""}`}>{Number(r.actual_kg) ? fmt.n(d) : "—"}</td></tr>; })}</tbody></table></div>
@@ -26,6 +29,7 @@ export function KeHoachPanel({ sess }: { sess: Sess }) {
         {canW && <div className="flex flex-wrap gap-2 mt-2"><select className="input !w-48" value={f.plot_id ?? ""} onChange={(e) => setF({ ...f, plot_id: e.target.value })}><option value="">Lô</option>{(plots.rows ?? []).map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name)}</option>)}</select><input className="input !w-32" placeholder="Cây" value={f.crop ?? ""} onChange={(e) => setF({ ...f, crop: e.target.value })} /><input className="input !w-40" placeholder="Giống" value={f.variety ?? ""} onChange={(e) => setF({ ...f, variety: e.target.value })} /><input className="input !w-40" type="date" value={f.sow_date ?? ""} onChange={(e) => setF({ ...f, sow_date: e.target.value })} /><input className="input !w-40" type="date" value={f.harvest_date ?? ""} onChange={(e) => setF({ ...f, harvest_date: e.target.value })} /><input className="input !w-36" type="number" placeholder="KH kg" value={f.plan_yield_kg ?? ""} onChange={(e) => setF({ ...f, plan_yield_kg: e.target.value })} /><button className="btn-secondary !py-2" onClick={async () => { if (!f.plot_id || !f.crop) return; await act("add_season_plan", { ...f, plan_yield_kg: Number(f.plan_yield_kg || 0) || null, cycle_id: (plots.rows ?? []).find((p) => p.id === f.plot_id)?.cycle_id ?? null }); setF({}); sp.reload(); }}>+ Kế hoạch vụ</button></div>}
         <table className="tbl mt-2"><thead><tr><th>Lô</th><th>Cây · giống</th><th>Gieo</th><th>Thu KH</th><th className="text-right">KH kg</th><th className="text-right">Thực kg</th><th className="text-right">%</th></tr></thead><tbody>{(sp.rows ?? []).map((r) => <tr key={String(r.id)}><td>{String(r.plot_name)}</td><td>{String(r.crop)} {String(r.variety ?? "")}</td><td>{fmt.d(r.sow_date)}</td><td>{fmt.d(r.harvest_date)}</td><td className="text-right">{fmt.n(r.plan_yield_kg)}</td><td className="text-right font-bold">{fmt.n(r.actual_kg)}</td><td className="text-right">{r.plan_yield_kg ? fmt.n((100 * Number(r.actual_kg)) / Number(r.plan_yield_kg)) + "%" : "—"}</td></tr>)}{!sp.rows?.length && <tr><td colSpan={7} className="text-stone-500 py-3">Chưa có kế hoạch vụ — thêm ở trên (lịch vụ khung 12 tháng theo tỉnh nằm ở regions.params).</td></tr>}</tbody></table></div>
       <div className="card"><h3 className="font-bold">Chu kỳ đang mở</h3><div className="flex flex-wrap gap-2 mt-1">{(cycles.rows ?? []).filter((c) => c.status === "MO").map((c) => <span key={String(c.id)} className="b-gray">{String(c.kind)} · {String(c.group_name ?? c.plot_name)} · từ {fmt.d(c.start_date)}</span>)}</div><Link className="underline text-sm" href="/dan">Quản lý chu kỳ →</Link></div>
+    </div>}
     </div>);
 }
 
