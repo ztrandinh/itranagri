@@ -53,3 +53,7 @@ delete from training_tests where note='seed career' and farm_id=:'farm';
 insert into training_tests(id, farm_id, trainee_id, examiner_id, sop_code, taken_at, kind, score, max_score, passed, note)
 select 'TT-GS-'||:'farm'||'-'||d, :'farm', (select id from staff where login='tp-qa'), (select id from staff where login='gd' limit 1), (select min(code) from sops where dept=d), now() - interval '100 days', 'SOP', 88, 100, true, 'seed career'
 from unnest(array['KTCN','TT','CCU','D5','SH']) d on conflict (id) do update set passed=true;
+-- 8) GS đậu SOP CỐT LÕI của các khối đã kiểm (gs_block_sops)
+insert into training_tests(id, farm_id, trainee_id, examiner_id, sop_code, taken_at, kind, score, max_score, passed, note)
+select 'TT-GSB-'||:'farm'||'-'||g.sop_l2_code, :'farm', (select id from staff where login='tp-qa'), (select id from staff where login='gd' limit 1), g.sop_l2_code, now() - interval '120 days', 'SOP', 90, 100, true, 'seed career'
+from gs_block_sops g where g.block in ('CN','TT','SH','D5','KHO') on conflict (id) do update set passed=true;

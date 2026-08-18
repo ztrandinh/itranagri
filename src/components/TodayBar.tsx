@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useData, fmt } from "@/lib/client";
 type Row = Record<string, unknown>;
-const KIND: Record<string, [string, string]> = { VIEC: ["Việc", "bg-emerald-100 text-emerald-900"], DUYET: ["Chờ tôi duyệt", "bg-amber-100 text-amber-900"], TIN: ["Tin chưa đọc", "bg-sky-100 text-sky-900"], DAO_TAO_HOC: ["Học tuần này", "bg-violet-100 text-violet-900"], DAO_TAO_DAY: ["Dạy tuần này", "bg-violet-100 text-violet-900"], GIAM_SAT: ["Lượt kiểm tra", "bg-rose-100 text-rose-900"], THAY: ["Thay người", "bg-slate-200 text-slate-800"] };
+const KIND: Record<string, [string, string]> = { VIEC: ["Việc", "bg-emerald-100 text-emerald-900"], DUYET: ["Chờ tôi duyệt", "bg-amber-100 text-amber-900"], TIN: ["Tin chưa đọc", "bg-sky-100 text-sky-900"], DAO_TAO_HOC: ["Học tuần này", "bg-violet-100 text-violet-900"], DAO_TAO_DAY: ["Dạy tuần này", "bg-violet-100 text-violet-900"], GIAM_SAT: ["Lượt kiểm tra", "bg-rose-100 text-rose-900"], THAY: ["Thay người", "bg-slate-200 text-slate-800"], GS_NGAY: ["Giám sát hôm nay", "bg-red-100 text-red-900"] };
 /** HÔM NAY CỦA TÔI — hộp việc thống nhất mọi nguồn (việc/duyệt/tin/đào tạo/giám sát/thay người), đặt đầu mọi trang; thu gọn nhớ theo người */
 export default function TodayBar() {
   const counts = useData<Row>("my_inbox_counts"); const [open, setOpen] = useState(false); const [filter, setFilter] = useState<string | null>(null);
