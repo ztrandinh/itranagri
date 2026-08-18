@@ -33,3 +33,13 @@
 ## C. Ghi chú
 - Số "66 L2 / ~410 L3" trong bộ gốc là trần ước lượng; bảng liệt kê thực tế trong §15.2 là 81 dòng / 422 SOP → app theo bảng liệt kê (thừa không thiếu).
 - Bộ 65 quy trình kiểm kê cũ (QT-*) vẫn giữ (theo đối tượng); 81 SOP-* là thư viện theo cơ quan; hai bộ cùng chạy trên 1 engine.
+
+## D. Bổ sung theo chỉ đạo (18/08 tối) — đã build & wire, không làm giết mổ tại trại
+| # | Hạng mục | Migration | Màn hình | Cảnh báo/Job |
+|---|---|---|---|---|
+| 2 | Trồng trọt: thời tiết + ET0 (FAO-56 Hargreaves) + Kc (FAO-56 bảng 12) + cân bằng nước; nhật ký tưới; IPM dịch hại (ngưỡng → event bus); phân tích đất; luân canh nhiều năm (cảnh báo cùng họ); liên kết hộ theo ô | 0046–0048 | /canh-tac tab 🌦 🪱 🔁; form 3 chạm tưới/sâu bệnh (A5) | AL-WX-RAIN/HEAT, AL-PEST, AL-WATER-DEF; alert type `sql_rows` |
+| 3 | Chế biến sâu: BOM đa cấp + MRP (KHSX + đơn CHỐT + lệnh SX → thiếu hụt); kế hoạch SX tuần; bao bì 3 cấp; nhãn (NĐ 43/2017 + dị ứng EU 1169/2011 + dinh dưỡng + claims); tem QR nội bộ theo lô | 0049–0051 | /che-bien (7 tab); /in/tem/{lô}?n=; /in/nhan-lo QR nội bộ | event production.planned |
+| 4 | Kho: bin/kệ + tồn theo bin + putaway/pick; ROP/min-max/ngày-tồn + gợi ý PO + ABC; kiểm kê chu kỳ (job); kho lạnh (dải nhiệt + sensor); vận tải xe/chuyến/điểm dừng/POD/chuỗi lạnh; scorecard NCC; thẻ kho theo lô | 0052–0054 | /kho tab 📍 🔁 ❄ 🚚 ⭐ 📒; form nhập/xuất có bin | AL-COLD, AL-ROP, AL-VEHICLE-DUE; gen_cycle_counts trong job tasks |
+| 5 | Bán hàng: price_for (giá riêng khách → nhóm → niêm yết → bậc CK, không dưới sàn); báo giá → đơn + in PDF; chỉ tiêu & hoa hồng NVKD; điểm thưởng (trigger + đổi điểm); công nợ theo hạn + nhắc nợ 3 mức; lịch giao HĐ bao tiêu | 0055–0057 | /ban-hang tab 💲 📄 🎯 ⭐ ⏰ 📅; /in/bao-gia/{id} | AL-CREDIT, AL-CONTRACT-LATE; run_dunning trong job |
+| 6 | Tài chính: AP aging + trả NCC (331/112); vay + lịch (gốc đều/niên kim/cuối kỳ, ân hạn) + trả kỳ (341/635/112); ma trận ủy quyền = dữ liệu (approve_expense đọc approval_matrix); bảo hiểm vật nuôi/tài sản/xe + bồi thường (112/711); GTGT tổng hợp; lịch thanh toán 13 tuần; pháp nhân + hợp nhất (136/336) | 0058–0061 | /ke-toan khối FinanceMore (7 tab) | AL-AP-DUE, AL-LOAN-DUE, AL-INSURANCE |
+Kiểm chứng: tsc 0 · lint 0 · vitest 18/18 (RLS test bắt 2 bảng thiếu RLS → đã sửa) · 404 sweep 6 vai × 13 trang sạch · job all chạy đủ (tasks/monitor/compliance/cyclecount/dunning).
