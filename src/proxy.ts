@@ -15,6 +15,7 @@ export async function proxy(req: NextRequest) {
     if (pathname.startsWith("/api/")) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
     return NextResponse.redirect(new URL("/login?next=" + encodeURIComponent(pathname), req.url));
   }
-  return NextResponse.next();
+  const h = new Headers(req.headers); h.set("x-pathname", pathname);
+  return NextResponse.next({ request: { headers: h } });
 }
 export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };

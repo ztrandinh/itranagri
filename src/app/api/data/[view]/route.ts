@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
+import { canView } from "@/lib/roles";
 import { QUERIES } from "@/lib/queries";
 export async function GET(req: Request, { params }: { params: Promise<{ view: string }> }) {
   const sess = await getSession();
@@ -8,6 +9,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ view: st
   const { view } = await params;
   const qd = QUERIES[view];
   if (!qd) return NextResponse.json({ error: "ERR_UNKNOWN_VIEW" }, { status: 404 });
+  if (!canView(view, sess.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE", detail: `Vai ${sess.role} không được xem ${view}` }, { status: 403 });
   const url = new URL(req.url);
   const farm = url.searchParams.get("farm") ?? sess.farmId;
   const ctx = { ...sess, farmId: farm };
