@@ -5,11 +5,11 @@ import { adminPool, type Ctx } from "./db";
 const COOKIE = "itran_session";
 const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret-change-me-please-32chars!!");
 
-export type Session = Ctx & { staffName: string; position: string | null; farmName?: string };
+export type Session = Ctx & { staffName: string; position: string | null; dept?: string | null; farmName?: string };
 
 export async function login(loginId: string, pin: string, deviceId?: string): Promise<Session | null> {
   const r = await adminPool().query(
-    `select s.id, s.org_id, s.farm_id, s.role, s.full_name, s.position, s.farm_ids, s.active, s.locked_until, s.must_change_pin, s.pin_changed_at,
+    `select s.id, s.org_id, s.farm_id, s.role, s.full_name, s.position, s.dept, s.farm_ids, s.active, s.locked_until, s.must_change_pin, s.pin_changed_at,
             (s.pin_hash = crypt($2, s.pin_hash)) as ok
        from staff s where (s.login=$1 or s.phone=$1)`,
     [loginId, pin]);
@@ -21,7 +21,7 @@ export async function login(loginId: string, pin: string, deviceId?: string): Pr
   if (!s || !s.ok || !s.active) return null;
   const farmIds: string[] = s.farm_ids?.length ? s.farm_ids : s.farm_id ? [s.farm_id] : [];
   const farmId = s.farm_id ?? farmIds[0] ?? "";
-  const sess: Session = { orgId: s.org_id, farmId, role: s.role, staffId: s.id, farmIds, staffName: s.full_name, position: s.position };
+  const sess: Session = { orgId: s.org_id, farmId, role: s.role, staffId: s.id, farmIds, staffName: s.full_name, position: s.position, dept: s.dept };
   await adminPool().query("insert into sessions(staff_id, farm_id, device_id, expires_at) values ($1,$2,$3, now() + interval '7 days')", [s.id, farmId, deviceId ?? null]);
   return sess;
 }

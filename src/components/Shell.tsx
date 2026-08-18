@@ -1,4 +1,5 @@
 "use client";
+import { MODULES, DEPT_HOME } from "@/lib/modules";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { pending, onQueueChange, flush, type Queued, discard } from "@/lib/offline";
@@ -6,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "@/components/panels/Notify";
 import { Search } from "@/components/Search";
 
-export type Sess = { staffId: string; staffName: string; role: string; position: string | null; farmId: string; farmIds: string[]; orgId: string };
+export type Sess = { staffId: string; staffName: string; role: string; position: string | null; dept?: string | null; farmId: string; farmIds: string[]; orgId: string };
 
 
 /** KHU VỰC (phân khu UI cho dễ dùng): mỗi khu gom các màn liên quan; vai nào thấy khu nào */
@@ -55,19 +56,20 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
     return () => { off(); window.removeEventListener("online", on); window.removeEventListener("offline", of); };
   }, []);
-  const nav = NAV[sess.role] ?? NAV.worker;
+  const nav = [...(sess.dept && DEPT_HOME[sess.dept] ? [{ href: DEPT_HOME[sess.dept], label: "Phòng tôi" }] : []), ...(NAV[sess.role] ?? NAV.worker)].filter((v, i, a) => a.findIndex((x) => x.href === v.href) === i).slice(0, 6);
   const failed = q.filter((x) => x.last_error && x.tries > 0);
   const [side, setSide] = useState(false); const [collapsed, setCollapsed] = useState(false);
   useEffect(() => { setSide(false); }, [path]);
   useEffect(() => { try { setCollapsed(localStorage.getItem("itran.side") === "1"); } catch { /* */ } }, []);
-  const zones = ZONES.filter((z) => z.roles.includes(sess.role) || z.roles.includes("*")).map((z) => ({ ...z, items: z.items.filter((i) => !i.roles || i.roles.includes(sess.role)) })).filter((z) => z.items.length);
+  const myDept = sess.dept ?? ""; const zonesRaw = ZONES.filter((z) => z.roles.includes(sess.role) || z.roles.includes("*")).map((z) => ({ ...z, items: z.items.filter((i) => !i.roles || i.roles.includes(sess.role)) })).filter((z) => z.items.length);
+  const rank = (z: (typeof zonesRaw)[number]) => z.key === "me" ? 0 : (myDept && z.dept === myDept ? 1 : 2); const zones = [...zonesRaw].sort((a, b) => rank(a) - rank(b));
   const isActive = (href: string) => { const h = href.split("?")[0]; return path === h || path.startsWith(h + "/"); };
   const SideNav = (
     <nav className="flex-1 overflow-y-auto py-2 text-[15px]">
       <Link href="/trang-chu" className={`mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 ${path === "/trang-chu" ? "bg-emerald-600 text-white" : "text-slate-200 hover:bg-slate-800"}`}><span>🏠</span>{!collapsed && <span>Trang chủ · khu vực</span>}</Link>
       {zones.map((z) => <div key={z.key} className="mt-2">
-        {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">{z.icon} {z.label}</div>}
-        {z.items.map((i) => <Link key={i.href} href={i.href} title={i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-emerald-600 text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
+        {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-emerald-700 text-white px-1 normal-case">phòng tôi</span> : null}</div>}
+        {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-emerald-600 text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
       </div>)}
       <div className="mt-3 border-t border-slate-800 pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
     </nav>);
