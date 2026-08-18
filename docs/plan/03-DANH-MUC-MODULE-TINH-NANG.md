@@ -1,4 +1,4 @@
-# 03 · DANH MỤC MODULE & TÍNH NĂNG ITRAN OS ("CƠ THỂ" PHẦN MỀM)
+# 03 · DANH MỤC MODULE & TÍNH NĂNG ITRAN AGRI ("CƠ THỂ" PHẦN MỀM)
 *Ẩn dụ bộ gốc: Xương = hạ tầng · Mạch = 5 trục · Thần kinh = FMS · Não = engine · Miễn dịch = an toàn + giám sát 3 lớp · Hormone = lệnh kế hoạch. Mỗi module = 1 "cơ quan": tự làm việc của mình, giao–nhận qua sự kiện & 12 SLA. Ký hiệu ưu tiên: **G1** (MVP) · G2 · G3 · G4. Nguồn: FILE-GỐC IX.8, Phụ lục A/B, Quyển 3–5, benchmark file 01.*
 
 ## 0. BẢN ĐỒ MODULE (20 nghiệp vụ + 1 nền + cơ chế mở rộng vô hạn)

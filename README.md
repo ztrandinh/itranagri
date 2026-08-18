@@ -8,8 +8,8 @@ Ray A (thực chiến): Next.js 16 · TypeScript · Postgres 17 (Supabase-ready,
 
 ## Chạy nhanh
 ```bash
-docker run -d --name itranos_db -e POSTGRES_PASSWORD=itranos -e POSTGRES_DB=itranos -p 54499:5432 public.ecr.aws/supabase/postgres:17.6.1.155
-docker exec itranos_db psql -U supabase_admin -d itranos -c "alter role postgres superuser;"
+docker run -d --name itranagri_db -e POSTGRES_PASSWORD=itranagri -e POSTGRES_DB=itranagri -p 54499:5432 public.ecr.aws/supabase/postgres:17.6.1.155
+docker exec itranagri_db psql -U supabase_admin -d itranagri -c "alter role postgres superuser;"
 pnpm i && cp .env.example .env && pnpm db:migrate && pnpm db:seed:sim 30 && pnpm dev --port 3111
 ```
 Đăng nhập: `owner` / `gd` / `ktt-cn` / `a1…a11` / `audit` — PIN `1234`.

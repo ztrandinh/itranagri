@@ -1,4 +1,4 @@
-# ITRAN OS — Next.js 16 standalone
+# ITRAN AGRI — Next.js 16 standalone
 FROM node:22-alpine AS base
 RUN corepack enable && apk add --no-cache postgresql17-client
 WORKDIR /app

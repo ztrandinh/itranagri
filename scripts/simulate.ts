@@ -4,7 +4,7 @@
  * dầu vượt định mức, phiếu giấy quá 24h, seri nhảy quãng). Chạy: pnpm db:seed:sim [days] */
 import { Client } from "pg";
 import "dotenv/config";
-const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranos@localhost:54499/itranos";
+const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranagri@localhost:54499/itranagri";
 const DAYS = Number(process.argv[2] ?? 30); const FARM = "F01";
 const rnd = (a: number, b: number) => a + Math.random() * (b - a); const ri = (a: number, b: number) => Math.floor(rnd(a, b + 1)); const pick = <T,>(a: T[]) => a[ri(0, a.length - 1)];
 const at = (day: Date, h: number, m = ri(0, 59)) => { const d = new Date(day); d.setHours(h, m, ri(0, 59), 0); return d.toISOString(); };

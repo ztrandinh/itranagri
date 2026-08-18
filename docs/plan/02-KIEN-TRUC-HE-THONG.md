@@ -1,4 +1,4 @@
-# 02 · KIẾN TRÚC HỆ THỐNG ITRAN OS
+# 02 · KIẾN TRÚC HỆ THỐNG ITRAN AGRI
 *Tech stack đã kiểm chứng phiên bản/giấy phép ngày 18/08/2026 (nguồn: trang phát hành chính thức). Nguyên tắc chọn: (1) hiện đại nhưng ổn định (GA, cộng đồng lớn), (2) giấy phép cho phép **tự host + bán SaaS đa tenant** (tránh AGPL/BSL/SSPL ở lõi), (3) chạy được **tại trại (edge) khi mất internet**, (4) TypeScript xuyên suốt để đội nhỏ làm được nhiều.*
 
 ## 1. KIẾN TRÚC TỔNG THỂ (C4 – Level 1/2)

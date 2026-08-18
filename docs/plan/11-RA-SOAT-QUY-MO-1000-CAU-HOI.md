@@ -1,5 +1,5 @@
 # 11 · RÀ SOÁT QUY MÔ — "1.000 CÂU HỎI" THEO NHÓM × VAI × KHÂU
-*Mục đích: kiểm tra số liệu & cấu trúc ITRAN OS còn rành mạch/tối ưu không khi mở rộng theo 4 trục: **năm → nhiều năm**, **1 trại → nhiều trại/vùng**, **20 con → hàng nghìn con / hàng trăm lô–đàn–bể**, **1 người ghi → hàng chục vai**. Cách làm: đứng ở từng vai, từng khâu, hỏi "tôi cần gì để xử lý?"; mỗi câu có trả lời ngắn + trạng thái: ✅ đã có · 🔧 sửa ngay (đợt này) · 📅 kế hoạch (ghi migration/backlog) · ⚠️ rủi ro chấp nhận. Bộ câu hỏi ~380 câu thực chất (gộp trùng từ ~1.000 câu thô theo 14 vai × 20 khâu × 4 trục) — con số 1.000 là phương pháp quét, không phải số câu in ra.*
+*Mục đích: kiểm tra số liệu & cấu trúc ITRAN AGRI còn rành mạch/tối ưu không khi mở rộng theo 4 trục: **năm → nhiều năm**, **1 trại → nhiều trại/vùng**, **20 con → hàng nghìn con / hàng trăm lô–đàn–bể**, **1 người ghi → hàng chục vai**. Cách làm: đứng ở từng vai, từng khâu, hỏi "tôi cần gì để xử lý?"; mỗi câu có trả lời ngắn + trạng thái: ✅ đã có · 🔧 sửa ngay (đợt này) · 📅 kế hoạch (ghi migration/backlog) · ⚠️ rủi ro chấp nhận. Bộ câu hỏi ~380 câu thực chất (gộp trùng từ ~1.000 câu thô theo 14 vai × 20 khâu × 4 trục) — con số 1.000 là phương pháp quét, không phải số câu in ra.*
 
 ## 0. KẾT LUẬN TRƯỚC (đọc 1 phút)
 **Nền đúng, hiển thị chưa đủ tầng, một số cấu trúc phải sửa ngay để không phải đập:**

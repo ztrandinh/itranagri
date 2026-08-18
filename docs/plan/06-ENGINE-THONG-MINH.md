@@ -1,4 +1,4 @@
-# 06 · ENGINE THÔNG MINH — "BỘ NÃO" ITRAN OS
+# 06 · ENGINE THÔNG MINH — "BỘ NÃO" ITRAN AGRI
 *KPI engine · Alert engine · Reconciliation engine (RC1–RC10+) · Report engine · Forecast · Recommendation · Trợ lý AI · Camera AI. Nguồn: FILE-GỐC IX.6–7, Phụ lục B2–B3, Quyển 4 mục 07.5–6, Quyển 3 mục 15.6.*
 
 ## 0. Triết lý

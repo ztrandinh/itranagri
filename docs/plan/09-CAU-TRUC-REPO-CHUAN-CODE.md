@@ -2,7 +2,7 @@
 
 ## 1. Monorepo (pnpm 11 + Turborepo 2.10)
 ```
-itran-os/
+itran-agri/
 ├─ apps/
 │  ├─ api/            # NestJS 11 (Fastify) — modular monolith
 │  ├─ web/            # Next.js 16 — office/dashboard/HQ/public trace page

@@ -1,5 +1,5 @@
 # 10 · PHẢN HỒI GÓP Ý RÀNG BUỘC v1.5 & STARTER KIT — Ý KIẾN CTO
-*Đọc: `files/GOP-Y-RANG-BUOC-FILE-04-06.md` (v1.5) + `itran-os-starter` (CLAUDE.md · ROADMAP 3 sprint · SPEC-01 SQL · SPEC-02 giấy–số · glossary · 8 biểu mẫu BM). Kết luận ngắn: **đồng ý ~85%, đã áp ngay vào bộ kế hoạch; phản biện 5 điểm; đề nghị 6 "cầu nối" để Ray A không phải đập đi khi lớn.***
+*Đọc: `files/GOP-Y-RANG-BUOC-FILE-04-06.md` (v1.5) + `itran-agri-starter` (CLAUDE.md · ROADMAP 3 sprint · SPEC-01 SQL · SPEC-02 giấy–số · glossary · 8 biểu mẫu BM). Kết luận ngắn: **đồng ý ~85%, đã áp ngay vào bộ kế hoạch; phản biện 5 điểm; đề nghị 6 "cầu nối" để Ray A không phải đập đi khi lớn.***
 
 ## 1. ĐÃ ÁP NGAY (không cần bàn thêm)
 | Góp ý | Đã sửa ở |
