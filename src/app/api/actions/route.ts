@@ -120,6 +120,26 @@ export async function POST(req: Request) {
           await c.query("insert into animal_events(farm_id,created_by,animal_id,event_type,detail,client_ref) values ($1,$2,$3,$4,$5,$6)", [s.farmId, s.staffId, code, b.source === "MUA" ? "NHAP" : "DE", JSON.stringify({ dam_id: b.dam_id ?? null }), "new-" + code]);
           return { ok: true, code };
         }
+        case "lock_period": {
+          if (!["director","owner","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          await c.query("insert into period_locks(farm_id,period_end,locked_by,note) values ($1,$2,$3,$4) on conflict do nothing", [s.farmId, b.period_end, s.staffId, b.note ?? null]); return { ok: true };
+        }
+        case "close_cycle": {
+          if (!["team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const cy = (await c.query("select * from cycles where id=$1 and farm_id=$2", [b.id, s.farmId])).rows[0]; if (!cy) throw new Error("ERR_NOT_FOUND");
+          const sum = (await c.query(`select
+            (select coalesce(sum(qty_kg),0) from feed_logs where farm_id=$1 and status='ACTIVE' and dest_group_id=$2 and ts::date between $3 and current_date) as feed_kg,
+            (select coalesce(sum(value),0) from animal_events where farm_id=$1 and status='ACTIVE' and group_id=$2 and event_type='CHET') as deaths,
+            (select coalesce(sum(qty_kg),0) from crop_logs where farm_id=$1 and status='ACTIVE' and plot_id=$4 and activity in ('THU','CAT') and ts::date between $3 and current_date) as harvest_kg`, [s.farmId, cy.group_id, cy.start_date, cy.plot_id])).rows[0];
+          await c.query("update cycles set status='DONG', end_date=current_date, closed_by=$2, closed_at=now(), summary=$3 where id=$1", [b.id, s.staffId, JSON.stringify(sum)]);
+          return { ok: true, summary: sum };
+        }
+        case "open_cycle": {
+          const id = `${b.group_id ?? b.plot_id}-${b.kind}${new Date().toISOString().slice(2, 10).replace(/-/g, "")}`;
+          await c.query("insert into cycles(id,farm_id,kind,name,group_id,plot_id,start_date) values ($1,$2,$3,$4,$5,$6,current_date)", [id, s.farmId, b.kind ?? "KHAC", b.name ?? id, b.group_id ?? null, b.plot_id ?? null]);
+          if (b.group_id) await c.query("update animal_groups set cycle_id=$2 where id=$1", [b.group_id, id]); if (b.plot_id) await c.query("update plots set cycle_id=$2 where id=$1", [b.plot_id, id]);
+          return { ok: true, id };
+        }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });

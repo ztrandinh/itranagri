@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { runRecon, runAlerts } from "@/lib/jobs";
+import { runRecon, runAlerts, backfillAgg } from "@/lib/jobs";
 import { adminPool } from "@/lib/db";
 /** POST /api/jobs/{recon|alerts|tasks|all}?farm=F01&date=YYYY-MM-DD — chạy tay (KTT/GĐ/KS CN) hoặc cron với header x-job-key */
 export async function POST(req: Request, { params }: { params: Promise<{ job: string }> }) {
@@ -14,6 +14,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
   for (const f of farms) {
     if (job === "recon" || job === "all") out[`recon:${f}`] = await runRecon(f, date);
     if (job === "alerts" || job === "all") out[`alerts:${f}`] = await runAlerts(f);
+    if (job === "agg") out[`agg:${f}`] = await backfillAgg(f, Number(url.searchParams.get("days") ?? 35));
     if (job === "tasks" || job === "all") out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks($1) as n", [f])).rows[0].n;
   }
   return NextResponse.json({ ok: true, date, out });

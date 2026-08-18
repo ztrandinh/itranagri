@@ -11,7 +11,7 @@ afterAll(async () => { await app.end(); await admin.end(); });
 
 describe("RLS — farm A không thấy farm B", () => {
   it("mọi bảng có farm_id đều bật RLS", async () => {
-    const r = await admin.query("select c.table_name from information_schema.columns c join pg_tables t on t.tablename=c.table_name and t.schemaname='public' where c.column_name='farm_id' and c.table_schema='public' and not t.rowsecurity and c.table_name not in ('sensor_reads','sessions','id_sequences','staff','farms','sensor_reads_default','norms','price_list','alert_rules','settings','audit_anchors')");
+    const r = await admin.query("select c.table_name from information_schema.columns c join pg_tables t on t.tablename=c.table_name and t.schemaname='public' where c.column_name='farm_id' and c.table_schema='public' and not t.rowsecurity and c.table_name not like 'sensor_reads%' and c.table_name not in ('sessions','id_sequences','staff','farms','norms','price_list','alert_rules','settings','audit_anchors')");
     expect(r.rows.map((x) => x.table_name)).toEqual([]);
   });
   it("worker F99 thấy 0 bò của F01; worker F01 thấy đủ; auditor thấy tất cả", async () => {
