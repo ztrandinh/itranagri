@@ -3,6 +3,7 @@ import { PlPanel, KpiLuongPanel } from "@/components/panels/Extra";
 import KeHoachNam from "@/components/panels/KeHoachNam";
 import Tabs from "@/components/Tabs";
 import { GlPanel, AttendancePanel } from "@/components/panels/More";
+import CareerPanel from "@/components/panels/Career";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
@@ -52,12 +53,12 @@ export function ThuYPanel({ sess }: { sess: Sess }) {
 
 /** NHÂN SỰ */
 export function NhanSuPanel({ sess }: { sess: Sess }) {
-  const [nsTab, setNsTab] = useState<"dt" | "ns">("dt");
+  const [nsTab, setNsTab] = useState<"dt" | "ns" | "bac">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "bac" ? "bac" : "dt");
   const st = useData("staff_activity"); const sops = useData("sops");
   const canW = ["director","owner","it_engineer"].includes(sess.role);
   const due = (d: unknown) => d && new Date(String(d)) < new Date(Date.now() + 30 * 86400e3);
   return (
-    <div className="space-y-3"><Tabs items={[["dt", "🎓 Đào tạo & Thưởng (giám sát · học · dạy · kiểm tra → lương)"], ["ns", "Hồ sơ nhân sự · chứng chỉ SOP · sức khỏe"]]} value={nsTab} onChange={(k) => setNsTab(k as typeof nsTab)} right={<a className="btn-secondary !py-1.5 !px-3 text-sm" href="/giam-sat">Giám sát →</a>} />{nsTab === "dt" && <DaoTaoThuong sess={sess} />}{nsTab === "ns" && <div className="space-y-3">
+    <div className="space-y-3"><Tabs items={[["dt", "🎓 Đào tạo & Thưởng (giám sát · học · dạy · kiểm tra → lương)"], ["ns", "Hồ sơ nhân sự · chứng chỉ SOP · sức khỏe"], ["bac", "🪜 Bậc · Ghế · Kế thừa · Tổ giám sát"]]} value={nsTab} onChange={(k) => setNsTab(k as typeof nsTab)} right={<a className="btn-secondary !py-1.5 !px-3 text-sm" href="/giam-sat">Giám sát →</a>} />{nsTab === "dt" && <DaoTaoThuong sess={sess} />}{nsTab === "bac" && <CareerPanel sess={sess} />}{nsTab === "ns" && <div className="space-y-3">
       <ProductionPanel sess={sess} />
       <PayrollPanel sess={sess} />
       <AttendancePanel sess={sess} />
