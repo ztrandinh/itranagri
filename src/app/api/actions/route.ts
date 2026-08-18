@@ -78,12 +78,14 @@ export async function POST(req: Request) {
           if (!e) throw new Error("ERR_NOT_FOUND");
           if (e.requested_by === s.staffId) throw new Error("ERR_SELF_APPROVE");
           const amt = Number(e.amount);
-          const limit: Record<string, number> = { team_lead: 2e6, tech_head: 1e7, director: 1e8, owner: Infinity, accountant: 0 };
+          // Ma trận ủy quyền = dữ liệu (approval_matrix): hạn mức theo vai, ngưỡng 2 chữ ký, ngưỡng báo chủ — sửa ở /quan-tri?t=approval_matrix, không sửa code
+          const am = (await c.query("select * from approval_limit('CHI',$1,$2)", [s.role, s.farmId])).rows[0];
+          const roleMax = am ? (am.max_amount == null ? Infinity : Number(am.max_amount)) : 0; const twoOver = Number(am?.two_sign_over ?? 2e7); const ownerOver = Number(am?.notify_owner_over ?? 5e7);
           if (!b.approve) { await c.query("update expense_requests set status='TU_CHOI', approver1=$2, approved1_at=now() where id=$1", [b.id, s.staffId]); return { ok: true, status: "TU_CHOI" }; }
-          if (amt > (limit[s.role] ?? 0)) throw new Error("ERR_OVER_LIMIT");
-          const needTwo = amt > 2e7;
+          if (amt > roleMax) throw new Error("ERR_OVER_LIMIT");
+          const needTwo = amt > twoOver;
           if (needTwo && e.status === "CHO_DUYET") { await c.query("update expense_requests set status='DUYET_1', approver1=$2, approved1_at=now() where id=$1", [b.id, s.staffId]); return { ok: true, status: "DUYET_1", note: "Cần chữ ký thứ 2 (>20 triệu)" }; }
-          if (needTwo && e.status === "DUYET_1") { if (e.approver1 === s.staffId) throw new Error("ERR_SAME_SIGNER"); await c.query("update expense_requests set status='DUYET', approver2=$2, approved2_at=now(), owner_notified_at=case when amount>5e7 then now() else null end where id=$1", [b.id, s.staffId]); return { ok: true, status: "DUYET", sms_owner: amt > 5e7 }; }
+          if (needTwo && e.status === "DUYET_1") { if (e.approver1 === s.staffId) throw new Error("ERR_SAME_SIGNER"); await c.query("update expense_requests set status='DUYET', approver2=$2, approved2_at=now(), owner_notified_at=case when amount>$3 then now() else null end where id=$1", [b.id, s.staffId, ownerOver]); return { ok: true, status: "DUYET", sms_owner: amt > 5e7 }; }
           await c.query("update expense_requests set status='DUYET', approver1=$2, approved1_at=now() where id=$1", [b.id, s.staffId]); return { ok: true, status: "DUYET" };
         }
         case "change_pin": {
@@ -270,6 +272,10 @@ export async function POST(req: Request) {
         case "gen_monitoring": { const r = await c.query("select gen_monitoring_tasks($1) as n", [s.farmId]); return { ok: true, n: r.rows[0].n }; }
         case "reserve_order": { const r = await c.query("select gen_production_from_shortage($1,$2) as lsx", [b.id, s.staffId]); const sh = await c.query("select jsonb_agg(jsonb_build_object('sku',sku,'short',(select (l->>'qty')::numeric from orders o, jsonb_array_elements(o.lines) l where o.id=$1 and l->>'sku'=p.sku limit 1) - coalesce((select sum(qty) from stock_reservations x where x.order_id=$1 and x.sku=p.sku and x.status='GIU'),0))) as short from (select distinct sku from production_orders where order_id=$1 and status in ('MOI','DANG_LAM')) p", [b.id]); return { ok: true, lsx: r.rows[0].lsx, short: sh.rows[0].short ?? [] }; }
         case "ship_order": { const r = await c.query("select ship_order($1,$2) as n", [b.id, s.staffId]); return { ok: true, n: r.rows[0].n }; }
+        case "pay_supplier": { if (!["director","owner","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("select pay_supplier($1,$2,$3)", [b.id, Number(b.amount), b.ref ?? null]); return { ok: true }; }
+        case "gen_loan_schedule": { const r = await c.query("select gen_loan_schedule($1) as n", [b.id]); return { ok: true, n: r.rows[0].n }; }
+        case "pay_loan": { if (!["director","owner","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("select pay_loan_installment($1,$2)", [b.id, b.ref ?? null]); return { ok: true }; }
+        case "receive_claim": { if (!["director","owner","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("select receive_claim($1,$2)", [b.id, Number(b.amount)]); return { ok: true }; }
         case "quote_to_order": { const r = await c.query("select quote_to_order($1) as id", [b.id]); return { ok: true, order_id: r.rows[0].id }; }
         case "send_quote": { await c.query("update quotes set status='GUI', sent_at=now() where id=$1 and farm_id=$2", [b.id, s.farmId]); await c.query("select publish_event($1,'quote.sent',$2::jsonb)", [s.farmId, JSON.stringify({ id: b.id })]); return { ok: true }; }
         case "run_dunning": { if (!["director","owner","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const r = await c.query("select run_dunning($1) as n", [s.farmId]); return { ok: true, n: r.rows[0].n }; }

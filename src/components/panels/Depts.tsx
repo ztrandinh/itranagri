@@ -4,6 +4,7 @@ import { GlPanel, AttendancePanel } from "@/components/panels/More";
 import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
+import { FinanceMorePanel } from "@/components/panels/FinanceMore";
 import { useState } from "react";
 import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
@@ -89,6 +90,7 @@ export function KeToanPanel({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <CashflowPanel />
+      <FinanceMorePanel sess={sess} />
       <BudgetPanel sess={sess} />
       <GlPanel sess={sess} />
       <AssetsPanel sess={sess} />
