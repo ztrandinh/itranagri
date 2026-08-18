@@ -1,0 +1,1 @@
+export default function Offline() { return <div className="p-8 text-center"><h1 className="text-2xl font-bold">Đang offline</h1><p className="mt-2">Trang này chưa được lưu. Các bản ghi bạn đã tạo vẫn nằm trong hàng đợi và sẽ đồng bộ khi có mạng.</p></div>; }

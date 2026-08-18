@@ -1,0 +1,69 @@
+import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { withCtx } from "@/lib/db";
+import { EVENT_SCHEMAS, WRITE_MATRIX, type EventTable } from "@/lib/events";
+
+/** POST /api/events/{table}  body: {events:[...]}  → 207 per-item (idempotent theo client_ref) */
+export async function POST(req: Request, { params }: { params: Promise<{ table: string }> }) {
+  const sess = await getSession();
+  if (!sess) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
+  const { table } = await params;
+  if (!(table in EVENT_SCHEMAS)) return NextResponse.json({ error: "ERR_UNKNOWN_TABLE" }, { status: 404 });
+  const t = table as EventTable;
+  if (!WRITE_MATRIX[t].includes(sess.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE" }, { status: 403 });
+  const body = await req.json().catch(() => null);
+  const events: unknown[] = Array.isArray(body?.events) ? body.events : body ? [body] : [];
+  if (!events.length) return NextResponse.json({ error: "ERR_EMPTY" }, { status: 400 });
+
+  const results: unknown[] = [];
+  for (const raw of events) {
+    const parsed = EVENT_SCHEMAS[t].safeParse(raw);
+    if (!parsed.success) { results.push({ client_ref: (raw as { client_ref?: string })?.client_ref, status: "REJECTED", errors: parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`) }); continue; }
+    const ev = parsed.data as Record<string, unknown>;
+    // luật supersede 72h (worker); after → cần adjustment
+    try {
+      const r = await withCtx(sess, async (c) => {
+        const dup = await c.query(`select id from ${t} where farm_id=$1 and client_ref=$2`, [sess.farmId, ev.client_ref]);
+        if (dup.rows[0]) return { status: "DUPLICATE", id: dup.rows[0].id };
+        if (ev.supersedes_id) {
+          const old = await c.query(`select created_at from ${t} where id=$1`, [ev.supersedes_id]);
+          if (!old.rows[0]) return { status: "REJECTED", errors: ["ERR_SUPERSEDE_TARGET_NOT_FOUND"] };
+          const hours = (Date.now() - new Date(old.rows[0].created_at).getTime()) / 3.6e6;
+          if (hours > 72 && sess.role === "worker") return { status: "REJECTED", errors: ["ERR_SUPERSEDE_WINDOW_EXPIRED"] };
+        }
+        // inventory_moves: tự tạo lot từ lot_no
+        if (t === "inventory_moves" && !ev.lot_id && ev.lot_no) {
+          const lot = await c.query("select ensure_lot($1,$2,$3) as id", [sess.farmId, ev.sku, ev.lot_no]);
+          ev.lot_id = lot.rows[0].id;
+        }
+        delete ev.lot_no;
+        if (t === "sales" && ev.amount == null) ev.amount = Number(ev.qty) * Number(ev.price);
+        if (t === "batch_logs" && !ev.batch_code) { const bc = await c.query("select next_code($1,'ME',3) as code", [sess.farmId]); ev.batch_code = bc.rows[0].code.replace("-ME-", `-ME-${new Date().toISOString().slice(2,10).replace(/-/g,"")}-`); }
+        if (t === "incidents") { const ic = await c.query("select next_code($1,'INC',4) as code", [sess.farmId]); ev.code = ic.rows[0].code; }
+        const cols = Object.keys(ev).filter((k) => ev[k] !== undefined);
+        const vals = cols.map((k) => { const v = ev[k]; return (Array.isArray(v) && typeof v[0] === "object") || (v && typeof v === "object" && !Array.isArray(v)) ? JSON.stringify(v) : v; });
+        const sql = `insert into ${t} (farm_id, created_by, ${cols.join(",")}) values ($1,$2,${cols.map((_, i) => `$${i + 3}`).join(",")}) returning id, ts`;
+        const ins = await c.query(sql, [sess.farmId, sess.staffId, ...vals]);
+        return { status: "CREATED", id: ins.rows[0].id, ts: ins.rows[0].ts };
+      });
+      results.push({ client_ref: ev.client_ref, ...r });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const code = msg.match(/ERR_[A-Z_]+/)?.[0] ?? "ERR_DB";
+      results.push({ client_ref: ev.client_ref, status: "REJECTED", errors: [code, msg.slice(0, 200)] });
+    }
+  }
+  return NextResponse.json({ results }, { status: 207 });
+}
+
+/** GET /api/events/{table}?limit=50 — đọc gần nhất (theo RLS) */
+export async function GET(req: Request, { params }: { params: Promise<{ table: string }> }) {
+  const sess = await getSession();
+  if (!sess) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
+  const { table } = await params;
+  if (!(table in EVENT_SCHEMAS)) return NextResponse.json({ error: "ERR_UNKNOWN_TABLE" }, { status: 404 });
+  const url = new URL(req.url);
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? 50), 500);
+  const rows = await withCtx(sess, async (c) => (await c.query(`select * from ${table} where farm_id=$1 order by ts desc limit $2`, [sess.farmId, limit])).rows);
+  return NextResponse.json({ rows });
+}

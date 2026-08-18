@@ -1,1 +1,26 @@
-@AGENTS.md
+# CLAUDE.md — ITRAN OS (Ray A · Next.js 16 + Postgres, chuẩn bị chạy trên Supabase)
+
+## Dự án
+Hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công ty mẹ → vùng → nhiều trại F0x). Nghiệp vụ gốc: `docs/bo-goc/` (FILE-GỐC v3.1, Quyển 1–5, Phụ lục A/B). Kế hoạch & kiến trúc: `docs/plan/00…10`. Starter/góp ý ràng buộc: `docs/starter/`. **Bộ gốc thắng về nghiệp vụ; kế hoạch thắng về công nghệ; góp ý v1.5 thắng khi mâu thuẫn với kế hoạch.**
+
+## 10 luật không được vi phạm
+1. Mọi bảng nghiệp vụ có `farm_id` (+ ORG/REGION); RLS bật; ứng dụng kết nối bằng `app_user`, đặt ngữ cảnh qua `withCtx()` (`set_config app.*`).
+2. Bảng sự kiện **append-only**: không UPDATE/DELETE (trigger DB + revoke); sửa = bản mới `supersedes_id`; ≤72h công nhân tự supersede, sau đó qua `adjustments` có duyệt.
+3. Mã nghiệp vụ `[TRẠI]-[LOẠI]-[SỐ]` (`next_code()`); id kỹ thuật uuid; mọi POST sự kiện idempotent theo `client_ref`.
+4. Định danh vật nuôi 3 cấp: cá thể (bò/dê bắt buộc) · lô nhập · đàn; bê chưa có tai vẫn tạo được (`tag_pending`), lịch sử thẻ ở `animal_tags`.
+5. Offline-first: form ghi 3 chạm (`ThreeTap`) → hàng đợi IndexedDB (`lib/offline.ts`) → `/api/events/{table}` (207 per-item). Điện thoại công nhân = Android; giấy BM01–BM10 là luồng chính giai đoạn đầu (SPEC-02).
+6. Quyền ghi ≠ quyền duyệt; không ai duyệt bản ghi của mình (`ERR_SELF_APPROVE`); chi >20tr cần 2 chữ ký, >50tr báo chủ.
+7. Cấu hình = dữ liệu (`settings`, `norms`, `rc_rules`, `alert_rules`, `kpi_defs`, `price_list`) có phiên bản; cấm hằng số nghiệp vụ trong code.
+8. Báo cáo = view/SQL (`v_*`, `lib/queries.ts`, `lib/metrics.ts`); thêm chỉ số = thêm 1 mục catalog, không sửa màn hình. Mọi số phải drill được về bản ghi gốc + người ghi.
+9. Xuất dữ liệu mở: `/api/exports/{all|audit-pack|tt66|sales-tax|…}` CSV/ZIP+sha256/EPCIS 2.0; test quý: dựng lại từ Postgres trắng bằng `pnpm db:migrate`.
+10. Không mở rộng phạm vi trong phiên; ý mới → `docs/backlog.md`. Connector chỉ xây khi có nghiệp vụ thật (docs/plan/05 §6b).
+
+## Chạy
+`docker start itranos_db` (PG 17.6, cổng 54499) · `pnpm db:migrate` · `pnpm db:seed:sim 30` (giả lập 30 ngày) · `pnpm dev --port 3111` · `pnpm test` (RLS/append-only/ngưng thuốc/RC) · `pnpm lint && pnpm exec tsc --noEmit`.
+Job đêm: `POST /api/jobs/all?farm=F01` với header `x-job-key` (recon RC1–RC12 + alerts + tasks). Tài khoản dev: owner/gd/ktt-cn/ks-cn/tn-bo/a1…a11/audit/kt · PIN 1234.
+
+## Cấu trúc
+`supabase/migrations/*.sql` (schema thuần SQL, 0001–0008) · `src/lib` (db, auth, events(zod), queries, metrics, forms(3 chạm theo vai), offline, jobs) · `src/app/api` (auth, events, data, actions, series, exports, jobs, upload, public/trace) · `src/components/panels/*` (màn theo vai) · `scripts/` (migrate, simulate) · `tests/`.
+
+## Chuẩn code
+TS strict, không `any`; DB snake_case / TS camelCase; glossary `docs/starter/docs/glossary.md`; lỗi có mã `ERR_*`; UI tiếng Việt, code tiếng Anh; ≤3 chạm & ≤20s/bản ghi, chữ ≥16pt; test RLS bắt buộc khi thêm bảng; golden test khi thêm KPI/RC.

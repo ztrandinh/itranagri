@@ -1,0 +1,31 @@
+# CLAUDE.md — HIẾN PHÁP REPO `itran-os` (copy vào gốc repo, đọc mỗi phiên)
+
+## Dự án
+ITRAN OS — hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công ty mẹ → vùng → nhiều trại F0x). Kế hoạch đầy đủ: `docs/plan/00…09` (bản gốc tại `F:\ITRAN FARM\KE-HOACH-PHAN-MEM`). Nghiệp vụ gốc: `docs/bo-goc/` (FILE-GỐC v3.1, Quyển 1–5, Phụ lục A/B). Bộ gốc thắng về nghiệp vụ; kế hoạch thắng về công nghệ.
+
+## 10 luật không được vi phạm
+1. `farm_id` (+ `org_id`) trong mọi bảng nghiệp vụ; RLS bật; mọi truy vấn qua repository có farmId; HQ đọc qua view `hq_*`.
+2. Bảng sự kiện **append-only**: không UPDATE/DELETE; sửa = bản mới `supersedes_id` + lý do; hash-chain ngày.
+3. Mã nghiệp vụ `[TRẠI]-[LOẠI]-[SỐ]` (docs/plan/04 mục 2); ID kỹ thuật UUIDv7; offline sinh `TMP-` rồi đổi khi sync (`client_ref` idempotent).
+4. Mọi POST sự kiện idempotent (`client_ref`/`Idempotency-Key`); mobile phải hoạt động offline (PowerSync); ghi ≤ 3 chạm.
+5. Quyền ghi ≠ quyền duyệt; không ai duyệt bản ghi của chính mình; GĐ không sửa số quá khứ.
+6. KPI/alert/RC/SLA/định mức/công thức = **dữ liệu có phiên bản** (bảng), không hard-code.
+7. Mọi tính năng UI đều có API (OpenAPI 3.1 sinh từ Zod); mọi thay đổi phát sự kiện `itran.{farm}.{domain}.{event}` (outbox → NATS).
+8. Chuẩn: GS1/EPCIS 2.0, ISO 11784/85, ISO 8601 (lưu UTC), GeoJSON 4326, OIDC, WCAG 2.2.
+9. Không dùng thư viện AGPL/BSL/SSPL trong lõi SaaS (xem docs/plan/02): không MinIO, không Ultralytics YOLO, không Redis 8, không Vault, không Inngest/n8n nhúng.
+10. Không mở rộng phạm vi trong phiên: ý mới → `docs/backlog.md`.
+
+## Stack (pin)
+NestJS 11 + Fastify 5 · Drizzle 1.0-rc (pin) + Kysely · Zod 4 · PostgreSQL 18.6 + TimescaleDB 2.28 + PostGIS 3.6 · NATS JetStream 2.14 (+MQTT, leaf) · pg-boss 12 · DBOS Transact · Keycloak 26.7 · SeaweedFS/Garage · Valkey 9 · Meilisearch 1.52 · Next.js 16.3 + React 19.2 + Tailwind 4.3 + shadcn · MapLibre 5.24 · Recharts 3 / ECharts 6 · Expo SDK 57 + RN 0.87 + PowerSync + react-native-ble-manager · FastAPI + Nixtla + LightGBM · RF-DETR/ONNX Runtime · Typst + Playwright PDF · bwip-js + gs1-syntax-engine · OTel + Grafana/Loki/Tempo · pnpm 11 + Turborepo 2.10 + Biome 2.5 + Vitest 4 + Playwright 1.62.
+
+## Lệnh
+`pnpm dev:infra` · `pnpm db:migrate && pnpm db:seed` · `pnpm dev` · **`pnpm check`** (Biome + typecheck + unit + integration container + RLS test + contract) — phải xanh trước khi kết thúc phiên · `pnpm e2e` · `pnpm gen:openapi && pnpm gen:sdk`.
+
+## Cấu trúc & chuẩn
+Monorepo theo docs/plan/09; module = bounded context `interface → application → domain`, `infrastructure` implement port; module khác chỉ gọi application service public hoặc sự kiện (dependency-cruiser chặn). Bảng/cột snake_case, TS camelCase, glossary `docs/glossary.md`. Lỗi có mã `ERR_*`. Log JSON có farm_id/staff_id/trace_id, không log dữ liệu nhạy cảm.
+
+## Nhịp phiên
+Đầu phiên: đọc `docs/sessions/latest.md` + tạo `docs/sessions/S{n}.md` (mục tiêu, story, DoD). Cuối phiên: `pnpm check` xanh, migration có down, OpenAPI/SDK cập nhật, seed/F99 cập nhật, ADR nếu đổi kiến trúc, ghi "đã làm / chưa làm / quyết định cần người". Mọi TODO → issue, không TODO ẩn.
+
+## Golden tests bắt buộc
+Ví dụ số bộ gốc (VD1/VD2/VD3 thế số), KPI công thức (docs/plan/06 mục 1.2), RC1–RC16 ngưỡng (RC11 = giấy–số), alert seed, ID generator, ngưng thuốc chặn xuất, RLS mọi bảng, append-only trigger.

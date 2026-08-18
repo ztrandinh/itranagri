@@ -1,0 +1,1 @@
+{ "version": "0.0.1", "configurations": [ { "name": "itran-os", "runtimeExecutable": "pnpm", "runtimeArgs": ["dev", "--port", "3111"], "port": 3111 } ] }

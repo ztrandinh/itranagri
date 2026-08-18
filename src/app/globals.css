@@ -1,26 +1,19 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+html { -webkit-tap-highlight-color: transparent; }
+@layer components {
+  .btn { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50; }
+  .btn-primary { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50 bg-green-700 text-white hover:bg-green-800; }
+  .btn-secondary { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50 bg-white text-stone-900 border border-stone-300 hover:bg-stone-100; }
+  .btn-danger { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] bg-red-600 text-white; }
+  .card { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4; }
+  .tile { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4 flex flex-col gap-1 min-h-[96px] justify-center hover:bg-green-50 active:bg-green-100 cursor-pointer text-left; }
+  .input { @apply w-full rounded-xl border border-stone-300 px-4 py-3 text-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-600; }
+  .badge { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
+  .b-red { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-red-100 text-red-800; }
+  .b-yel { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-amber-100 text-amber-800; }
+  .b-grn { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-green-100 text-green-800; }
+  .b-gray { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-stone-200 text-stone-700; }
+  .kpi { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4; }
+  .kpi .v { @apply text-3xl font-bold; } .kpi .l { @apply text-sm text-stone-600; }
+  table.tbl { @apply w-full text-base; } table.tbl th { @apply text-left text-sm text-stone-600 font-semibold py-2 border-b; } table.tbl td { @apply py-2 border-b border-stone-100 align-top; }
 }

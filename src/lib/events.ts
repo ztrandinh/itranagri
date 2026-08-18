@@ -1,0 +1,68 @@
+import { z } from "zod";
+
+/** Cột chung EventBase (client được gửi) */
+const base = {
+  client_ref: z.string().min(8).max(64),
+  ts: z.string().datetime({ offset: true }).optional(),
+  source: z.enum(["APP", "PAPER", "IMPORT", "DEVICE", "API", "BACKFILL"]).default("APP"),
+  is_backfill: z.boolean().default(false),
+  paper_serial: z.string().max(40).nullable().optional(),
+  supersedes_id: z.string().uuid().nullable().optional(),
+  device_id: z.string().max(64).nullable().optional(),
+};
+const num = z.coerce.number();
+const strArr = z.array(z.string()).default([]);
+
+export const EVENT_SCHEMAS = {
+  animal_events: z.object({
+    ...base,
+    animal_id: z.string().nullable().optional(),
+    group_id: z.string().nullable().optional(),
+    event_type: z.enum(["NHAP","CACH_LY_VAO","CACH_LY_RA","PHOI","DONG_DUC","KHAM_THAI","DE","CAI_SUA","PHAN_LOAI","CAN","BENH","DIEU_TRI","VACCINE","CHUYEN","CHET","LOAI","XUAT","SO_LUONG","GHI_CHU"]),
+    value: num.nullable().optional(), unit: z.string().nullable().optional(),
+    detail: z.record(z.string(), z.unknown()).default({}),
+    withdrawal_until: z.string().nullable().optional(), photo_urls: strArr,
+  }).refine((v) => v.animal_id || v.group_id, { message: "ERR_IDENTITY_REQUIRED" }),
+  feed_logs: z.object({
+    ...base, batch_ref: z.string().nullable().optional(), recipe_id: z.string().nullable().optional(), recipe_version: num.nullable().optional(),
+    dest_location_id: z.string().nullable().optional(), dest_group_id: z.string().nullable().optional(),
+    planned_kg: num.nullable().optional(), qty_kg: num.positive(), meal: z.string().nullable().optional(), leftover_pct: num.nullable().optional(), photo_urls: strArr,
+  }),
+  crop_logs: z.object({
+    ...base, plot_id: z.string(), activity: z.enum(["LAM_DAT","GIEO","BON","PHUN","TUOI","CAT","THU","GIEO_LAI","NDVI"]),
+    variety: z.string().nullable().optional(), input_lots: z.array(z.record(z.string(), z.unknown())).default([]),
+    qty_kg: num.nullable().optional(), moisture_pct: num.nullable().optional(), machine_id: z.string().nullable().optional(), machine_hours: num.nullable().optional(),
+    fuel_l: num.nullable().optional(), water_source: z.string().nullable().optional(), water_m3: num.nullable().optional(),
+    chemical: z.boolean().default(false), director_order: z.string().nullable().optional(), phi_until: z.string().nullable().optional(), photo_urls: strArr,
+  }),
+  batch_logs: z.object({
+    ...base, batch_code: z.string().nullable().optional(), line: z.string(), recipe_id: z.string().nullable().optional(), recipe_version: num.nullable().optional(),
+    location_id: z.string().nullable().optional(), inputs: z.array(z.record(z.string(), z.unknown())).default([]), outputs: z.array(z.record(z.string(), z.unknown())).default([]),
+    qc: z.record(z.string(), z.unknown()).default({}), ccp_readings: z.array(z.record(z.string(), z.unknown())).default([]), temp_c: num.nullable().optional(), moisture_pct: num.nullable().optional(),
+  }),
+  inventory_moves: z.object({
+    ...base, warehouse_id: z.string(), sku: z.string(), lot_id: z.string().nullable().optional(), lot_no: z.string().nullable().optional(),
+    direction: z.union([z.literal(1), z.literal(-1)]), qty: num.positive(), unit: z.string().nullable().optional(), unit_cost: num.nullable().optional(),
+    reason: z.string(), from_to: z.string().nullable().optional(), weigh_point: z.string().nullable().optional(), ref_type: z.string().nullable().optional(), ref_id: z.string().nullable().optional(),
+  }),
+  weigh_tickets: z.object({ ...base, scale_device_id: z.string().nullable().optional(), plate: z.string().nullable().optional(), gross_kg: num.nullable().optional(), tare_kg: num.nullable().optional(), net_kg: num, purpose: z.string().nullable().optional(), sku: z.string().nullable().optional(), partner_id: z.string().nullable().optional(), photo_urls: strArr }),
+  gate_logs: z.object({ ...base, plate: z.string(), direction: z.enum(["VAO","RA"]), weighed: z.boolean().default(false), anolyte_wash: z.boolean().default(false), purpose: z.string().nullable().optional(), driver: z.string().nullable().optional(), photo_urls: strArr }),
+  sales: z.object({ ...base, partner_id: z.string(), sku: z.string(), lot_id: z.string().nullable().optional(), qty: num.positive(), unit: z.string().nullable().optional(), price: num, amount: num.optional(), channel: num.int().min(1).max(5), payment: z.string().default("CK"), paid: z.boolean().default(false), invoice_no: z.string().nullable().optional() }),
+  checklist_runs: z.object({ ...base, sop_code: z.string(), sop_version: num.nullable().optional(), shift: z.string(), results: z.array(z.record(z.string(), z.unknown())).default([]), all_green: z.boolean().default(false), note: z.string().nullable().optional() }),
+  incidents: z.object({ ...base, kind: z.string(), severity: z.enum(["THAP","TRUNG","CAO","NGHIEM_TRONG","NEAR_MISS"]), description: z.string(), location_id: z.string().nullable().optional(), photo_urls: strArr }),
+  stocktakes: z.object({ ...base, warehouse_id: z.string(), counted_by: z.string().nullable().optional(), lines: z.array(z.record(z.string(), z.unknown())).default([]), camera_count: num.nullable().optional(), note: z.string().nullable().optional() }),
+  adjustments: z.object({ ...base, target_table: z.string(), target_id: z.string().uuid().nullable().optional(), warehouse_id: z.string().nullable().optional(), sku: z.string().nullable().optional(), lot_id: z.string().nullable().optional(), delta: num.nullable().optional(), reason: z.string().min(3) }),
+  paper_scans: z.object({ ...base, form_code: z.string().regex(/^BM\d{2}$/), serial: z.string().regex(/^F\d{2}-BM\d{2}-\d{6}$/), photo_url: z.string().nullable().optional(), anomaly: z.string().nullable().optional() }),
+} as const;
+
+export type EventTable = keyof typeof EVENT_SCHEMAS;
+export const EVENT_TABLES = Object.keys(EVENT_SCHEMAS) as EventTable[];
+
+/** Vai nào ghi bảng nào (worker theo phân hệ — kiểm thêm ở UI). */
+export const WRITE_MATRIX: Record<EventTable, string[]> = {
+  animal_events: ["worker","team_lead","tech_head","director"], feed_logs: ["worker","team_lead","tech_head"], crop_logs: ["worker","team_lead","tech_head"],
+  batch_logs: ["worker","team_lead","tech_head"], inventory_moves: ["worker","team_lead","tech_head","accountant","director"], weigh_tickets: ["worker","team_lead","tech_head"],
+  gate_logs: ["worker","team_lead","tech_head","director"], sales: ["worker","team_lead","director","accountant"], checklist_runs: ["worker","team_lead","tech_head"],
+  incidents: ["worker","team_lead","tech_head","director","it_engineer","accountant"], stocktakes: ["worker","team_lead","tech_head","accountant"],
+  adjustments: ["team_lead","tech_head","accountant","director"], paper_scans: ["worker","team_lead","tech_head","director","accountant"],
+};

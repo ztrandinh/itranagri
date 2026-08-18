@@ -1,36 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ITRAN OS — Hệ điều hành số trang trại tuần hoàn ITRAN FARM
 
-## Getting Started
+Ray A (thực chiến): Next.js 16 · TypeScript · Postgres 17 (Supabase-ready, SQL migrations thuần) · offline-first PWA · RLS đa trại.
 
-First, run the development server:
+- Kế hoạch tổng thể & kiến trúc: [`docs/plan/README.md`](docs/plan/README.md)
+- Nghiệp vụ gốc (5 trục · 5 phòng · 14 vai · 9 kho · RC1–RC10): [`docs/bo-goc/`](docs/bo-goc/)
+- Luật làm việc với Claude Code: [`CLAUDE.md`](CLAUDE.md)
 
+## Chạy nhanh
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker run -d --name itranos_db -e POSTGRES_PASSWORD=itranos -e POSTGRES_DB=itranos -p 54499:5432 public.ecr.aws/supabase/postgres:17.6.1.155
+docker exec itranos_db psql -U supabase_admin -d itranos -c "alter role postgres superuser;"
+pnpm i && cp .env.example .env && pnpm db:migrate && pnpm db:seed:sim 30 && pnpm dev --port 3111
 ```
+Đăng nhập: `owner` / `gd` / `ktt-cn` / `a1…a11` / `audit` — PIN `1234`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Có gì
+Việc hôm nay theo vai · ghi 3 chạm offline · định danh vật nuôi 3 cấp · kho K1–K9 sổ cái tự động · phiếu giấy↔số (RC11) · đối soát RC1–RC12 · cảnh báo · KPI/1 trang thứ 6 · số liệu vẽ mọi chỉ số + drill 2 chạm · truy xuất 1-lùi-1-tiến + QR công khai + EPCIS 2.0 · SOP 10+1 · bán hàng/công nợ/giá sàn · PO/đề nghị chi 2 chữ ký · công ty mẹ đa trại · trung tâm xuất dữ liệu (audit pack, TT 66/2025, bảng kê thuế) · sức khỏe hệ thống (7 bộ chất vấn).
