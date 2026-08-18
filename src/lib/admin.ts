@@ -63,6 +63,10 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "animal_classes", pk: "code", label: "Lớp vật nuôi", group: "Đối tượng", farmScoped: false, softDelete: null, writeRoles: OPS },
   { table: "crops", pk: "code", label: "Cây trồng (định nghĩa)", group: "Đối tượng", farmScoped: false, softDelete: "active", writeRoles: OPS },
   { table: "product_kinds", pk: "code", label: "Nhóm sản phẩm/vật tư", group: "Đối tượng", farmScoped: false, softDelete: null, writeRoles: MGR },
+  { table: "standards", pk: "code", label: "Tiêu chuẩn (VietGAP/ISO/Halal…)", group: "Chất lượng", farmScoped: false, softDelete: "active", writeRoles: ["owner", "it_engineer", "auditor", "tech_head"] },
+  { table: "standard_requirements", pk: "id", label: "Yêu cầu tiêu chuẩn → bằng chứng", group: "Chất lượng", farmScoped: false, softDelete: null, writeRoles: ["owner", "it_engineer", "auditor", "tech_head"] },
+  { table: "certifications", pk: "id", label: "Sổ chứng nhận", group: "Chất lượng", farmScoped: true, softDelete: "status", writeRoles: ["owner", "director", "it_engineer", "auditor", "tech_head"], codePrefix: "CERT" },
+  { table: "compliance_checks", pk: "id", label: "Tự đánh giá / NC", group: "Chất lượng", farmScoped: true, softDelete: null, writeRoles: ["owner", "director", "it_engineer", "auditor", "tech_head"] },
   { table: "documents", pk: "id", label: "Tài liệu / hồ sơ đính kèm", group: "Tài liệu", farmScoped: true, softDelete: "status", writeRoles: OPS },
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);

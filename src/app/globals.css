@@ -1,19 +1,25 @@
 @import "tailwindcss";
 html { -webkit-tap-highlight-color: transparent; }
+body { background: #f8fafc; color: #0f172a; -webkit-font-smoothing: antialiased; }
 @layer components {
-  .btn { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50; }
-  .btn-primary { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50 bg-green-700 text-white hover:bg-green-800; }
-  .btn-secondary { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] disabled:opacity-50 bg-white text-stone-900 border border-stone-300 hover:bg-stone-100; }
-  .btn-danger { @apply inline-flex items-center justify-center rounded-2xl px-5 py-4 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[56px] bg-red-600 text-white; }
-  .card { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4; }
-  .tile { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4 flex flex-col gap-1 min-h-[96px] justify-center hover:bg-green-50 active:bg-green-100 cursor-pointer text-left; }
-  .input { @apply w-full rounded-xl border border-stone-300 px-4 py-3 text-lg bg-white focus:outline-none focus:ring-2 focus:ring-green-600; }
+  .btn { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
+  .btn-primary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700; }
+  .btn-secondary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50 bg-white text-slate-800 border border-slate-300 hover:bg-slate-50; }
+  .btn-danger { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] bg-red-600 text-white; }
+  .card { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4; }
+  .tile { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4 flex flex-col gap-1 min-h-[96px] justify-center hover:bg-emerald-50 active:bg-emerald-100 cursor-pointer text-left; }
+  .input { @apply w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500; }
   .badge { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
   .b-red { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-red-100 text-red-800; }
   .b-yel { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-amber-100 text-amber-800; }
-  .b-grn { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-green-100 text-green-800; }
-  .b-gray { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-stone-200 text-stone-700; }
-  .kpi { @apply rounded-2xl bg-white shadow-sm border border-stone-200 p-4; }
-  .kpi .v { @apply text-3xl font-bold; } .kpi .l { @apply text-sm text-stone-600; }
-  table.tbl { @apply w-full text-base; } table.tbl th { @apply text-left text-sm text-stone-600 font-semibold py-2 border-b; } table.tbl td { @apply py-2 border-b border-stone-100 align-top; }
+  .b-grn { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-emerald-100 text-emerald-800; }
+  .b-gray { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-slate-200 text-slate-700; }
+  .kpi { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4; }
+  .kpi .v { @apply text-3xl font-bold text-slate-800; } .kpi .l { @apply text-xs uppercase tracking-wide text-slate-500; }
+  table.tbl { @apply w-full text-[15px]; } table.tbl th { @apply text-left text-xs uppercase tracking-wide text-slate-500 font-semibold py-2 border-b border-slate-200 bg-slate-50; } table.tbl td { @apply py-2 border-b border-slate-100 align-top; } table.tbl tbody tr:hover td { @apply bg-slate-50; }
 }
+/* Ánh xạ palette cũ (green/stone) sang hệ màu chuyên nghiệp (emerald/slate) để toàn bộ màn hình đồng bộ */
+.bg-green-700 { background-color: #059669 !important; } .bg-green-800 { background-color: #047857 !important; } .hover\:bg-green-800:hover { background-color: #047857 !important; } .hover\:bg-green-700:hover { background-color: #059669 !important; }
+.bg-green-50 { background-color: #ecfdf5 !important; } .bg-green-100 { background-color: #d1fae5 !important; } .hover\:bg-green-50:hover { background-color: #ecfdf5 !important; }
+.text-green-700 { color: #047857 !important; } .text-green-800 { color: #065f46 !important; } .text-green-900 { color: #064e3b !important; } .border-green-600 { border-color: #059669 !important; } .border-green-200 { border-color: #a7f3d0 !important; } .ring-green-600 { --tw-ring-color: #059669 !important; }
+.bg-stone-100 { background-color: #f1f5f9 !important; } .bg-stone-50 { background-color: #f8fafc !important; } .text-stone-500 { color: #64748b !important; } .text-stone-600 { color: #475569 !important; } .border-stone-200 { border-color: #e2e8f0 !important; }
