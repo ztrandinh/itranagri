@@ -1,2 +1,2 @@
 import { Page } from "@/components/withSession"; import SoLieuPanel from "@/components/panels/SoLieuPanel";
-export default async function P({ searchParams }: { searchParams: Promise<{ m?: string; tab?: string }> }) { const { m, tab } = await searchParams; return <Page title="Số liệu — mọi chỉ số, mọi trường đều vẽ được">{(s) => <SoLieuPanel sess={s} initialMetric={m} initialTab={tab} />}</Page>; }
+export default async function P({ searchParams }: { searchParams: Promise<{ m?: string; tab?: string }> }) { const { m, tab } = await searchParams; return <Page title="Số liệu & biểu đồ — mọi chỉ số, mọi trường đều vẽ được">{(s) => <SoLieuPanel sess={s} initialMetric={m} initialTab={tab} />}</Page>; }

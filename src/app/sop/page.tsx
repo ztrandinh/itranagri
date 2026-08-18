@@ -1,2 +1,2 @@
-import { Page } from "@/components/withSession"; import { SopPanel } from "@/components/panels/Ops";
-export default function P() { return <Page title="Thư viện SOP">{() => <SopPanel />}</Page>; }
+import { redirect } from "next/navigation";
+export default function P() { redirect("/to-chuc?tab=sop"); }
