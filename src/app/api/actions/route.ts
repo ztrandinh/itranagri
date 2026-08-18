@@ -247,6 +247,13 @@ export async function POST(req: Request) {
         case "start_run": { const r = await c.query("select start_process_run($1,$2,$3,$4,$5,$6,$7) as id", [s.farmId, b.code, s.staffId, b.ref_table ?? null, b.ref_id ?? null, b.title ?? null, JSON.stringify(b.context ?? {})]); return { ok: true, run_id: r.rows[0].id }; }
         case "complete_step": { const r = await c.query("select complete_run_step($1,$2,$3,$4,$5) as r", [b.run_id, b.step_no, s.staffId, b.output ?? null, b.note ?? null]); return { ok: true, result: r.rows[0].r }; }
         case "cancel_run": { if (!["owner","director","it_engineer","tech_head"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update process_runs set status='HUY', finished_at=now(), note=$2 where id=$1", [b.run_id, b.note ?? null]); await c.query("update tasks set status='BO_QUA' where ref_table='process_runs' and ref_id=$1 and status in ('MO','DANG_LAM')", [String(b.run_id)]); return { ok: true }; }
+        case "create_api_key": {
+          if (!["owner","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
+          const raw = "itk_" + [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
+          const { createHash } = await import("node:crypto"); const h = createHash("sha256").update(raw).digest("hex");
+          const r = await c.query("insert into api_keys(org_id,farm_id,name,key_hash,scopes,created_by) values ($1,$2,$3,$4,$5,$6) returning id", [s.orgId, b.farm_id ?? s.farmId, b.name ?? "key", h, Array.isArray(b.scopes) ? b.scopes : ["ingest"], s.staffId]);
+          return { ok: true, id: r.rows[0].id, key: raw, note: "Lưu khóa này ngay — hệ thống chỉ giữ sha256" };
+        }
         default: throw new Error("ERR_UNKNOWN_ACTION");
       }
     });
