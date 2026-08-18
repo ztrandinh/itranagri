@@ -57,8 +57,12 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
     spec.onDone?.();
   }
 
+  async function compress(file: File): Promise<Blob> {
+    // nén ảnh phía máy (≤1280px, JPEG 0.8) — mạng trại yếu, ảnh ≤300KB
+    try { const bmp = await createImageBitmap(file); const k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height)); const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k); cv.getContext("2d")!.drawImage(bmp, 0, 0, cv.width, cv.height); return await new Promise<Blob>((res) => cv.toBlob((b) => res(b ?? file), "image/jpeg", 0.8)); } catch { return file; }
+  }
   async function uploadPhoto(file: File) {
-    const fd = new FormData(); fd.append("file", file);
+    const fd = new FormData(); fd.append("file", await compress(file), file.name.replace(/\.[^.]+$/, "") + ".jpg");
     try { const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (j.url) setPhotoUrls((p) => [...p, j.url]); }
     catch { setMsg("Không tải được ảnh (offline) — bản ghi vẫn được lưu, chụp lại sau."); }
   }

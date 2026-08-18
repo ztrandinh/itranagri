@@ -59,6 +59,12 @@ export async function runAlerts(farmId: string) {
     for (const r of (await c.query("select device_id, min(value) as v from sensor_reads where farm_id=$1 and metric='DO' and ts>now()-interval '15 minutes' group by device_id having min(value)<4", [farmId])).rows) await fire("AL-RAS-DO", "DO", `DO ${r.v} mg/l < 4 tại ${r.device_id} — SOP RAS khẩn (sục ắc quy)`, r, 30);
     // nhiệt kho lạnh
     for (const r of (await c.query("select device_id, max(value) as v from sensor_reads where farm_id=$1 and metric='TEMP_COLD' and ts>now()-interval '30 minutes' group by device_id having min(value)>8", [farmId])).rows) await fire("AL-COLD", "DO", `Kho lạnh ${r.device_id} > 8°C 30 phút`, r, 60);
+    // xe qua cổng lõi không cân / không anolyte
+    for (const r of (await c.query("select plate, ts from gate_logs where farm_id=$1 and status='ACTIVE' and ts::date=current_date and (not weighed or not anolyte_wash)", [farmId])).rows) await fire("AL-GATE", "DO", `Xe ${r.plate} qua cổng không cân/không hố anolyte`, r, 60);
+    // thiết bị cảm biến mất tín hiệu > 60'
+    for (const r of (await c.query("select d.id, d.name from devices d where d.farm_id=$1 and d.kind like 'SENSOR%' and exists (select 1 from sensor_reads r where r.device_id=d.id) and (select max(ts) from sensor_reads r where r.device_id=d.id) < now()-interval '60 minutes'", [farmId])).rows) await fire("AL-SENSOR-OFF", "VANG", `Cảm biến ${r.name} mất tín hiệu > 60 phút`, r, 240);
+    // tồn kho âm
+    for (const r of (await c.query("select warehouse_code, sku, qty from v_stock_balance where farm_id=$1 and qty<0", [farmId])).rows) await fire("AL-STOCK-NEG", "VANG", `Tồn âm ${r.sku} tại ${r.warehouse_code}: ${r.qty}`, r, 1440);
     // công nợ >30 ngày
     for (const r of (await c.query("select p.name, sum(s.amount) as unpaid, extract(day from now()-min(s.ts))::int as days from sales s join partners p on p.id=s.partner_id where s.farm_id=$1 and s.status='ACTIVE' and not s.paid group by p.name having extract(day from now()-min(s.ts))>30", [farmId])).rows) await fire("AL-DEBT", "VANG", `${r.name} nợ ${Number(r.unpaid).toLocaleString("vi-VN")} đ quá ${r.days} ngày — ngừng giao`, r, 1440);
     // audit anchor rẻ: digest ngày cho bảng sự kiện
@@ -67,7 +73,7 @@ export async function runAlerts(farmId: string) {
       await c.query("insert into audit_anchors(farm_id,day,table_name,row_count,digest,prev_digest) values ($1,current_date,$2,$3,$4,(select digest from audit_anchors where farm_id=$1 and table_name=$2 and day<current_date order by day desc limit 1)) on conflict (farm_id,day,table_name) do update set row_count=excluded.row_count, digest=excluded.digest", [farmId, t, d.n, d.dg]);
     }
     // tổng hợp ngày (hôm qua + hôm nay) + snapshot; đảm bảo partition cảm biến
-    await c.query("select refresh_agg_daily($1, current_date-1), refresh_agg_daily($1, current_date), ensure_sensor_partitions()", [farmId]);
+    await c.query("select refresh_agg_daily($1, current_date-1), refresh_agg_daily($1, current_date), ensure_sensor_partitions(), gen_feed_plans($1)", [farmId]);
     return fired;
   });
 }

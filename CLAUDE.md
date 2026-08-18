@@ -17,10 +17,10 @@ Hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công 
 
 ## Chạy
 `docker start itranos_db` (PG 17.6, cổng 54499) · `pnpm db:migrate` · `pnpm db:seed:sim 30` (giả lập 30 ngày) · `pnpm dev --port 3111` · `pnpm test` (RLS/append-only/ngưng thuốc/RC) · `pnpm lint && pnpm exec tsc --noEmit`.
-Job đêm: `POST /api/jobs/all?farm=F01` với header `x-job-key` (recon RC1–RC12 + alerts + tasks). Tài khoản dev: owner/gd/ktt-cn/ks-cn/tn-bo/a1…a11/audit/kt · PIN 1234.
+Job đêm: `POST /api/jobs/all?farm=F01` với header `x-job-key` (recon RC1–RC12 + alerts + tasks v2 + agg_daily/snapshot + feed_plans); `/api/jobs/agg?days=35` backfill. Trang: /ca /dan /kho /giay /gd /ktt /hq /audit /doi-soat /canh-bao /sop /ban-hang /truy-xuat /suc-khoe /so-lieu /ke-hoach /thu-y /nhan-su /thiet-bi /ke-toan /tai-khoan /trace/{qr}. Tài khoản dev: owner/gd/ktt-cn/ks-cn/tn-bo/a1…a11/audit/kt · PIN 1234.
 
 ## Cấu trúc
-`supabase/migrations/*.sql` (schema thuần SQL, 0001–0008) · `src/lib` (db, auth, events(zod), queries, metrics, forms(3 chạm theo vai), offline, jobs) · `src/app/api` (auth, events, data, actions, series, exports, jobs, upload, public/trace) · `src/components/panels/*` (màn theo vai) · `scripts/` (migrate, simulate) · `tests/`.
+`supabase/migrations/*.sql` (schema thuần SQL, 0001–0013: 0009 quy mô/agg/cycles/locks, 0012 kế hoạch/đơn/HĐ/thú y/nhận nuôi/quỹ) · `src/lib` (db, auth, events(zod), queries, metrics, forms(3 chạm theo vai), offline, jobs) · `src/app/api` (auth, events, data, actions, series, exports, jobs, upload, public/trace) · `src/components/panels/*` (màn theo vai) · `scripts/` (migrate, simulate) · `tests/`.
 
 ## Chuẩn code
 TS strict, không `any`; DB snake_case / TS camelCase; glossary `docs/starter/docs/glossary.md`; lỗi có mã `ERR_*`; UI tiếng Việt, code tiếng Anh; ≤3 chạm & ≤20s/bản ghi, chữ ≥16pt; test RLS bắt buộc khi thêm bảng; golden test khi thêm KPI/RC.

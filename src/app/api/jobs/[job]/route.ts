@@ -15,7 +15,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
     if (job === "recon" || job === "all") out[`recon:${f}`] = await runRecon(f, date);
     if (job === "alerts" || job === "all") out[`alerts:${f}`] = await runAlerts(f);
     if (job === "agg") out[`agg:${f}`] = await backfillAgg(f, Number(url.searchParams.get("days") ?? 35));
-    if (job === "tasks" || job === "all") out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks($1) as n", [f])).rows[0].n;
+    if (job === "tasks" || job === "all") out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks_v2($1) as n", [f])).rows[0].n;
+    await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),true,$3)", [f, job, JSON.stringify({ date, keys: Object.keys(out).filter((k) => k.endsWith(":" + f)) })]);
   }
   return NextResponse.json({ ok: true, date, out });
 }
