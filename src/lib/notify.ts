@@ -80,6 +80,7 @@ export async function runCustomRules(farmId: string): Promise<string[]> {
         switch (x.type) {
           case "stock_days": { const rows = (await c.query("select sku, product_name, days, qty from v_days_of_stock where farm_id=$1 and days is not null" + (x.sku && x.sku !== "*" ? " and sku=$2" : ""), x.sku && x.sku !== "*" ? [farmId, x.sku] : [farmId])).rows; for (const s of rows) if (cmp(Number(s.days), op, val)) await fire(r, `${s.product_name} còn ${Number(s.days).toFixed(0)} ngày (tồn ${s.qty}) — đặt mua/mở rộng nguồn`, s); break; }
           case "overdue_tasks": { const n = Number((await c.query("select count(*) as n from tasks where farm_id=$1 and status='MO' and due_at<now()", [farmId])).rows[0].n); if (cmp(n, op, val)) await fire(r, `${n} việc quá hạn`, { n }); break; }
+          case "sql_rows": { const sql = String(x.sql ?? ""); if (!/^\s*select/i.test(sql)) break; const rows = (await c.query(sql, [farmId])).rows as Record<string, unknown>[]; for (const d of rows) await fire(r, String(x.message ?? r.name).replace(/\{(\w+)\}/g, (_, k: string) => String(d[k] ?? "")), d); break; }
           case "metric_threshold": {
             const m = String(x.metric); let v: number | null = null;
             if (m === "lay_pct") v = Number((await c.query("select avg(lay_pct) as v from v_kpi_lay_rate where farm_id=$1 and day>=current_date-7", [farmId])).rows[0].v);

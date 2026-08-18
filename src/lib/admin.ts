@@ -6,6 +6,11 @@ export const ADMIN_TABLES: AdminTable[] = [
   { table: "regions", pk: "id", label: "Vùng", group: "Công ty", farmScoped: false, softDelete: "active", writeRoles: ["owner", "it_engineer"] },
   { table: "facilities", pk: "id", label: "Nhà công năng / hạ tầng", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "FC", hidden: ["created_at", "created_by", "updated_at", "updated_by"] },
   { table: "locations", pk: "id", label: "Khu / vị trí / chuồng", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "LOC" },
+  { table: "weather_daily", pk: "day", label: "Thời tiết ngày (ET0 tự tính FAO-56)", group: "Trại", farmScoped: true, softDelete: null, writeRoles: OPS },
+  { table: "soil_tests", pk: "id", label: "Phân tích đất theo ô", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: OPS, codePrefix: "SOIL" },
+  { table: "crop_rotation_plans", pk: "id", label: "Kế hoạch luân canh nhiều năm", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: OPS, codePrefix: "ROT" },
+  { table: "plot_contracts", pk: "id", label: "Hợp đồng liên kết hộ / thuê đất theo ô", group: "Trại", farmScoped: true, softDelete: "status", writeRoles: OPS, codePrefix: "PLC" },
+  { table: "crop_kc", pk: "crop_code", label: "Hệ số cây trồng Kc (FAO-56)", group: "Danh mục", farmScoped: false, softDelete: null, writeRoles: OPS },
   { table: "plots", pk: "id", label: "Ô/thửa ruộng", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: OPS, codePrefix: "PLOT" },
   { table: "warehouses", pk: "id", label: "Kho", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: MGR, codePrefix: "K" },
   { table: "cost_centers", pk: "id", label: "Trung tâm chi phí", group: "Trại", farmScoped: true, softDelete: "active", writeRoles: ACC, codePrefix: "CC" },
@@ -98,7 +103,7 @@ export const ADMIN_TABLES: AdminTable[] = [
 ];
 export const findAdmin = (t: string) => ADMIN_TABLES.find((x) => x.table === t);
 /** Bảng sự kiện nhập được qua CSV (đi qua /api/events để giữ luật append-only/idempotent) */
-export const IMPORT_EVENT_TABLES = ["inventory_moves", "crop_logs", "feed_logs", "animal_events", "batch_logs", "sales", "weigh_tickets", "gate_logs", "checklist_runs", "crop_inputs", "harvests", "pos_receipts", "hosp_folio"];
+export const IMPORT_EVENT_TABLES = ["irrigation_logs", "pest_scouting", "inventory_moves", "crop_logs", "feed_logs", "animal_events", "batch_logs", "sales", "weigh_tickets", "gate_logs", "checklist_runs", "crop_inputs", "harvests", "pos_receipts", "hosp_folio"];
 /** CSV đơn giản (RFC4180 cơ bản: dấu ngoặc kép, dấu phẩy/chấm phẩy) */
 export function parseCsv(text: string): Record<string, string>[] {
   const lines = text.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim().length);

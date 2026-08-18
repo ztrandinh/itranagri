@@ -92,6 +92,27 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
         { key: "photo", label: "Ảnh", type: "photo" },
       ],
     },
+    irrigation: {
+      table: "irrigation_logs", title: "Tưới nước", targetLabel: "Chọn lô đất", targetKey: "plot_id", targets: r.plots.map((p) => ({ id: s(p.id), label: s(p.name), sub: `${s(p.area_ha)} ha · ${s(p.current_crop)}` })),
+      fields: [
+        { key: "method", label: "Cách tưới", type: "choice", required: true, options: [{ id: "PHUN_MUA", label: "Phun mưa" }, { id: "NHO_GIOT", label: "Nhỏ giọt" }, { id: "TRAN", label: "Tràn" }, { id: "RANH", label: "Rãnh" }, { id: "BOM_TAY", label: "Vòi/bơm tay" }, { id: "DRONE", label: "Drone" }] },
+        { key: "minutes", label: "Thời gian", type: "number", unit: "phút", min: 0, step: 5, required: true },
+        { key: "volume_m3", label: "Lượng nước", type: "number", unit: "m³", min: 0, step: 1 },
+        { key: "energy_kwh", label: "Điện bơm", type: "number", unit: "kWh", min: 0, step: 0.5 },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+    },
+    pest_scout: {
+      table: "pest_scouting", title: "Điều tra sâu bệnh", targetLabel: "Chọn lô đất", targetKey: "plot_id", targets: r.plots.map((p) => ({ id: s(p.id), label: s(p.name), sub: `${s(p.area_ha)} ha · ${s(p.current_crop)}` })),
+      fields: [
+        { key: "pest_kind", label: "Loại", type: "choice", required: true, options: [{ id: "SAU", label: "Sâu" }, { id: "BENH", label: "Bệnh" }, { id: "CO_DAI", label: "Cỏ dại" }, { id: "CHUOT", label: "Chuột" }, { id: "OC", label: "Ốc" }, { id: "KHAC", label: "Khác" }] },
+        { key: "pest", label: "Tên đối tượng", type: "text", required: true },
+        { key: "density", label: "Mật độ", type: "number", unit: "con/m² hoặc %", min: 0, step: 1 },
+        { key: "threshold", label: "Ngưỡng", type: "number", unit: "", min: 0, step: 1 },
+        { key: "severity", label: "Mức hại 0–5", type: "number", unit: "", min: 0, step: 1 },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+    },
     fuel_out: {
       table: "inventory_moves", title: "Đổ dầu (trạm dầu K7)", targetLabel: "Máy nhận dầu", targetKey: "from_to", targets: r.devices.filter((d) => d.fuel_l_per_h).map((d) => ({ id: s(d.id), label: s(d.name) })),
       fields: [{ key: "qty", label: "Lít", type: "number", unit: "l", min: 0, step: 5, required: true }],
@@ -197,13 +218,13 @@ export const ROLE_FORMS: Record<string, string[]> = {
   A2: ["animal_event", "checklist", "incident", "paper_submit"],
   A3: ["poultry_daily", "egg_in", "feed_tmr", "checklist", "incident", "paper_submit"],
   A4: ["ras_daily", "ras_feed", "checklist", "incident", "paper_submit"],
-  A5: ["crop_log", "fuel_out", "checklist", "incident", "paper_submit"],
+  A5: ["crop_log", "irrigation", "pest_scout", "fuel_out", "checklist", "incident", "paper_submit"],
   A6: ["bio_batch", "checklist", "incident", "paper_submit"],
   A7: ["d5_batch", "stock_in", "checklist", "incident", "paper_submit"],
   A8: ["stock_in", "stock_out", "stocktake", "sale", "checklist", "incident", "paper_submit"],
   A9: ["sale", "incident", "paper_submit"],
   A11: ["gate", "incident", "paper_submit"],
-  ALL: ["animal_event", "feed_tmr", "poultry_daily", "egg_in", "ras_daily", "ras_feed", "crop_log", "fuel_out", "bio_batch", "d5_batch", "stock_in", "stock_out", "stocktake", "sale", "gate", "checklist", "incident", "paper_submit"],
+  ALL: ["animal_event", "feed_tmr", "poultry_daily", "egg_in", "ras_daily", "ras_feed", "crop_log", "irrigation", "pest_scout", "fuel_out", "bio_batch", "d5_batch", "stock_in", "stock_out", "stocktake", "sale", "gate", "checklist", "incident", "paper_submit"],
 };
 export function formsForPosition(position: string | null | undefined, role: string): string[] {
   const m = position?.match(/A(\d{1,2})/); const key = m ? `A${m[1]}` : null;

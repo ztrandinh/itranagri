@@ -6,6 +6,10 @@ export type AnyTable = { table: string; label: string; ts: string; status?: bool
 /** Bảng cho phép + cột thời gian (whitelist; cột thì soi tự động) */
 export const ANY_TABLES: AnyTable[] = [
   { table: "inventory_moves", label: "Kho: nhập/xuất (mọi mặt hàng: cỏ, ngô, cám, thuốc, dầu, sản phẩm…)", ts: "ts", status: true, jsonb: ["detail"] },
+  { table: "weather_daily", label: "Thời tiết ngày (tmin/tmax/mưa/ET0)", ts: "day", status: false },
+  { table: "irrigation_logs", label: "Tưới (m3, phút, kWh)", ts: "ts", status: true },
+  { table: "pest_scouting", label: "Điều tra dịch hại IPM (mật độ, % nhiễm)", ts: "ts", status: true },
+  { table: "soil_tests", label: "Phân tích đất (pH, OM, N/P/K)", ts: "sampled_at", status: false },
   { table: "crop_logs", label: "Trồng trọt: gieo/cắt/thu/tưới/bón (kg, giờ máy, ẩm độ)", ts: "ts", status: true, jsonb: ["detail"] },
   { table: "feed_logs", label: "Cho ăn (kg thực/kế hoạch)", ts: "ts", status: true },
   { table: "animal_events", label: "Sự kiện vật nuôi (cân, sinh sản, điều trị, chết, số lượng)", ts: "ts", status: true, jsonb: ["detail"] },
