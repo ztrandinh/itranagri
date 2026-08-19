@@ -41,7 +41,10 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   // ThreeTap bị reset liên tục và công nhân mất dữ liệu đang nhập.
   const reloadRecent = recent.reload;
   const spec = useMemo(() => (forms && form && forms[form] ? { ...forms[form], onDone: () => { reloadRecent(); } } : null), [forms, form, reloadRecent]);
-  const myRoleKey = sess.position?.match(/A\d{1,2}/)?.[0];
+  // Mã nghề lấy từ DANH MỤC (positionCode), không dò regex trên chức danh tự do nữa.
+  // Dò chữ thì "A11 Bảo vệ" ra A11, trong khi nghề thật của bảo vệ là A10 — lệch hẳn,
+  // và đó cũng là lý do màn Ca đếm khác với "Hôm nay của tôi" (my_inbox dùng mã danh mục).
+  const myRoleKey = sess.positionCode ?? sess.position?.match(/A\d{1,2}/)?.[0];
   const myTasks = (tasks.rows ?? []).filter((t) => !t.role_hint || t.role_hint === sess.role || (myRoleKey && t.role_hint === `worker:${myRoleKey}`) || (t.role_hint?.startsWith("worker:") && sess.role !== "worker") || ["tech_head","director","owner"].includes(sess.role));
   useEffect(() => { void act("generate_tasks", {}).then(() => tasks.reload()); /* sinh việc khi mở ca */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
