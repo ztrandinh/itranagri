@@ -13,7 +13,12 @@ export type Field =
   | { key: string; label: string; type: "text"; required?: boolean; placeholder?: string }
   | { key: string; label: string; type: "date"; required?: boolean }
   | { key: string; label: string; type: "photo"; required?: boolean }
-  | { key: string; label: string; type: "bool"; required?: boolean };
+  | { key: string; label: string; type: "bool"; required?: boolean }
+  /** Danh sách BƯỚC của SOP đang chọn — tích ĐẠT/KHÔNG cho TỪNG bước.
+   *  Các bước lấy từ `target.meta.steps` (phụ thuộc đối tượng đã chọn ở Bước 1),
+   *  nên không khai cứng trong spec được. */
+  | { key: string; label: string; type: "steps"; required?: boolean };
+export type Step = { n: number; a: string; code?: string; ok?: boolean | null };
 
 export type ThreeTapSpec = {
   table: string;
@@ -59,7 +64,13 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
     return s ? spec.targets.filter((t) => noAccent(t.id + " " + t.label + " " + (t.sub ?? "")).includes(s)).slice(0, 40) : spec.targets.slice(0, 40);
   }, [search, spec.targets]);
 
-  const missing = spec.fields.filter((f) => f.required && (vals[f.key] == null || vals[f.key] === "")).map((f) => f.label);
+  const buocSop = (target?.meta?.steps as Step[] | undefined) ?? [];
+  const missing = spec.fields.filter((f) => {
+    if (!f.required) return false;
+    // Ô "steps": phải trả lời ĐỦ mọi bước, không được để sót bước nào.
+    if (f.type === "steps") { const ds = (vals[f.key] as Step[] | undefined) ?? []; return buocSop.length > 0 && ds.filter((x) => x.ok != null).length < buocSop.length; }
+    return vals[f.key] == null || vals[f.key] === "";
+  }).map((f) => (f.type === "steps" ? `${f.label} (còn ${buocSop.length - (((vals[f.key] as Step[] | undefined) ?? []).filter((x) => x.ok != null).length)} bước chưa chấm)` : f.label));
 
   async function submit() {
     if (!target) return;
@@ -153,6 +164,32 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
               {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
               {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
               {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
+              {/* Checklist THẬT: từng bước SOP một dòng, chấm riêng. Trước đây cả quy trình
+                  chỉ có MỘT công tắc "Tất cả bước ĐẠT" — một cú bấm như vậy không phải bằng
+                  chứng tuân thủ, và không ai biết bước nào hỏng. */}
+              {f.type === "steps" && (buocSop.length === 0
+                ? <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">Quy trình này chưa khai bước nào — báo tổ trưởng bổ sung SOP trước khi ghi.</div>
+                : <div className="space-y-1">
+                    <div className="flex gap-2 mb-1">
+                      <button className="btn-secondary !py-2 !text-sm flex-1" onClick={() => setVals((v0) => ({ ...v0, [f.key]: buocSop.map((b) => ({ ...b, ok: true })) }))}>Chấm tất cả ĐẠT</button>
+                      <button className="btn-secondary !py-2 !text-sm" onClick={() => setVals((v0) => ({ ...v0, [f.key]: [] }))}>Xoá chấm</button>
+                    </div>
+                    {buocSop.map((b) => {
+                      const ds = (vals[f.key] as Step[] | undefined) ?? [];
+                      const cur = ds.find((x) => x.n === b.n)?.ok ?? null;
+                      const dat = (ok: boolean) => setVals((v0) => {
+                        const cu = ((v0[f.key] as Step[] | undefined) ?? []).filter((x) => x.n !== b.n);
+                        return { ...v0, [f.key]: [...cu, { ...b, ok }].sort((x, y) => x.n - y.n) };
+                      });
+                      return (
+                        <div key={b.n} className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${cur === false ? "border-red-300 bg-red-50" : cur === true ? "border-green-300 bg-green-50" : "border-stone-200"}`}>
+                          <span className="text-sm text-stone-500 w-6 shrink-0">{b.n}.</span>
+                          <span className="flex-1 text-sm">{b.a}</span>
+                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === true ? "bg-green-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => dat(true)} aria-label={`Bước ${b.n} đạt`}>Đạt</button>
+                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === false ? "bg-red-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => dat(false)} aria-label={`Bước ${b.n} không đạt`}>Không</button>
+                        </div>);
+                    })}
+                  </div>)}
               {f.type === "photo" && (<div className="flex items-center gap-2"><input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />{photoUrls.map((u) => <img key={u} src={u} alt="" className="h-12 w-12 object-cover rounded" />)}</div>)}
             </div>))}
           <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(1)}>← Quay lại</button><button className="btn-primary flex-1" disabled={missing.length > 0} onClick={() => setStep(3)}>{missing.length ? `Thiếu: ${missing.join(", ")}` : "Tiếp →"}</button></div>

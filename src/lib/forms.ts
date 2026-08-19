@@ -11,6 +11,20 @@ const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): O
 /** Đàn để CHỌN khi ghi việc: chỉ đàn đang nuôi. Đàn đã đóng sổ (status DONG, 0 con) vẫn nằm
  *  trong danh mục để tra cứu lịch sử, nhưng KHÔNG được mời chọn — công nhân đã gặp cảnh
  *  form TMR bày ra "Gà đẻ lứa 00 (đã loại) · 0 con" bên cạnh đàn thật. */
+/** Gom SOP thành QUY TRÌNH (L2) kèm danh sách BƯỚC (L3). Bảng `sops` không có dòng riêng cho
+ *  L2 — L2 chỉ tồn tại dưới dạng giá trị `l2_code` trên các dòng L3, nên phải gom lại ở đây. */
+const sopL2Opts = (r: Ref): Option[] => {
+  const nhom = new Map<string, { ten: string; buoc: { n: number; a: string; code: string }[] }>();
+  for (const x of r.sops) {
+    const l2 = s(x.l2_code); const n = Number(x.l3_no);
+    if (!l2 || !Number.isFinite(n) || x.l3_no == null) continue;
+    if (!nhom.has(l2)) nhom.set(l2, { ten: s(x.l2_group) || l2, buoc: [] });
+    nhom.get(l2)!.buoc.push({ n, a: s(x.title), code: s(x.code) });
+  }
+  return [...nhom.entries()]
+    .map(([code, v]) => ({ id: code, label: v.ten === code ? code : `${v.ten}`, sub: `${code} · ${v.buoc.length} bước`, meta: { steps: v.buoc.sort((a, b) => a.n - b.n) } }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+};
 const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups
   .filter((g) => (!kinds || kinds.includes(s(g.kind))) && !["DONG", "CLOSED", "HUY"].includes(s(g.status).toUpperCase()))
   .map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
@@ -272,9 +286,20 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       fields: [{ key: "kind", label: "Loại", type: "choice", required: true, options: [{ id: "VAN_HANH", label: "Vận hành" }, { id: "ATTP", label: "ATTP" }, { id: "ATLD", label: "ATLĐ" }, { id: "AN_NINH", label: "An ninh" }, { id: "MOI_TRUONG", label: "Môi trường" }, { id: "THIET_BI", label: "Thiết bị" }, { id: "TAI_LIEU", label: "Tài liệu" }] }, { key: "severity", label: "Mức", type: "choice", required: true, options: [{ id: "NEAR_MISS", label: "Suýt xảy ra" }, { id: "THAP", label: "Thấp" }, { id: "TRUNG", label: "Trung" }, { id: "CAO", label: "Cao" }, { id: "NGHIEM_TRONG", label: "Nghiêm trọng" }] }, { key: "description", label: "Mô tả", type: "text", required: true }, { key: "photo", label: "Ảnh", type: "photo" }],
     },
     checklist: {
-      table: "checklist_runs", title: "Checklist ca theo SOP", targetLabel: "Chọn SOP", targetKey: "sop_code", targets: r.sops.filter((x) => s(x.status) === "BAN_HANH").map((x) => ({ id: s(x.code), label: s(x.title), sub: s(x.code) })),
-      fields: [{ key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }], required: true }, { key: "all_green", label: "Tất cả bước ĐẠT", type: "bool" }, { key: "note", label: "Nếu có bước không đạt: lý do", type: "text" }],
-      build: (t, v) => ({ ...v, sop_version: Number(r.sops.find((x) => s(x.code) === t.id)?.version ?? 1), results: (r.sops.find((x) => s(x.code) === t.id)?.steps as { n: number; a: string }[] | undefined ?? []).map((st) => ({ n: st.n, a: st.a, ok: !!v.all_green })) }),
+      // Quy trình nằm ở SOP cấp L2 (81 mã), các BƯỚC là 422 dòng SOP cấp L3 trỏ về qua l2_code.
+      // Trước đây form lấy thẳng r.sops lọc status='BAN_HANH' — mà chỉ 3/425 SOP đã ban hành,
+      // nên công nhân chỉ thấy 2 lựa chọn và không có bước nào để tích.
+      table: "checklist_runs", title: "Checklist ca theo SOP", targetLabel: "Quy trình cần chạy", targetKey: "sop_code",
+      targets: sopL2Opts(r),
+      fields: [
+        { key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }], required: true },
+        { key: "results", label: "Chấm từng bước", type: "steps", required: true },
+        { key: "note", label: "Bước nào không đạt: ghi rõ lý do", type: "text" },
+      ],
+      build: (t, v) => {
+        const ds = (v.results as { n: number; a: string; code?: string; ok?: boolean | null }[] | undefined) ?? [];
+        return { ...v, results: ds, all_green: ds.length > 0 && ds.every((x) => x.ok === true), sop_version: 1 };
+      },
     },
     paper_submit: {
       table: "paper_scans", title: "📷 Nộp phiếu giấy", targetLabel: "Chọn mẫu phiếu", targetKey: "form_code",
