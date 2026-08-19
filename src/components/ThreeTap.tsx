@@ -124,19 +124,19 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
               <label className="block text-sm text-stone-600 mb-1">{f.label}{f.required && " *"}</label>
               {f.type === "choice" && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {f.options.map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-green-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => setVals({ ...vals, [f.key]: o.id })}>{o.label}</button>)}
+                  {f.options.map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-green-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: o.id }))}>{o.label}</button>)}
                 </div>)}
               {f.type === "number" && (
                 <div className="flex items-center gap-2">
-                  <button className="btn-secondary !px-4" onClick={() => setVals({ ...vals, [f.key]: Math.max(f.min ?? -1e9, Number(vals[f.key] ?? 0) - (f.step ?? 1)) })}>−</button>
-                  <input type="number" inputMode="decimal" className="input text-center text-2xl font-bold" value={(vals[f.key] as number) ?? ""} min={f.min} max={f.max} step={f.step ?? "any"} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) })} />
-                  <button className="btn-secondary !px-4" onClick={() => setVals({ ...vals, [f.key]: Number(vals[f.key] ?? 0) + (f.step ?? 1) })}>+</button>
+                  <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Math.max(f.min ?? -1e9, Number(v0[f.key] ?? 0) - (f.step ?? 1)) }))}>−</button>
+                  <input type="number" inputMode="decimal" className="input text-center text-2xl font-bold" value={(vals[f.key] as number) ?? ""} min={f.min} max={f.max} step={f.step ?? "any"} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                  <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Number(v0[f.key] ?? 0) + (f.step ?? 1) }))}>+</button>
                   {f.unit && <span className="text-stone-600 w-16">{f.unit}</span>}
                   {f.unit === "kg" && <button type="button" className="btn-secondary !px-3 !py-2 !text-sm" title="Đọc từ cân Bluetooth" onClick={() => readBleScale(f.key)}>⚖ BLE</button>}
                 </div>)}
-              {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} />}
-              {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals({ ...vals, [f.key]: e.target.value })} />}
-              {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setVals({ ...vals, [f.key]: !vals[f.key] })}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
+              {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
+              {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
+              {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
               {f.type === "photo" && (<div className="flex items-center gap-2"><input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />{photoUrls.map((u) => <img key={u} src={u} alt="" className="h-12 w-12 object-cover rounded" />)}</div>)}
             </div>))}
           <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(1)}>← Quay lại</button><button className="btn-primary flex-1" disabled={missing.length > 0} onClick={() => setStep(3)}>{missing.length ? `Thiếu: ${missing.join(", ")}` : "Tiếp →"}</button></div>

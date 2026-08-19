@@ -250,8 +250,33 @@ export const ROLE_FORMS: Record<string, string[]> = {
   A11: ["gate", "stock_in", "stock_out", "incident", "paper_submit"],
   ALL: ["animal_event", "feed_tmr", "poultry_daily", "egg_in", "ras_daily", "ras_feed", "crop_log", "irrigation", "pest_scout", "fuel_out", "bio_batch", "d5_batch", "stock_in", "stock_out", "stocktake", "sale", "gate", "checklist", "incident", "paper_submit"],
 };
-export function formsForPosition(position: string | null | undefined, role: string): string[] {
+/** Nhận diện vị trí theo TỪ KHOÁ (cho các chức danh KHÔNG có mã A1–A14).
+ *  Trước đây chỉ khớp mã Axx nên 25/35 công nhân (bếp, lễ tân, tài xế, CN trùn, CN dê…)
+ *  đều rơi vào mặc định "A2 Sinh sản" → thấy form ghi sinh sản bò, không phải việc của mình. */
+/** Thứ tự QUAN TRỌNG: luật cụ thể đặt trước luật chung.
+ *  Cẩn thận với từ ngắn: "ca" trong "ca 2"/"ca đêm" từng khớp nhầm luật cá/lươn → dùng \b và có dấu. */
+const KEYWORD_FORMS: [RegExp, string[]][] = [
+  [/b(ả|a)o v(ệ|e)|c(ổ|o)ng|h(à|a)nh ch(í|i)nh|ch(ấ|a)m c(ô|o)ng|y t(ế|e) tr(ạ|a)i/i, ROLE_FORMS.A11],
+  [/thi(ế|e)t b(ị|i)|hi(ệ|e)u chu(ẩ|a)n|IoT/i, ROLE_FORMS.A8],
+  [/tr(ù|u)n|compost|BSF|b(ế|e)p r(á|a)c|sinh h(ọ|o)c tu(ầ|a)n ho(à|a)n|khu D\b/i, ROLE_FORMS.A6],
+  [/\bRAS\b|l(ư|u)(ơ|o)n|th(ủ|u)y s(ả|a)n|\bcá\b|b(ể|e) c(á|a)/i, ROLE_FORMS.A4],
+  [/\bg(à|a)\b|g(à|a) (đ|d)(ẻ|e)|g(à|a) th(ị|i)t|tr(ứ|u)ng|gia c(ầ|a)m/i, ROLE_FORMS.A3],
+  [/(é|e)p vi(ê|e)n|tr(ộ|o)n TMR|\bD5\b|s(ơ|o) ch(ế|e)|(đ|d)(ó|o)ng g(ó|o)i|\btem\b|h(ú|u)t ch(â|a)n kh(ô|o)ng|ch(ế|e) bi(ế|e)n|s(ấ|a)y/i, ROLE_FORMS.A7],
+  [/b(ò|o)\b|b(ê|e)\b|d(ê|e)\b|sinh s(ả|a)n|cai s(ữ|u)a|v(ỗ|o) b(é|e)o|chu(ồ|o)ng/i, ROLE_FORMS.A2],
+  [/c(ỏ|o)\b|b(ắ|a)p|l(ú|u)a|rau|n(ấ|a)m|t(ư|u)(ớ|o)i|(đ|d)(ồ|o)ng c(ỏ|o)|sinh kh(ố|o)i|nh(à|a) l(ư|u)(ớ|o)i|li(ê|e)n k(ế|e)t h(ộ|o)|(ủ|u) chua/i, ROLE_FORMS.A5],
+  [/kho\b|th(ủ|u) kho|giao h(à|a)ng|t(à|a)i x(ế|e)|v(ậ|a)n t(ả|a)i|mua h(à|a)ng|cung (ứ|u)ng/i, ROLE_FORMS.A8],
+  [/kinh doanh|NVKD|b(á|a)n h(à|a)ng|CSKH|hotline|nh(ậ|a)n nu(ô|o)i|l(ễ|e) t(â|a)n|tour|(đ|d)(ặ|a)t ph(ò|o)ng|b(ế|e)p|farm-to-table|bu(ồ|o)ng ph(ò|o)ng/i, ROLE_FORMS.A9],
+];
+/** Dự phòng theo PHÒNG BAN khi không khớp từ khoá nào. */
+const DEPT_FORMS: Record<string, string[]> = {
+  KTCN: ROLE_FORMS.A2, SH: ROLE_FORMS.A6, TT: ROLE_FORMS.A5, D5: ROLE_FORMS.A7,
+  CCU: ROLE_FORMS.A8, KDM: ROLE_FORMS.A9, DL: ROLE_FORMS.A9, HCNS: ROLE_FORMS.A11, CNTB: ROLE_FORMS.A5,
+};
+
+export function formsForPosition(position: string | null | undefined, role: string, dept?: string | null): string[] {
   const m = position?.match(/A(\d{1,2})/); const key = m ? `A${m[1]}` : null;
   if (key && ROLE_FORMS[key]) return ROLE_FORMS[key];
-  return role === "worker" ? ROLE_FORMS.A2 : ROLE_FORMS.ALL;
+  if (position) { for (const [re, forms] of KEYWORD_FORMS) if (re.test(position)) return forms; }
+  if (dept && DEPT_FORMS[dept]) return DEPT_FORMS[dept];
+  return role === "worker" ? ROLE_FORMS.ALL : ROLE_FORMS.ALL;
 }
