@@ -28,12 +28,20 @@ export async function pending(): Promise<Queued[]> {
   const items = await Promise.all(ks.map((k) => get<Queued>(k)));
   return items.filter(Boolean).sort((a, b) => a!.created_at - b!.created_at) as Queued[];
 }
-let flushing = false;
-export async function flush(): Promise<{ sent: number; failed: number }> {
-  if (flushing || typeof navigator !== "undefined" && !navigator.onLine) return { sent: 0, failed: 0 };
-  flushing = true;
+/** Lượt gửi đang chạy. Trước đây là cờ boolean và flush() thoát ngay khi thấy cờ bật —
+ *  nên nơi gọi `await flush()` KHÔNG hề chờ, tưởng đã gửi xong trong khi lượt gửi thật
+ *  vẫn đang bay. Đo được: form báo "đã lưu trong máy (chưa có mạng)" dù đang online và
+ *  máy chủ vừa từ chối bản ghi. Nay trả về chính promise đang chạy để nơi gọi chờ đúng lượt. */
+let flushing: Promise<{ sent: number; failed: number }> | null = null;
+export function flush(): Promise<{ sent: number; failed: number }> {
+  if (flushing) return flushing;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return Promise.resolve({ sent: 0, failed: 0 });
+  flushing = doFlush().finally(() => { flushing = null; emit(); });
+  return flushing;
+}
+async function doFlush(): Promise<{ sent: number; failed: number }> {
   let sent = 0, failed = 0;
-  try {
+  {
     const items = await pending();
     const byTable = new Map<string, Queued[]>();
     for (const it of items) byTable.set(it.table, [...(byTable.get(it.table) ?? []), it]);
@@ -56,7 +64,7 @@ export async function flush(): Promise<{ sent: number; failed: number }> {
         failed += list.length;
       }
     }
-  } finally { flushing = false; emit(); }
+  }
   return { sent, failed };
 }
 export async function discard(key: string) { await del(key); emit(); }

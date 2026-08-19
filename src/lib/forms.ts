@@ -4,6 +4,7 @@ import type { ThreeTapSpec, Option } from "@/components/ThreeTap";
 export type Ref = {
   animals: Record<string, unknown>[]; groups: Record<string, unknown>[]; warehouses: Record<string, unknown>[]; products: Record<string, unknown>[]; bins?: Record<string, unknown>[];
   plots: Record<string, unknown>[]; recipes: Record<string, unknown>[]; locations: Record<string, unknown>[]; sops: Record<string, unknown>[]; devices: Record<string, unknown>[]; partners: Record<string, unknown>[];
+  staff?: Record<string, unknown>[];   // để hành chính chấm công cho người khác
 };
 const s = (v: unknown) => (v == null ? "" : String(v));
 const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): Option[] =>
@@ -11,6 +12,20 @@ const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): O
 /** Đàn để CHỌN khi ghi việc: chỉ đàn đang nuôi. Đàn đã đóng sổ (status DONG, 0 con) vẫn nằm
  *  trong danh mục để tra cứu lịch sử, nhưng KHÔNG được mời chọn — công nhân đã gặp cảnh
  *  form TMR bày ra "Gà đẻ lứa 00 (đã loại) · 0 con" bên cạnh đàn thật. */
+/** Gom SOP thành QUY TRÌNH (L2) kèm danh sách BƯỚC (L3). Bảng `sops` không có dòng riêng cho
+ *  L2 — L2 chỉ tồn tại dưới dạng giá trị `l2_code` trên các dòng L3, nên phải gom lại ở đây. */
+const sopL2Opts = (r: Ref): Option[] => {
+  const nhom = new Map<string, { ten: string; buoc: { n: number; a: string; code: string }[] }>();
+  for (const x of r.sops) {
+    const l2 = s(x.l2_code); const n = Number(x.l3_no);
+    if (!l2 || !Number.isFinite(n) || x.l3_no == null) continue;
+    if (!nhom.has(l2)) nhom.set(l2, { ten: s(x.l2_group) || l2, buoc: [] });
+    nhom.get(l2)!.buoc.push({ n, a: s(x.title), code: s(x.code) });
+  }
+  return [...nhom.entries()]
+    .map(([code, v]) => ({ id: code, label: v.ten === code ? code : `${v.ten}`, sub: `${code} · ${v.buoc.length} bước`, meta: { steps: v.buoc.sort((a, b) => a.n - b.n) } }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+};
 const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups
   .filter((g) => (!kinds || kinds.includes(s(g.kind))) && !["DONG", "CLOSED", "HUY"].includes(s(g.status).toUpperCase()))
   .map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
@@ -220,15 +235,126 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       table: "gate_logs", title: "Nhật ký cổng", targetLabel: "Biển số xe (gõ/OCR)", targetKey: "plate", targets: [], allowScanInput: true,
       fields: [{ key: "direction", label: "Chiều", type: "choice", options: [{ id: "VAO", label: "Vào" }, { id: "RA", label: "Ra" }], required: true }, { key: "weighed", label: "Đã qua cân", type: "bool" }, { key: "anolyte_wash", label: "Đã rửa hố anolyte", type: "bool" }, { key: "purpose", label: "Mục đích", type: "text" }, { key: "photo", label: "Ảnh xe", type: "photo" }],
     },
+    // A14 Bếp · LƯU MẪU THỨC ĂN — nghĩa vụ BẮT BUỘC theo ATTP. Trước đây bếp trưởng không có
+    // chỗ nào để ghi, tức là trại không có bằng chứng lưu mẫu khi đoàn kiểm tra hỏi.
+    food_sample: {
+      table: "food_samples", title: "Lưu mẫu thức ăn", targetLabel: "Bữa / suất ăn", targetKey: "meal", allowScanInput: false,
+      targets: [{ id: "SANG", label: "Sáng" }, { id: "TRUA", label: "Trưa" }, { id: "CHIEU", label: "Chiều" }, { id: "TIEC", label: "Tiệc / đoàn khách" }],
+      fields: [
+        { key: "dish_name", label: "Tên món", type: "text", required: true, placeholder: "Gà kho gừng…" },
+        { key: "sample_gram", label: "Khối lượng mẫu", type: "number", unit: "g", min: 0, step: 10, default: 100, required: true },
+        { key: "stored_at", label: "Lưu ở đâu", type: "text", placeholder: "Tủ mẫu bếp" },
+        { key: "temp_c", label: "Nhiệt độ tủ mẫu", type: "number", unit: "°C", min: -30, max: 30, step: 1 },
+        { key: "note", label: "Ghi chú", type: "text" },
+        { key: "photo", label: "Ảnh mẫu đã dán nhãn", type: "photo" },
+      ],
+      build: (t, v) => ({ ...v, meal: t.id, keep_until: new Date(Date.now() + 24 * 3600 * 1000).toISOString() }),
+    },
+    // A16 Tài xế · NHIỆT ĐỘ CHUỖI LẠNH trên đường. Thiếu mắt xích này thì hàng tới nơi
+    // không chứng minh được đã giữ đúng nhiệt suốt hành trình.
+    cold_chain: {
+      // Nhãn dùng luôn trong câu trạng thái rỗng ("gõ <nhãn> vào ô trên") nên phải là một
+      // danh từ đọc xuôi, không phải câu lệnh kiểu "Chọn xe".
+      table: "cold_chain_logs", title: "Nhiệt độ xe lạnh", targetLabel: "Biển số xe", targetKey: "vehicle_id", allowScanInput: true,
+      // Lọc CHÍNH XÁC xe vận chuyển lạnh. Dùng /XE/ chung là sai: nó bắt luôn XE_TRON
+      // (xe trộn TMR) — đo được lúc thử, tài xế được mời ghi nhiệt độ cho xe trộn thức ăn.
+      // Danh sách rỗng cũng không sao: form cho gõ tay biển số ở Bước 1.
+      targets: r.devices.filter((d) => /^(XE_LANH|XE_TAI|XE_DONG_LANH|REEFER|TRUCK)/i.test(s(d.kind))).map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "leg", label: "Chặng", type: "choice", required: true, options: [{ id: "XEP_HANG", label: "Lúc xếp hàng" }, { id: "DOC_DUONG", label: "Dọc đường" }, { id: "GIAO_HANG", label: "Lúc giao hàng" }] },
+        { key: "temp_c", label: "Nhiệt độ đo được", type: "number", unit: "°C", min: -30, max: 30, step: 1, required: true },
+        { key: "temp_max_c", label: "Ngưỡng cho phép của lô", type: "number", unit: "°C", min: -30, max: 30, step: 1 },
+        { key: "door_open", label: "Có mở cửa thùng không", type: "bool" },
+        { key: "location_note", label: "Đang ở đâu", type: "text", placeholder: "Quốc lộ 20, km 45…" },
+        { key: "photo", label: "Ảnh đồng hồ nhiệt", type: "photo" },
+      ],
+    },
+    // A11 KTV thiết bị · PHIẾU HIỆU CHUẨN. Bảng `calibrations` có sẵn từ lâu, chỉ thiếu form.
+    calibration: {
+      table: "calibrations", title: "Hiệu chuẩn thiết bị", targetLabel: "Chọn thiết bị cần hiệu chuẩn", targetKey: "target_device_id", allowScanInput: true,
+      targets: r.devices.map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "method", label: "Cách hiệu chuẩn", type: "choice", required: true, options: [{ id: "QUA_CAN_CHUAN", label: "Quả cân chuẩn" }, { id: "DUNG_DICH_CHUAN", label: "Dung dịch chuẩn" }, { id: "MAY_CHUAN", label: "Máy chuẩn" }, { id: "DON_VI_NGOAI", label: "Đơn vị ngoài" }] },
+        { key: "before_val", label: "Số đo TRƯỚC hiệu chuẩn", type: "number", step: 0.1 },
+        { key: "after_val", label: "Số đo SAU hiệu chuẩn", type: "number", step: 0.1 },
+        { key: "result", label: "Kết quả", type: "choice", required: true, options: [{ id: "DAT", label: "Đạt" }, { id: "DA_HIEU_CHINH", label: "Đã hiệu chỉnh" }, { id: "KHONG_DAT", label: "Không đạt — ngừng dùng" }] },
+        { key: "next_due", label: "Hạn hiệu chuẩn kế tiếp", type: "date" },
+      ],
+    },
+    // A18 Hành chính · CHẤM CÔNG. `attendance` là bảng TỔNG HỢP nên ghi vào sổ riêng.
+    timekeep: {
+      table: "attendance_logs", title: "Chấm công", targetLabel: "Chọn người", targetKey: "staff_id", allowScanInput: true,
+      targets: (r.staff ?? []).filter((x: Record<string, unknown>) => x.active !== false).map((x: Record<string, unknown>) => ({ id: s(x.id), label: s(x.full_name), sub: s(x.position) })),
+      fields: [
+        { key: "kind", label: "Loại", type: "choice", required: true, options: [{ id: "VAO_CA", label: "Vào ca" }, { id: "RA_CA", label: "Ra ca" }, { id: "DI_MUON", label: "Đi muộn" }, { id: "TANG_CA", label: "Tăng ca" }, { id: "NGHI_PHEP", label: "Nghỉ phép" }, { id: "NGHI_OM", label: "Nghỉ ốm" }] },
+        { key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }] },
+        { key: "minutes", label: "Số phút (tăng ca / đi muộn)", type: "number", unit: "phút", min: 0, step: 15 },
+        { key: "reason", label: "Lý do", type: "text" },
+      ],
+    },
+    // A11 KTV thiết bị · BẢO TRÌ / SỬA CHỮA.
+    maintenance: {
+      table: "maintenance_logs", title: "Bảo trì / sửa chữa", targetLabel: "Thiết bị", targetKey: "target_device_id", allowScanInput: true,
+      targets: r.devices.map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "kind", label: "Loại việc", type: "choice", required: true, options: [{ id: "DINH_KY", label: "Bảo trì định kỳ" }, { id: "SUA_CHUA", label: "Sửa chữa hỏng" }, { id: "THAY_THE", label: "Thay phụ tùng" }, { id: "KIEM_TRA", label: "Kiểm tra" }] },
+        { key: "symptom", label: "Hiện tượng hỏng", type: "text", placeholder: "Kêu to, rung, không lên nguồn…" },
+        { key: "action", label: "Đã làm gì", type: "text", required: true },
+        { key: "parts", label: "Phụ tùng đã thay", type: "text" },
+        { key: "downtime_min", label: "Máy ngừng bao lâu", type: "number", unit: "phút", min: 0, step: 15 },
+        { key: "result", label: "Kết quả", type: "choice", required: true, options: [{ id: "XONG", label: "Xong, chạy lại được" }, { id: "CHO_PHU_TUNG", label: "Chờ phụ tùng" }, { id: "NGUNG_DUNG", label: "Ngừng dùng — chờ xử lý" }] },
+        { key: "next_due", label: "Hạn bảo trì kế tiếp", type: "date" },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+    },
+    // A12 Lễ tân · ĐẶT PHÒNG / TOUR — ghi vào sổ khách `hosp_folio` đã có sẵn.
+    booking: {
+      table: "hosp_folio", title: "Đặt phòng / tour", targetLabel: "Khách", targetKey: "guest_partner_id", allowScanInput: true,
+      targets: r.partners.map((p) => ({ id: s(p.id), label: s(p.name), sub: s(p.kind) })),
+      fields: [
+        { key: "kind", label: "Dịch vụ", type: "choice", required: true, options: [{ id: "PHONG", label: "Phòng nghỉ" }, { id: "TOUR", label: "Tour trải nghiệm" }, { id: "AN_UONG", label: "Ăn uống" }, { id: "TIEC", label: "Tiệc / đoàn" }, { id: "DICH_VU", label: "Dịch vụ khác" }] },
+        { key: "description", label: "Nội dung", type: "text", required: true, placeholder: "2 phòng đôi, 2 đêm…" },
+        { key: "qty", label: "Số lượng", type: "number", min: 0, step: 1, default: 1 },
+        { key: "unit_price", label: "Đơn giá", type: "number", unit: "đ", min: 0, step: 50000 },
+        { key: "amount", label: "Thành tiền", type: "number", unit: "đ", min: 0, step: 50000, required: true },
+        { key: "payment", label: "Thanh toán", type: "choice", options: [{ id: "TM", label: "Tiền mặt" }, { id: "CK", label: "Chuyển khoản" }, { id: "NO", label: "Ghi nợ" }] },
+      ],
+    },
+    // A6 CN ủ chua · Ủ CHUA — dùng `batch_logs` đã có sẵn, thêm dây chuyền U_CHUA.
+    silage: {
+      table: "batch_logs", title: "Ủ chua (hố / bao)", targetLabel: "Chọn hố / kho ủ", targetKey: "location_id", allowScanInput: true,
+      targets: locOpts(r),
+      fields: [
+        { key: "line", label: "Việc", type: "choice", required: true, options: [{ id: "U_CHUA_NAP", label: "Nạp hố / vào bao" }, { id: "U_CHUA_NEN", label: "Nén – phủ bạt" }, { id: "U_CHUA_MO", label: "Mở hố lấy dùng" }] },
+        { key: "kg", label: "Khối lượng", type: "number", unit: "kg", min: 0, step: 100, required: true },
+        { key: "moisture_pct", label: "Độ ẩm nguyên liệu", type: "number", unit: "%", min: 0, max: 100, step: 1 },
+        { key: "ph", label: "pH (đo khi mở hố)", type: "number", min: 3, max: 9, step: 0.1 },
+        { key: "temp_c", label: "Nhiệt độ khối ủ", type: "number", unit: "°C", min: 0, max: 80, step: 1 },
+        { key: "note", label: "Ghi chú (mùi, nấm mốc…)", type: "text" },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+      build: (t, v) => ({ ...v, location_id: t.id, batch_code: `UC-${new Date().toISOString().slice(0, 10)}`, qc: v.ph != null ? { ph: v.ph } : {} }),
+    },
     // Chung · sự cố · checklist
     incident: {
       table: "incidents", title: "Báo sự cố / near-miss", targetLabel: "Nơi xảy ra", targetKey: "location_id", targets: locOpts(r), allowScanInput: true,
       fields: [{ key: "kind", label: "Loại", type: "choice", required: true, options: [{ id: "VAN_HANH", label: "Vận hành" }, { id: "ATTP", label: "ATTP" }, { id: "ATLD", label: "ATLĐ" }, { id: "AN_NINH", label: "An ninh" }, { id: "MOI_TRUONG", label: "Môi trường" }, { id: "THIET_BI", label: "Thiết bị" }, { id: "TAI_LIEU", label: "Tài liệu" }] }, { key: "severity", label: "Mức", type: "choice", required: true, options: [{ id: "NEAR_MISS", label: "Suýt xảy ra" }, { id: "THAP", label: "Thấp" }, { id: "TRUNG", label: "Trung" }, { id: "CAO", label: "Cao" }, { id: "NGHIEM_TRONG", label: "Nghiêm trọng" }] }, { key: "description", label: "Mô tả", type: "text", required: true }, { key: "photo", label: "Ảnh", type: "photo" }],
     },
     checklist: {
-      table: "checklist_runs", title: "Checklist ca theo SOP", targetLabel: "Chọn SOP", targetKey: "sop_code", targets: r.sops.filter((x) => s(x.status) === "BAN_HANH").map((x) => ({ id: s(x.code), label: s(x.title), sub: s(x.code) })),
-      fields: [{ key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }], required: true }, { key: "all_green", label: "Tất cả bước ĐẠT", type: "bool" }, { key: "note", label: "Nếu có bước không đạt: lý do", type: "text" }],
-      build: (t, v) => ({ ...v, sop_version: Number(r.sops.find((x) => s(x.code) === t.id)?.version ?? 1), results: (r.sops.find((x) => s(x.code) === t.id)?.steps as { n: number; a: string }[] | undefined ?? []).map((st) => ({ n: st.n, a: st.a, ok: !!v.all_green })) }),
+      // Quy trình nằm ở SOP cấp L2 (81 mã), các BƯỚC là 422 dòng SOP cấp L3 trỏ về qua l2_code.
+      // Trước đây form lấy thẳng r.sops lọc status='BAN_HANH' — mà chỉ 3/425 SOP đã ban hành,
+      // nên công nhân chỉ thấy 2 lựa chọn và không có bước nào để tích.
+      table: "checklist_runs", title: "Checklist ca theo SOP", targetLabel: "Quy trình cần chạy", targetKey: "sop_code",
+      targets: sopL2Opts(r),
+      fields: [
+        { key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }], required: true },
+        { key: "results", label: "Chấm từng bước", type: "steps", required: true },
+        { key: "note", label: "Bước nào không đạt: ghi rõ lý do", type: "text" },
+      ],
+      build: (t, v) => {
+        const ds = (v.results as { n: number; a: string; code?: string; ok?: boolean | null }[] | undefined) ?? [];
+        return { ...v, results: ds, all_green: ds.length > 0 && ds.every((x) => x.ok === true), sop_version: 1 };
+      },
     },
     paper_submit: {
       table: "paper_scans", title: "📷 Nộp phiếu giấy", targetLabel: "Chọn mẫu phiếu", targetKey: "form_code",

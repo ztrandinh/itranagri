@@ -1,0 +1,60 @@
+# Dựng lại TOÀN BỘ từ Postgres trắng — luật 9 trong CLAUDE.md
+#
+# Vì sao cần: luật 9 nói "test quý: dựng lại từ Postgres trắng bằng pnpm db:migrate", nhưng
+# thực tế nó đã hỏng từ lâu mà không ai biết, vì chưa bao giờ có ai chạy lại từ đầu:
+#   · 0056_sales_seed.sql gọi gen_contract_deliveries('F01-HD-0001') — hợp đồng này KHÔNG do
+#     migration nào tạo, chỉ tồn tại vì có người tạo qua giao diện -> ERR_NOT_FOUND
+#   · seed-history-3.sql phân giám sát viên chấm CHÍNH PHÒNG của mình -> trigger chống thông
+#     đồng chặn -> ERR_SELF_DEPT
+# Hai lỗi này chỉ lộ ra khi dựng lại từ trắng. Nay có việc này chạy tự động thì không hỏng
+# âm thầm lần nữa.
+
+name: Dựng lại từ CSDL trắng
+
+on:
+  push:
+    branches: [main]
+    paths: ['supabase/migrations/**', 'scripts/**', 'src/lib/queries.ts']
+  pull_request:
+    paths: ['supabase/migrations/**', 'scripts/**']
+  schedule:
+    - cron: '0 18 * * 0'   # 01:00 thứ Hai giờ VN
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: itranagri
+          POSTGRES_DB: itranagri
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:itranagri@localhost:5432/itranagri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Dựng schema từ CSDL trắng
+        run: pnpm db:migrate --reset
+
+      - name: Gieo dữ liệu 30 tháng
+        run: pnpm db:seed:history
+
+      # Thoát mã 1 nếu còn bảng mang mã cũ, hoặc còn nhân sự chưa được cấp tài khoản.
+      # Đây là chốt chặn để không quay lại cảnh hai hệ mã sống song song.
+      - name: Soát mã ID và tài khoản
+        run: pnpm db:codes:check
+
+      - name: Kiểu và lint
+        run: pnpm exec tsc --noEmit && pnpm lint
+
+      - name: Kiểm thử
+        run: pnpm test
