@@ -12,7 +12,10 @@ import { BottomNav } from "@/components/ui/BottomNav";
 import { SunToggle, SunBoot } from "@/components/ui/SunMode";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 
-export type Sess = { staffId: string; staffName: string; role: string; position: string | null; dept?: string | null; farmId: string; farmIds: string[]; orgId: string };
+/** `account` = mã CHỖ NGỒI bất biến (job_accounts.code, vd KTCN-A-03); `positionCode` = mã NGHỀ
+ *  trong danh mục (A1…A18, T01…, K01…). Bộ form và việc giao xuống bám hai mã này, không bám
+ *  chức danh tự do (`position`) vốn mỗi người viết một kiểu. */
+export type Sess = { staffId: string; staffName: string; role: string; position: string | null; dept?: string | null; farmId: string; farmIds: string[]; orgId: string; account?: string | null; positionCode?: string | null };
 
 
 /** KHU VỰC (phân khu UI cho dễ dùng): mỗi khu gom các màn liên quan; vai nào thấy khu nào */

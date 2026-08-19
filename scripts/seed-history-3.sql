@@ -34,7 +34,15 @@ do $$ declare F text := :'farm'; k int; r record; wk date; sc numeric; ex text; 
     end loop;
   end loop;
   for k in 1..12 loop wk := (date_trunc('week', current_date) - (k*7||' days')::interval)::date;
-    for r in select s.id as sid, s.dept, c.id as cid, c.name, a.supervisor_id from staff s join supervision_criteria c on c.method='MANUAL' and c.active and c.position_code=s.position_code join supervision_assignments a on a.farm_id=F and a.target_dept=s.dept and a.active where s.farm_id=F and s.active loop
+    -- Bỏ cặp giám sát viên chấm CHÍNH PHÒNG của mình: trái thiết kế chống thông đồng (tuyến 2
+    -- phải chấm chéo phòng) và bị trg_sup_check_guard chặn thẳng bằng ERR_SELF_DEPT, làm
+    -- `pnpm db:seed:history` chết giữa chừng trên CSDL trắng.
+    for r in select s.id as sid, s.dept, c.id as cid, c.name, a.supervisor_id
+               from staff s
+               join supervision_criteria c on c.method='MANUAL' and c.active and c.position_code=s.position_code
+               join supervision_assignments a on a.farm_id=F and a.target_dept=s.dept and a.active
+               join staff sup on sup.id = a.supervisor_id
+              where s.farm_id=F and s.active and sup.dept is distinct from s.dept loop
       insert into supervision_checks(farm_id, ts, created_by, source, client_ref, supervisor_id, target_dept, target_staff_id, criteria_id, week_start, item, result, severity, note)
       values (F, wk + 2 + time '10:00', r.supervisor_id, 'IMPORT', 'h3-sc-'||k||'-'||r.sid||'-'||r.cid, r.supervisor_id, r.dept, r.sid, r.cid, wk, r.name, case when (k*31 + length(r.sid) + length(r.cid))%7=0 then 'LOI' else 'DAT' end, case when (k*31 + length(r.sid) + length(r.cid))%7=0 then (array['NHE','TRUNG','NANG'])[1+k%3] end, case when (k*31 + length(r.sid) + length(r.cid))%7=0 then 'Quan sát tại chỗ: chưa đạt — yêu cầu khắc phục trong ca' end) on conflict do nothing;
     end loop;

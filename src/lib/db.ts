@@ -20,15 +20,18 @@ export function adminPool(): Pool {
   return g.__itranPools!.admin;
 }
 
-export type Ctx = { orgId: string; farmId: string; role: string; staffId: string; farmIds: string[] };
+/** `account` = MÃ CHỖ NGỒI (job_accounts.code, vd KTCN-A-03) — bất biến, không xoá.
+ *  `staffId` = con người đang giữ chỗ đó, có thể thay. Giao việc/quyền bám `account`;
+ *  bản ghi nghiệp vụ vẫn ghi `staffId` để biết AI đã ghi (truy xuất nguồn gốc). */
+export type Ctx = { orgId: string; farmId: string; role: string; staffId: string; farmIds: string[]; account?: string | null; positionCode?: string | null };
 
 /** Chạy fn trong 1 transaction với ngữ cảnh RLS (SET LOCAL app.*). */
 export async function withCtx<T>(ctx: Ctx, fn: (c: PoolClient) => Promise<T>): Promise<T> {
   const c = await appPool().connect();
   try {
     await c.query("begin");
-    await c.query("select set_config('app.org_id',$1,true), set_config('app.farm_id',$2,true), set_config('app.role',$3,true), set_config('app.staff_id',$4,true), set_config('app.farm_ids',$5,true)",
-      [ctx.orgId, ctx.farmId, ctx.role, ctx.staffId, ctx.farmIds.join(",")]);
+    await c.query("select set_config('app.org_id',$1,true), set_config('app.farm_id',$2,true), set_config('app.role',$3,true), set_config('app.staff_id',$4,true), set_config('app.farm_ids',$5,true), set_config('app.account',$6,true), set_config('app.position',$7,true)",
+      [ctx.orgId, ctx.farmId, ctx.role, ctx.staffId, ctx.farmIds.join(","), ctx.account ?? "", ctx.positionCode ?? ""]);
     const r = await fn(c);
     await c.query("commit");
     return r;

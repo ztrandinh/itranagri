@@ -51,11 +51,12 @@ from (select id, supplier_id, (lines->0->>'sku') as sku, coalesce((lines->0->>'p
 on conflict (id) do nothing;
 
 -- ===== (C5) ĐỌC SỐ MÁY/CÔNG-TƠ: cấu hình chỉ số cho máy thật + 14 ngày số đọc (1 ngày điện nhảy vọt = bất thường) =====
+-- tra facility theo CODE (ổn định — normalize_codes 0106 chỉ đổi id, không đổi code) để bền qua chuẩn hóa mã
 insert into reading_metrics(id, farm_id, facility_id, code, name, unit, kind, freq, lo, hi, role_hint) values
- ('RM-ELEC-'||:'farm', :'farm', :'farm'||'-FC-TRAM-DIEN', 'DIEN_KWH', 'Điện tiêu thụ (công-tơ tổng)', 'kWh', 'METER', 'NGAY', null, 400, 'it_engineer'),
- ('RM-WATER-'||:'farm', :'farm', :'farm'||'-FC-GIENG', 'NUOC_M3', 'Nước bơm (công-tơ giếng)', 'm³', 'METER', 'NGAY', null, 60, 'it_engineer'),
- ('RM-BIOGAS-'||:'farm', :'farm', :'farm'||'-FC-BIOGAS', 'BIOGAS_M3', 'Biogas sinh ra', 'm³', 'METER', 'NGAY', null, 90, 'tech_head'),
- ('RM-D5OUT-'||:'farm', :'farm', :'farm'||'-FC-D5', 'SANLUONG_KG', 'Sản lượng viên D5', 'kg', 'METER', 'NGAY', null, 3000, 'team_lead')
+ ('RM-ELEC-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='TRAM-DIEN'), 'DIEN_KWH', 'Điện tiêu thụ (công-tơ tổng)', 'kWh', 'METER', 'NGAY', null, 400, 'it_engineer'),
+ ('RM-WATER-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='GIENG'), 'NUOC_M3', 'Nước bơm (công-tơ giếng)', 'm³', 'METER', 'NGAY', null, 60, 'it_engineer'),
+ ('RM-BIOGAS-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='BIOGAS'), 'BIOGAS_M3', 'Biogas sinh ra', 'm³', 'METER', 'NGAY', null, 90, 'tech_head'),
+ ('RM-D5OUT-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='D5'), 'SANLUONG_KG', 'Sản lượng viên D5', 'kg', 'METER', 'NGAY', null, 3000, 'team_lead')
 on conflict (id) do nothing;
 do $$
 declare m record; dday int; val numeric; cref text; who text;
@@ -89,10 +90,20 @@ insert into recording_obligations(id, farm_id, code, name, dept, role_hint, sour
  ('RO-PEST-'||:'farm', :'farm', 'SOI_SAU_BENH', 'Soi sâu bệnh (scouting) hằng tuần', 'TT', 'team_lead', 'PEST', 'TUAN', 24, 72, 'TRUNG'),
  ('RO-HARVEST-'||:'farm', :'farm', 'GHI_THU_HOACH', 'Ghi thu hoạch theo đợt', 'TT', 'team_lead', 'HARVEST', 'DOT', 24, 72, 'NHE')
 on conflict (id) do nothing;
--- Mỗi khâu có SOP (thực hành SX·an toàn·vệ sinh) = checklist bắt buộc CHẠY (source_ref = mã SOP L2); quên chạy = báo gắt
+-- Mỗi khâu có SOP (thực hành SX·an toàn·vệ sinh) = checklist bắt buộc CHẠY (source_ref = mã SOP L2). Bộ khởi động theo RỦI RO, tần suất ĐÚNG bản chất (không ép daily cào bằng).
+-- 6 SOP An toàn/vệ sinh: cổng·ATLĐ hằng ngày; PCCC·lũ·trại-đóng theo ĐỢT (không báo quá hạn ảo, chỉ vào Độ phủ); chất thải hằng tuần
 insert into recording_obligations(id, farm_id, code, name, dept, role_hint, source_kind, source_ref, freq, grace_hours, escalate_hours, severity) values
- ('RO-SOP-AT02-'||:'farm', :'farm', 'CL_ATLD', 'Checklist An toàn lao động (SOP-AT-02)', 'HCNS', 'team_lead', 'CHECKLIST', 'SOP-AT-02', 'NGAY', 6, 24, 'NANG'),
  ('RO-SOP-AT01-'||:'farm', :'farm', 'CL_CONG_SINHHOC', 'Checklist Cổng sinh học – rửa xe (SOP-AT-01)', 'CCU', 'team_lead', 'CHECKLIST', 'SOP-AT-01', 'NGAY', 6, 24, 'NANG'),
+ ('RO-SOP-AT02-'||:'farm', :'farm', 'CL_ATLD', 'Checklist An toàn lao động (SOP-AT-02)', 'HCNS', 'team_lead', 'CHECKLIST', 'SOP-AT-02', 'NGAY', 6, 24, 'NANG'),
+ ('RO-SOP-AT03-'||:'farm', :'farm', 'CL_PCCC', 'Diễn tập PCCC (SOP-AT-03)', 'GDT', 'tech_head', 'CHECKLIST', 'SOP-AT-03', 'DOT', 24, 72, 'TRUNG'),
+ ('RO-SOP-AT04-'||:'farm', :'farm', 'CL_LU', 'Ứng phó lũ 3 cấp (SOP-AT-04)', 'GDT', 'tech_head', 'CHECKLIST', 'SOP-AT-04', 'DOT', 24, 72, 'TRUNG'),
+ ('RO-SOP-AT05-'||:'farm', :'farm', 'CL_TRAI_DONG', 'Trại đóng khi dịch (SOP-AT-05)', 'KTCN', 'tech_head', 'CHECKLIST', 'SOP-AT-05', 'DOT', 24, 72, 'NANG'),
  ('RO-SOP-AT06-'||:'farm', :'farm', 'CL_CHATTHAI', 'Checklist Xử lý xác – chất thải nguy hại (SOP-AT-06)', 'SH', 'team_lead', 'CHECKLIST', 'SOP-AT-06', 'TUAN', 24, 72, 'TRUNG')
+on conflict (id) do nothing;
+-- CCP (điểm kiểm soát tới hạn — ATTP/pháp lý): kiểm mỗi ngày SX, mức NẶNG, leo thang nhanh; lấy ĐỘNG từ sops.ccp
+insert into recording_obligations(id, farm_id, code, name, dept, role_hint, source_kind, source_ref, freq, grace_hours, escalate_hours, severity)
+ select 'RO-CCP-'||s.l2_code||'-'||:'farm', :'farm', 'CCP_'||s.l2_code, 'CCP: '||max(s.l2_group)||' ('||s.l2_code||')',
+        (array_agg(s.dept order by s.l3_no))[1], coalesce(max(s.owner_role),'tech_head'), 'CHECKLIST', s.l2_code, 'NGAY', 4, 12, 'NANG'
+ from sops s where s.ccp is true and s.l2_code is not null group by s.l2_code
 on conflict (id) do nothing;
 select gen_recording_alerts(:'farm');

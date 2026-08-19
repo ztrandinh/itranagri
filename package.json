@@ -10,8 +10,10 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:reset": "tsx scripts/migrate.ts --reset",
     "test": "vitest run",
-    "db:seed:sim": "tsx scripts/simulate.ts",
-    "db:seed:history": "tsx scripts/seed-history.ts"
+    "db:codes": "tsx scripts/normalize-codes.ts",
+    "db:codes:check": "tsx scripts/normalize-codes.ts --check",
+    "db:seed:sim": "tsx scripts/simulate.ts && tsx scripts/normalize-codes.ts",
+    "db:seed:history": "tsx scripts/seed-history.ts && tsx scripts/normalize-codes.ts"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",

@@ -359,6 +359,9 @@ export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: b
   // dòng là bản nhập liệu cũ của người khác, 0 dòng vừa ghi. Kèm chặn ts tương lai để bản ghi hôm nay
   // không bị dữ liệu đặt lịch/nhập sai ngày đè xuống dưới.
   events_mine: { sql: "select * from (select 'animal' as kind, id, ts, created_by, event_type as what, animal_id as who, source, is_backfill from animal_events where farm_id=$1 and created_by=app_staff() union all select 'feed', id, ts, created_by, 'FEED '||qty_kg||'kg', dest_location_id, source, is_backfill from feed_logs where farm_id=$1 and created_by=app_staff() union all select 'crop', id, ts, created_by, activity, plot_id, source, is_backfill from crop_logs where farm_id=$1 and created_by=app_staff() union all select 'batch', id, ts, created_by, line, batch_code, source, is_backfill from batch_logs where farm_id=$1 and created_by=app_staff() union all select 'move', id, ts, created_by, reason||' '||qty, sku, source, is_backfill from inventory_moves where farm_id=$1 and created_by=app_staff()) t where ts <= now() order by ts desc limit 100" },
+  // Bộ form theo NGHỀ — thay cho việc dò chữ trong chức danh tự do ở src/lib/forms.ts.
+  // Không lọc theo farm: danh mục nghề dùng chung toàn công ty.
+  position_forms: { sql: "select position_code, name, dept_code, role_code, forms from v_position_forms where $1 = $1" },
   paper_pending: { sql: "select * from paper_scans where farm_id=$1 and not digitized order by ts" },
   paper_all: { sql: "select * from paper_scans where farm_id=$1 order by ts desc limit 200" },
   adjustments_pending: { sql: "select * from adjustments where farm_id=$1 and adj_status='CHO_DUYET' order by ts" },

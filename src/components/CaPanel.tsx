@@ -24,7 +24,17 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
     ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null,
     [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = useMemo(() => (ref ? buildForms(ref, sess.farmId) : null), [ref, sess.farmId]);
-  const keys = forceForms ?? formsForPosition(sess.position, sess.role, sess.dept);
+  // Bộ form lấy theo MÃ NGHỀ từ danh mục (positions_catalog.forms). Trước đây phải dò chữ
+  // trong chức danh tự do vì mã nghề sai hàng loạt; nay mã đã đúng nên tra thẳng.
+  // Vẫn giữ formsForPosition() làm đường lui cho tài khoản chưa gán nghề — thà thừa form
+  // còn hơn công nhân mở app ra thấy màn trắng.
+  const posForms = useData<{ position_code: string; forms: string[] }>("position_forms");
+  const theoNghe = useMemo(() => {
+    if (!sess.positionCode || !posForms.rows) return null;
+    const r = posForms.rows.find((x) => x.position_code === sess.positionCode);
+    return r?.forms?.length ? r.forms : null;
+  }, [posForms.rows, sess.positionCode]);
+  const keys = forceForms ?? theoNghe ?? formsForPosition(sess.position, sess.role, sess.dept);
   // Giữ NGUYÊN một đối tượng spec cho mỗi form: nếu dựng object mới mỗi lần re-render thì
   // ThreeTap bị reset liên tục và công nhân mất dữ liệu đang nhập.
   const reloadRecent = recent.reload;
@@ -88,8 +98,10 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
         </div>)}
       {tab === "ghi" && (
         <div className="space-y-3">
-          {!forms && <div className="card">Đang tải danh mục… {animals.stale && "(dữ liệu offline)"}</div>}
-          {forms && !form && (
+          {/* Chờ CẢ danh mục nghề rồi mới bày ô việc. Nếu vẽ trước bằng bộ dự phòng thì khi
+              danh mục về, danh sách ô đổi ngay dưới tay công nhân — họ đang chạm thì ô nhảy chỗ. */}
+          {(!forms || posForms.loading) && <div className="card">Đang tải danh mục… {animals.stale && "(dữ liệu offline)"}</div>}
+          {forms && !posForms.loading && !form && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span></button>)}
             </div>)}
