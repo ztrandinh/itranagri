@@ -48,9 +48,10 @@ const LV: Record<string, string> = { OK: "b-grn", DUE: "b-yel", ESCALATE: "b-red
 const LVTXT: Record<string, string> = { OK: "đúng hạn", DUE: "QUÁ HẠN", ESCALATE: "⛔ LEO THANG" };
 /** CẢNH BÁO NGHIÊM NGẶT KHI KHÂU GHI CHÉP BỊ QUÊN — tab trong Giám sát */
 export function RecordingCompliancePanel({ sess }: { sess: Sess }) {
-  void sess; const due = useData<R>("recording_due"); const comp = useData<R>("recording_compliance");
+  void sess; const due = useData<R>("recording_due"); const comp = useData<R>("recording_compliance"); const cov = useData<R>("control_coverage");
   const rows = due.rows ?? []; const overdue = rows.filter((r) => r.level !== "OK"); const esc = rows.filter((r) => r.level === "ESCALATE");
   const miss30 = (comp.rows ?? []).reduce((a, r) => a + Number(r.misses_30d ?? 0), 0);
+  const covRows = cov.rows ?? []; const blind = covRows.filter((r) => r.blind);
   return <div className="space-y-3">
     <div className="card text-sm"><b>🚨 Khâu ghi chép bắt buộc — quên cập nhật là báo NGHIÊM NGẶT</b>
       <div className="text-xs text-slate-500 mt-0.5">Mỗi khâu (theo bảng mẫu quy trình) có tần suất ngày/tuần/tháng/đợt. Quá hạn → việc CAO cho người phụ trách; quá mức → <b>LEO THANG lên GĐ (KHẨN)</b>. Bỏ sót được ghi nhật ký để đo tỷ lệ đúng hạn — bảo vệ chất lượng dữ liệu cho phân tích/dự báo.</div></div>
@@ -60,5 +61,11 @@ export function RecordingCompliancePanel({ sess }: { sess: Sess }) {
       {rows.length === 0 && <tr><td className="pl-3 py-3 text-sm text-slate-500" colSpan={7}>Chưa khai báo khâu bắt buộc — thêm ở Quản trị DL › recording_obligations.</td></tr>}</tbody></table></div>
     <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-slate-100 rounded-t-xl font-bold">Tỷ lệ đúng hạn 30 ngày (bỏ sót theo khâu)</div><table className="tbl text-sm"><thead><tr><th className="pl-3">Khâu</th><th>Phòng</th><th className="text-right">Bỏ sót 30d</th><th className="text-right">Leo thang 30d</th><th>Bỏ sót gần nhất</th></tr></thead><tbody>
       {(comp.rows ?? []).map((r) => <tr key={String(r.code)} className={Number(r.misses_30d) > 0 ? "bg-amber-50" : ""}><td className="pl-3 text-xs">{String(r.name)}</td><td className="text-xs">{String(r.dept ?? "")}</td><td className="text-right font-bold">{String(r.misses_30d)}</td><td className="text-right text-red-700">{String(r.escalated_30d)}</td><td className="text-xs">{r.last_miss ? fmt.d(r.last_miss) : "—"}</td></tr>)}</tbody></table></div>
+
+    <div className="card text-sm"><b>🗺 Độ phủ kiểm soát — vùng mù cần chĩa kiểm ngẫu nhiên</b>
+      <div className="text-xs text-slate-500 mt-0.5">Mỗi khâu đều có SOP (thực hành SX·an toàn·vệ sinh) = checklist bắt buộc. Bảng dưới soi mỗi SOP đã được <b>tick checklist / spot-check / đi ca</b> lần cuối khi nào — <b>{blind.length} SOP "mù" &gt;14 ngày</b> chưa ai kiểm (kể cả việc không sinh số) → quản lý chĩa kiểm vào đó.</div></div>
+    <div className="card p-0 overflow-auto"><table className="tbl text-sm"><thead><tr><th className="pl-3">SOP (khâu)</th><th>Phòng</th><th>Tick checklist</th><th>Spot-check</th><th>Đi ca</th><th className="text-right">Lâu nhất chưa kiểm</th></tr></thead><tbody>
+      {covRows.filter((r) => r.blind).slice(0, 30).map((r) => <tr key={String(r.sop)} className="bg-red-50"><td className="pl-3 text-xs font-semibold">{String(r.sop)} · {String(r.name)}</td><td className="text-xs">{String(r.dept ?? "")}</td><td className="text-xs">{r.last_checklist ? fmt.d(r.last_checklist) : <span className="text-red-600">chưa</span>}</td><td className="text-xs">{r.last_spotcheck ? fmt.d(r.last_spotcheck) : <span className="text-red-600">chưa</span>}</td><td className="text-xs">{r.last_fieldday ? fmt.d(r.last_fieldday) : <span className="text-red-600">chưa</span>}</td><td className="text-right text-xs font-bold text-red-700">{Number(r.days_since) > 3000 ? "chưa bao giờ" : fmt.n(r.days_since) + " ngày"}</td></tr>)}
+      {blind.length === 0 && <tr><td className="pl-3 py-3 text-sm text-emerald-700" colSpan={6}>✓ Không có SOP nào bị bỏ quên kiểm &gt;14 ngày.</td></tr>}</tbody></table></div>
   </div>;
 }

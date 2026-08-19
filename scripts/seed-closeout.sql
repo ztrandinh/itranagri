@@ -89,4 +89,10 @@ insert into recording_obligations(id, farm_id, code, name, dept, role_hint, sour
  ('RO-PEST-'||:'farm', :'farm', 'SOI_SAU_BENH', 'Soi sâu bệnh (scouting) hằng tuần', 'TT', 'team_lead', 'PEST', 'TUAN', 24, 72, 'TRUNG'),
  ('RO-HARVEST-'||:'farm', :'farm', 'GHI_THU_HOACH', 'Ghi thu hoạch theo đợt', 'TT', 'team_lead', 'HARVEST', 'DOT', 24, 72, 'NHE')
 on conflict (id) do nothing;
+-- Mỗi khâu có SOP (thực hành SX·an toàn·vệ sinh) = checklist bắt buộc CHẠY (source_ref = mã SOP L2); quên chạy = báo gắt
+insert into recording_obligations(id, farm_id, code, name, dept, role_hint, source_kind, source_ref, freq, grace_hours, escalate_hours, severity) values
+ ('RO-SOP-AT02-'||:'farm', :'farm', 'CL_ATLD', 'Checklist An toàn lao động (SOP-AT-02)', 'HCNS', 'team_lead', 'CHECKLIST', 'SOP-AT-02', 'NGAY', 6, 24, 'NANG'),
+ ('RO-SOP-AT01-'||:'farm', :'farm', 'CL_CONG_SINHHOC', 'Checklist Cổng sinh học – rửa xe (SOP-AT-01)', 'CCU', 'team_lead', 'CHECKLIST', 'SOP-AT-01', 'NGAY', 6, 24, 'NANG'),
+ ('RO-SOP-AT06-'||:'farm', :'farm', 'CL_CHATTHAI', 'Checklist Xử lý xác – chất thải nguy hại (SOP-AT-06)', 'SH', 'team_lead', 'CHECKLIST', 'SOP-AT-06', 'TUAN', 24, 72, 'TRUNG')
+on conflict (id) do nothing;
 select gen_recording_alerts(:'farm');

@@ -124,6 +124,7 @@ export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: b
   reading_anomalies: { sql: "select r.id, r.ts, r.value, r.unit, r.delta, r.anomaly_reason, r.paper_serial, m.name as metric_name, f.name as facility_name from device_readings r join reading_metrics m on m.id=r.metric_id left join facilities f on f.id=m.facility_id where r.farm_id=$1 and r.is_anomaly order by r.ts desc limit 10", ttl: 60 },
   recording_due: { sql: "select * from v_recording_due where farm_id=$1 order by (level='ESCALATE') desc, (level='DUE') desc, hours_late desc", ttl: 60 },
   recording_compliance: { sql: "select * from v_recording_compliance where farm_id=$1 order by misses_30d desc, name", ttl: 120 },
+  control_coverage: { sql: "select * from control_coverage($1) order by blind desc, days_since desc", ttl: 120 },
   gs_today: { sql: "select gs_today($1, app_staff()) as t" },
   gs_omissions_all: { sql: "select o.*, s.full_name from gs_omissions o join staff s on s.id=o.supervisor_id where o.farm_id=$1 order by o.day desc limit 300" },
   pay_structure: { sql: "select * from v_pay_structure where farm_id=$1 or farm_id is null order by dept, full_name", ttl: 120 },
