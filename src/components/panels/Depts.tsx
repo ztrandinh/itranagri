@@ -8,6 +8,7 @@ import { ProductionPanel } from "@/components/panels/Fulfillment";
 import { PayrollPanel, AssetsPanel } from "@/components/panels/PayrollAssets";
 import { BudgetPanel, CashflowPanel } from "@/components/panels/Finance";
 import { FinanceMorePanel } from "@/components/panels/FinanceMore";
+import { MeterReadingPanel } from "@/components/panels/MeterReading";
 import { useState } from "react";
 import { useUrlTab } from "@/lib/useUrlTab";
 import DaoTaoThuong from "@/components/panels/DaoTaoThuong";
@@ -83,6 +84,7 @@ export function ThietBiPanel({ sess }: { sess: Sess }) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2"><KpiTile l="Máy đến hạn bảo dưỡng" v={machines.filter((d) => d.maint_cycle_h && Number(d.machine_hours) >= Number(d.maint_cycle_h) * 0.9).length} warn={machines.some((d) => d.maint_cycle_h && Number(d.machine_hours) >= Number(d.maint_cycle_h)) ? "yel" : null} /><KpiTile l="Cảm biến mất tín hiệu >1h" v={off.length} warn={off.length ? "red" : null} /><KpiTile l="Sự cố thiết bị mở" v={(inc.rows ?? []).filter((i) => i.kind === "THIET_BI").length} /><KpiTile l="Job đêm gần nhất" v={jobs.rows?.[0] ? fmt.dt(jobs.rows[0].started_at) : "—"} sub={jobs.rows?.[0] ? String(jobs.rows[0].job) : ""} /></div>
+      <MeterReadingPanel sess={sess} />
       <div className="grid md:grid-cols-2 gap-3">
         <div className="card p-0 overflow-auto"><div className="px-3 py-2 font-bold bg-stone-100 rounded-t-2xl">Máy móc — giờ máy · bảo dưỡng · định mức dầu</div><table className="tbl"><thead><tr><th className="pl-3">Máy</th><th className="text-right">Giờ máy</th><th className="text-right">Chu kỳ BD</th><th className="text-right">l/giờ</th><th>Việc mở</th></tr></thead><tbody>{machines.map((d) => <tr key={String(d.id)} className={d.maint_cycle_h && Number(d.machine_hours) >= Number(d.maint_cycle_h) ? "bg-amber-50" : ""}><td className="pl-3 font-semibold">{String(d.name)}<div className="text-xs text-stone-500 font-mono">{String(d.id)}</div></td><td className="text-right">{fmt.n(d.machine_hours, 1)}</td><td className="text-right">{fmt.n(d.maint_cycle_h)}</td><td className="text-right">{fmt.n(d.fuel_l_per_h)}</td><td>{String(d.open_tasks)}</td></tr>)}</tbody></table></div>
         <div className="card p-0 overflow-auto"><div className="px-3 py-2 font-bold bg-stone-100 rounded-t-2xl">Cảm biến / cân / camera — tín hiệu · hiệu chuẩn</div><table className="tbl"><thead><tr><th className="pl-3">Thiết bị</th><th>Loại</th><th>Tín hiệu cuối</th><th>Hiệu chuẩn kế</th></tr></thead><tbody>{sensors.map((d) => <tr key={String(d.id)} className={d.last_seen && new Date(String(d.last_seen)) < new Date(Date.now() - 3600e3) ? "bg-red-50" : ""}><td className="pl-3 font-semibold">{String(d.name)}</td><td className="text-sm">{String(d.kind)}</td><td className="text-sm">{d.last_seen ? fmt.dt(d.last_seen) : <span className="text-stone-400">chưa có dữ liệu</span>}</td><td className="text-sm">{fmt.d(d.calib_next ?? d.calib_due)}</td></tr>)}</tbody></table></div>
