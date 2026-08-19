@@ -8,7 +8,12 @@ export type Ref = {
 const s = (v: unknown) => (v == null ? "" : String(v));
 const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): Option[] =>
   r.animals.filter((a) => !["CHET", "XUAT"].includes(s(a.status)) && (!filter || filter(a))).map((a) => ({ id: s(a.id), label: `${s(a.visual_tag) || s(a.id)} · ${s(a.id).slice(-5)}`, sub: `${s(a.status)} · ${s(a.location_name) || s(a.group_name)}`, meta: { rfid: s(a.rfid), visual_tag: s(a.visual_tag) } }));
-const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups.filter((g) => !kinds || kinds.includes(s(g.kind))).map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
+/** Đàn để CHỌN khi ghi việc: chỉ đàn đang nuôi. Đàn đã đóng sổ (status DONG, 0 con) vẫn nằm
+ *  trong danh mục để tra cứu lịch sử, nhưng KHÔNG được mời chọn — công nhân đã gặp cảnh
+ *  form TMR bày ra "Gà đẻ lứa 00 (đã loại) · 0 con" bên cạnh đàn thật. */
+const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups
+  .filter((g) => (!kinds || kinds.includes(s(g.kind))) && !["DONG", "CLOSED", "HUY"].includes(s(g.status).toUpperCase()))
+  .map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
 const binOpts = (r: Ref): Option[] => (r.bins ?? []).map((b) => ({ id: s(b.id), label: `${s(b.warehouse_code)} · ${s(b.code)}`, sub: s(b.zone) }));
 const whOpts = (r: Ref, codes?: string[]): Option[] => r.warehouses.filter((w) => !codes || codes.includes(s(w.code))).map((w) => ({ id: s(w.id), label: `${s(w.code)} ${s(w.name)}`.slice(0, 40) }));
 const prodOpts = (r: Ref, kinds?: string[]): Option[] => r.products.filter((p) => !kinds || kinds.includes(s(p.kind))).map((p) => ({ id: s(p.sku), label: s(p.name), sub: `${s(p.sku)} · ${s(p.unit)}` }));
