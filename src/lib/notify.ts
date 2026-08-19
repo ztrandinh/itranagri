@@ -26,8 +26,9 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     if (e.topic === "alert.raised") {
       const rule = (await p.query("select recipients, channels, level, name from alert_rules where code=$1 and active order by (farm_id=$2) desc, version desc limit 1", [pl.rule, farm])).rows[0];
       recips = await resolveRecipients(farm!, (rule?.recipients ?? (pl.sent_to as string[]) ?? ["tech_head", "director"]) as string[]);
-      // luật giám sát 3 lớp: cảnh báo ĐỎ luôn báo thêm cấp trên (director) và chủ (owner)
-      if (pl.level === "DO") recips = [...new Set([...recips, ...(await resolveRecipients(farm!, ["director", "owner"]))])];
+      // Leo thang: ĐỎ luôn +director. KHÔNG +owner đại trà (gây nhiễu owner khi đa trại);
+      // owner chỉ nhận ĐỎ ở các luật đã CẤU HÌNH owner trong recipients (an toàn/dịch tễ/tồn/kiểm kê…).
+      if (pl.level === "DO") recips = [...new Set([...recips, ...(await resolveRecipients(farm!, ["director"]))])];
       level = String(pl.level); title = `${pl.level} · ${rule?.name ?? pl.rule}`; body = String(pl.subject ?? ""); link = "/canh-bao"; sourceId = String(pl.alert_id);
       await p.query("update alert_rules set last_fired_at=now(), fire_count=coalesce(fire_count,0)+1 where code=$1", [pl.rule]);
     } else if (e.topic === "task.created") {
@@ -40,7 +41,16 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     } else if (e.topic === "expense.approved.big") {
       recips = await resolveRecipients(farm!, ["owner"]); level = "VANG"; title = `Chi > 50 triệu đã duyệt: ${Number(pl.amount).toLocaleString("vi-VN")} đ`; body = String(pl.purpose ?? ""); link = "/ke-toan"; sourceId = String(pl.id);
     } else if (e.topic === "farm.created") { recips = await resolveRecipients(farm!, ["owner"]); title = `Trại mới ${pl.farm} — ${pl.name}`; link = "/hq"; }
-    else if (e.topic === "master.changed") { if (String(pl.by ?? "") === "SYSTEM" || !pl.by) { await p.query("update event_bus set processed_at=now() where id=$1", [e.id]); continue; } recips = await resolveRecipients(farm ?? "F01", ["owner", "it_engineer"]); level = pl.action === "SOFT_DELETE" || pl.action === "DELETE" ? "VANG" : "INFO"; title = `Danh mục ${pl.table}: ${pl.action} ${pl.pk}`; body = `Bởi ${pl.by}${Array.isArray(pl.cols) ? " · cột: " + (pl.cols as string[]).join(", ") : ""}`; link = `/quan-tri?t=${pl.table}&pk=${encodeURIComponent(String(pl.pk))}`; sourceId = `${e.id}`; }
+    else if (e.topic === "master.changed") {
+      if (String(pl.by ?? "") === "SYSTEM" || !pl.by) { await p.query("update event_bus set processed_at=now() where id=$1", [e.id]); continue; }
+      // GIẢM NHIỄU (master.changed đẻ ~95% thông báo): chỉ báo khi XÓA/xóa-mềm, hoặc sửa BẢNG CẤU HÌNH nhạy cảm.
+      // Thêm/sửa danh mục thường vẫn được ghi audit_log ở nơi khác — không cần phiền owner từng dòng.
+      const CFG = ["norms", "price_list", "rc_rules", "alert_rules", "approval_matrix", "settings", "kpi_defs", "legal_entities", "grade_scales", "roles", "positions"];
+      const isDel = pl.action === "SOFT_DELETE" || pl.action === "DELETE"; const sensitive = CFG.includes(String(pl.table));
+      if (!isDel && !sensitive) { await p.query("update event_bus set processed_at=now() where id=$1", [e.id]); continue; }
+      recips = await resolveRecipients(farm ?? "F01", isDel ? ["owner", "it_engineer"] : ["it_engineer"]);
+      level = isDel ? "VANG" : "INFO"; title = `Danh mục ${pl.table}: ${pl.action} ${pl.pk}`; body = `Bởi ${pl.by}${Array.isArray(pl.cols) ? " · cột: " + (pl.cols as string[]).join(", ") : ""}`; link = `/quan-tri?t=${pl.table}&pk=${encodeURIComponent(String(pl.pk))}`; sourceId = `${e.id}`;
+    }
     else if (e.topic === "import.done") { recips = await resolveRecipients(farm ?? "F01", ["owner", "it_engineer", "director"]); level = Number(pl.err) > 0 ? "VANG" : "INFO"; title = `Nhập CSV ${pl.table}: ${pl.ok} dòng OK, ${pl.err} lỗi`; body = `Bởi ${pl.by} · ${pl.file ?? ""}`; link = `/quan-tri?t=${pl.table}&tab=nhap`; sourceId = String(pl.batch); }
     else if (e.topic === "order.created") { if (!pl.total) { const o = (await p.query("select o.total, o.attrs, pt.name from orders o left join partners pt on pt.id=o.partner_id where o.id=$1", [String(pl.id)])).rows[0]; if (o) { pl.total = o.total; pl.source = (o.attrs as Record<string, unknown>)?.source ?? pl.source; pl.partner = o.name ?? pl.partner; pl.unmapped = (o.attrs as Record<string, unknown>)?.unmapped ?? 0; } } recips = await resolveRecipients(farm ?? "F01", ["worker:A9", "worker:A8", "director", "accountant"]); level = Number(pl.unmapped ?? 0) > 0 ? "VANG" : "INFO"; title = `Đơn mới ${pl.id} (${pl.source ?? "nội bộ"}) · ${Number(pl.total ?? 0).toLocaleString("vi-VN")} đ`; body = `${pl.partner ?? ""}${Number(pl.unmapped ?? 0) > 0 ? ` · ${pl.unmapped} dòng chưa ánh xạ SKU — Kinh doanh xử lý` : ""} · Kho soạn hàng FEFO · Kế toán theo dõi thu`; link = "/ban-hang?tab=don"; sourceId = String(pl.id); }
     else if (e.topic === "process.published") { const depts = (pl.depts as string[]) ?? []; const roles = (pl.roles as string[]) ?? []; const st = (await p.query("select id from staff where active and (dept = any($1) or role = any($2)) and ($3::text is null or farm_id=$3 or farm_id is null or $3 = any(farm_ids))", [depts, roles, farm])).rows; recips = [...new Set([...st.map((x) => String(x.id)), ...(await resolveRecipients(farm ?? "F01", ["director"]))])]; level = "VANG"; title = `Quy trình mới / cập nhật: ${pl.name}`; body = `${pl.code} · ${pl.steps} bước · phòng: ${depts.join(", ")} · bởi ${pl.by}. Bạn được đưa vào quy trình này.`; link = `/to-chuc?tab=quytrinh&p=${pl.code}`; sourceId = `${pl.code}:${e.id}`; }
@@ -50,7 +60,9 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       const pref = (await p.query("select * from notification_prefs where staff_id=$1 and rule_code in ('*',$2) order by (rule_code='*') limit 1", [sid, String(pl.rule ?? e.topic)])).rows[0];
       if (pref?.muted) continue; if (pref && LV[level] < LV[String(pref.level_min)]) continue;
       const channels: string[] = pref?.channels ?? ["app"];
-      const dup = await p.query("select 1 from notifications where staff_id=$1 and source=$2 and source_id=$3", [sid, source, sourceId]);
+      // Chống spam thông báo: bỏ qua nếu trùng chính xác (source,source_id) HOẶC đã có 1 tin CÙNG NGUỒN+CÙNG TIÊU ĐỀ chưa đọc trong 24h
+      // (alert lặp sinh alert_id mới mỗi lần → nếu chỉ dedup theo source_id sẽ chất đống; gộp theo tiêu đề để 1 tin/ngày/người tới khi đọc).
+      const dup = await p.query("select 1 from notifications where staff_id=$1 and source=$2 and (source_id=$3 or (title=$4 and read_at is null and ts > now() - interval '24 hours'))", [sid, source, sourceId, title]);
       if (dup.rows[0]) continue;
       await p.query("insert into notifications(farm_id,staff_id,level,title,body,link,source,source_id,channels,sent) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)", [farm, sid, level, title, body, link, source, sourceId, channels, JSON.stringify({ app: new Date().toISOString(), zalo: channels.includes("zalo") ? "queued" : undefined, sms: channels.includes("sms") ? "queued" : undefined })]);
       n++;

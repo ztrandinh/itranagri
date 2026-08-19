@@ -9,13 +9,16 @@ export default function TodayBar() {
   const list = useData<Row>(open ? "my_inbox" : null);
   useEffect(() => { try { setOpen(localStorage.getItem("today:open") === "1"); } catch { /* ignore */ } }, []);
   const toggle = () => { const v = !open; setOpen(v); try { localStorage.setItem("today:open", v ? "1" : "0"); } catch { /* ignore */ } };
-  const rows = counts.rows ?? []; const total = rows.reduce((a, r) => a + Number(r.n), 0);
+  const rows = counts.rows ?? [];
+  // Số chính = việc CẦN LÀM (không tính "Tin" — tin tức không phải việc tồn); rút gọn số lớn cho gọn.
+  const actionable = rows.filter((r) => String(r.kind) !== "TIN").reduce((a, r) => a + Number(r.n), 0);
+  const cap = (n: number) => (n > 999 ? "999+" : String(n));
   const items = (list.rows ?? []).filter((r) => !filter || r.kind === filter).slice(0, 40);
   return <div className="rounded-xl border bg-white px-3 py-2 mb-3 text-sm shadow-sm">
     <div className="flex items-center gap-2 flex-wrap">
-      <button className="font-black" onClick={toggle}>{open ? "▾" : "▸"} Hôm nay của tôi <span className="text-slate-500 font-normal">({total})</span></button>
-      {rows.map((r) => { const k = String(r.kind); const [lbl, cls] = KIND[k] ?? [k, "bg-slate-100"]; return <button key={k} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls} ${filter === k ? "ring-2 ring-slate-500" : ""}`} onClick={() => { setFilter(filter === k ? null : k); if (!open) toggle(); }}>{lbl}: {String(r.n)}</button>; })}
-      {total === 0 && !counts.loading && <span className="text-xs text-emerald-700">✓ Không có việc tồn — làm tốt!</span>}
+      <button className="font-black" onClick={toggle}>{open ? "▾" : "▸"} Hôm nay của tôi <span className="text-slate-500 font-normal">({cap(actionable)})</span></button>
+      {rows.map((r) => { const k = String(r.kind); const [lbl, cls] = KIND[k] ?? [k, "bg-slate-100"]; return <button key={k} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls} ${filter === k ? "ring-2 ring-slate-500" : ""}`} onClick={() => { setFilter(filter === k ? null : k); if (!open) toggle(); }}>{lbl}: {cap(Number(r.n))}</button>; })}
+      {actionable === 0 && !counts.loading && <span className="text-xs text-emerald-700">✓ Không có việc tồn — làm tốt!</span>}
       <a className="ml-auto text-xs underline text-slate-600" href="/ca">Ca của tôi</a><a className="text-xs underline text-slate-600" href="/phe-duyet">Phê duyệt</a><a className="text-xs underline text-slate-600" href="/thong-bao">Tin</a>
     </div>
     {open && <div className="mt-2 max-h-72 overflow-auto divide-y">

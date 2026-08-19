@@ -17,6 +17,7 @@ export const ANY_TABLES: AnyTable[] = [
   { table: "weigh_tickets", label: "Phiếu cân", ts: "ts", status: true },
   { table: "gate_logs", label: "Cổng", ts: "ts", status: true },
   { table: "sales", label: "Bán hàng", ts: "ts", status: true },
+  { table: "pos_receipts", label: "POS: hóa đơn quầy (doanh thu, thanh toán)", ts: "ts", status: false, jsonb: ["lines"] },
   { table: "checklist_runs", label: "Checklist", ts: "ts", status: true },
   { table: "incidents", label: "Sự cố", ts: "ts", status: true },
   { table: "adjustments", label: "Điều chỉnh", ts: "ts" },

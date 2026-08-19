@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { KpiTile } from "./Dashboards";
+import { usePrompt } from "@/components/ui/PromptDialog";
 
 /** P&L phân hệ theo tháng + chi phí cố định + import sao kê */
 export function PlPanel({ sess }: { sess: Sess }) {
@@ -42,7 +43,7 @@ export function KpiLuongPanel({ sess }: { sess: Sess }) {
       <div className="flex flex-wrap items-center gap-2"><input type="month" className="input !w-44" value={month.slice(0, 7)} onChange={(e) => setMonth(e.target.value + "-01")} />{canW && <button className="btn-secondary !py-2" onClick={async () => { await act("compute_kpi", { month }); k.reload(); }}>↻ Chấm KPI tháng này (máy chấm từ bản ghi)</button>}<span className="text-sm text-stone-500 ml-auto">Lớp 2 = 10–25% lương cứng theo điểm KPI; lớp 3 khoán quý từ P&L CC; lớp 4 chia năm + ESOP ảo</span></div>
       <div className="card p-0 overflow-auto"><table className="tbl"><thead><tr><th className="pl-3">Nhân sự</th><th className="text-right">Điểm</th><th className="text-right">Thưởng lớp 2</th><th>Chi tiết (giá trị / mục tiêu / điểm)</th></tr></thead><tbody>
         {(k.rows ?? []).map((r) => <tr key={String(r.staff_id)} className={Number(r.score) < 60 ? "bg-red-50" : Number(r.score) >= 95 ? "bg-green-50" : ""}><td className="pl-3 font-semibold">{String(r.full_name)}<div className="text-xs text-stone-500 font-normal">{String(r.position ?? "")}</div></td><td className="text-right text-2xl font-bold">{String(r.score)}</td><td className="text-right font-bold">{String(r.bonus_pct)}%</td><td className="text-xs">{Object.entries((r.detail as Record<string, { v: number; t: number; s: number }>) ?? {}).map(([c, d]) => <span key={c} className="b-gray mr-1">{c.replace("KPI-", "")}: {fmt.n(d.v, 1)}/{d.t} → {d.s}</span>)}</td></tr>)}
-        {!k.rows?.length && <tr><td colSpan={4} className="p-3 text-stone-500">Chưa chấm tháng này — bấm "Chấm KPI".</td></tr>}</tbody></table></div>
+        {k.rows?.length === 0 && <tr><td colSpan={4} className="p-3 text-stone-500">Chưa chấm tháng này — bấm "Chấm KPI".</td></tr>}</tbody></table></div>
       <div className="card"><h3 className="font-bold">Điểm KPI trung bình theo tháng</h3><div className="flex gap-2 flex-wrap mt-1">{(hist.rows ?? []).map((h) => <span key={String(h.month)} className="b-gray">{String(h.month).slice(0, 7)}: {String(h.score)}</span>)}</div><div className="text-xs text-stone-500 mt-1">Mọi điểm drill được về bản ghi (số bản ghi/ngày, checklist xanh %, sai số mẻ, việc đúng hạn, % nhập bù). Người lao động xem được điểm của mình.</div></div>
     </div>);
 }
@@ -77,8 +78,8 @@ export function KhachMessages() {
 
 /** Bộ lọc lưu (localStorage) dùng chung */
 export function SavedViews({ scope, current, onPick }: { scope: string; current: Record<string, unknown>; onPick: (v: Record<string, unknown>) => void }) {
-  const key = `views:${scope}`; const [views, setViews] = useState<{ name: string; v: Record<string, unknown> }[]>([]);
+  const key = `views:${scope}`; const [views, setViews] = useState<{ name: string; v: Record<string, unknown> }[]>([]); const { prompt, promptElement } = usePrompt();
   useEffect(() => { try { setViews(JSON.parse(localStorage.getItem(key) ?? "[]")); } catch { /* ignore */ } }, [key]);
-  const save = () => { const name = prompt("Tên bộ lọc:"); if (!name) return; const nv = [...views.filter((x) => x.name !== name), { name, v: current }]; setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); };
-  return <div className="flex flex-wrap gap-1 items-center text-sm"><span className="text-stone-500">Bộ lọc lưu:</span>{views.map((x) => <span key={x.name} className="b-gray cursor-pointer" onClick={() => onPick(x.v)}>{x.name} <button className="ml-1 text-red-700" onClick={(e) => { e.stopPropagation(); const nv = views.filter((y) => y.name !== x.name); setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); }}>×</button></span>)}<button className="underline" onClick={save}>+ lưu bộ lọc hiện tại</button></div>;
+  const save = async () => { const name = await prompt({ title: "Lưu bộ lọc", label: "Tên bộ lọc:", type: "text" }); if (!name) return; const nv = [...views.filter((x) => x.name !== name), { name, v: current }]; setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); };
+  return <div className="flex flex-wrap gap-1 items-center text-sm">{promptElement}<span className="text-stone-500">Bộ lọc lưu:</span>{views.map((x) => <span key={x.name} className="b-gray cursor-pointer" onClick={() => onPick(x.v)}>{x.name} <button className="ml-1 text-red-700" onClick={(e) => { e.stopPropagation(); const nv = views.filter((y) => y.name !== x.name); setViews(nv); localStorage.setItem(key, JSON.stringify(nv)); }}>×</button></span>)}<button className="underline" onClick={save}>+ lưu bộ lọc hiện tại</button></div>;
 }
