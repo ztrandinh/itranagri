@@ -25,6 +25,10 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
     [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = useMemo(() => (ref ? buildForms(ref, sess.farmId) : null), [ref, sess.farmId]);
   const keys = forceForms ?? formsForPosition(sess.position, sess.role, sess.dept);
+  // Giữ NGUYÊN một đối tượng spec cho mỗi form: nếu dựng object mới mỗi lần re-render thì
+  // ThreeTap bị reset liên tục và công nhân mất dữ liệu đang nhập.
+  const reloadRecent = recent.reload;
+  const spec = useMemo(() => (forms && form && forms[form] ? { ...forms[form], onDone: () => { reloadRecent(); } } : null), [forms, form, reloadRecent]);
   const myRoleKey = sess.position?.match(/A\d{1,2}/)?.[0];
   const myTasks = (tasks.rows ?? []).filter((t) => !t.role_hint || t.role_hint === sess.role || (myRoleKey && t.role_hint === `worker:${myRoleKey}`) || (t.role_hint?.startsWith("worker:") && sess.role !== "worker") || ["tech_head","director","owner"].includes(sess.role));
   useEffect(() => { void act("generate_tasks", {}).then(() => tasks.reload()); /* sinh việc khi mở ca */ // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,7 +65,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span></button>)}
             </div>)}
-          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={{ ...forms[form], onDone: () => { recent.reload(); } }} /></div>)}
+          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={spec!} /></div>)}
         </div>)}
       {tab === "giaoca" && (
         <div className="space-y-3">

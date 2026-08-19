@@ -41,7 +41,15 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   const uxRef = useRef<ReturnType<typeof uxTask> | null>(null);
   // Đo HEART: bắt đầu tính giờ khi người dùng thật sự bắt tay ghi (đã chọn đối tượng)
   useEffect(() => { if (step === 2 && !uxRef.current) uxRef.current = uxTask(`ghi_${spec.table}`); }, [step, spec.table]);
-  useEffect(() => { const d: Record<string, unknown> = {}; for (const f of spec.fields) if (f.type === "number" && f.default != null) d[f.key] = f.default; setVals(d); }, [spec.fields]);
+  // Đặt giá trị mặc định cho ô số KHI ĐỔI SANG FORM KHÁC.
+  // KHÔNG được phụ thuộc vào `spec.fields` (danh tính mảng): cha dựng lại mảng này mỗi lần
+  // re-render (tải danh mục, sinh việc, đếm thông báo…), nên effect bắn hàng chục lần và
+  // setVals(mặc định) XOÁ SẠCH thứ công nhân vừa nhập giữa chừng — đo được 9 lần reset
+  // trong 0,3s ngay sau một cú chạm. Dùng chữ ký nội dung (bảng + khoá + mặc định) để
+  // chỉ reset khi thật sự đổi form.
+  const fieldSig = useMemo(() => spec.table + "|" + spec.fields.map((f) => `${f.key}:${f.type === "number" ? f.default ?? "" : ""}`).join(","), [spec.table, spec.fields]);
+  const fieldsRef = useRef(spec.fields); fieldsRef.current = spec.fields;
+  useEffect(() => { const d: Record<string, unknown> = {}; for (const f of fieldsRef.current) if (f.type === "number" && f.default != null) d[f.key] = f.default; setVals(d); }, [fieldSig]);
 
   const filtered = useMemo(() => {
     const s = noAccent(search.trim());
