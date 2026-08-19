@@ -4,6 +4,7 @@ import type { ThreeTapSpec, Option } from "@/components/ThreeTap";
 export type Ref = {
   animals: Record<string, unknown>[]; groups: Record<string, unknown>[]; warehouses: Record<string, unknown>[]; products: Record<string, unknown>[]; bins?: Record<string, unknown>[];
   plots: Record<string, unknown>[]; recipes: Record<string, unknown>[]; locations: Record<string, unknown>[]; sops: Record<string, unknown>[]; devices: Record<string, unknown>[]; partners: Record<string, unknown>[];
+  staff?: Record<string, unknown>[];   // để hành chính chấm công cho người khác
 };
 const s = (v: unknown) => (v == null ? "" : String(v));
 const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): Option[] =>
@@ -279,6 +280,60 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
         { key: "result", label: "Kết quả", type: "choice", required: true, options: [{ id: "DAT", label: "Đạt" }, { id: "DA_HIEU_CHINH", label: "Đã hiệu chỉnh" }, { id: "KHONG_DAT", label: "Không đạt — ngừng dùng" }] },
         { key: "next_due", label: "Hạn hiệu chuẩn kế tiếp", type: "date" },
       ],
+    },
+    // A18 Hành chính · CHẤM CÔNG. `attendance` là bảng TỔNG HỢP nên ghi vào sổ riêng.
+    timekeep: {
+      table: "attendance_logs", title: "Chấm công", targetLabel: "Chọn người", targetKey: "staff_id", allowScanInput: true,
+      targets: (r.staff ?? []).filter((x: Record<string, unknown>) => x.active !== false).map((x: Record<string, unknown>) => ({ id: s(x.id), label: s(x.full_name), sub: s(x.position) })),
+      fields: [
+        { key: "kind", label: "Loại", type: "choice", required: true, options: [{ id: "VAO_CA", label: "Vào ca" }, { id: "RA_CA", label: "Ra ca" }, { id: "DI_MUON", label: "Đi muộn" }, { id: "TANG_CA", label: "Tăng ca" }, { id: "NGHI_PHEP", label: "Nghỉ phép" }, { id: "NGHI_OM", label: "Nghỉ ốm" }] },
+        { key: "shift", label: "Ca", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "DEM", label: "Đêm" }] },
+        { key: "minutes", label: "Số phút (tăng ca / đi muộn)", type: "number", unit: "phút", min: 0, step: 15 },
+        { key: "reason", label: "Lý do", type: "text" },
+      ],
+    },
+    // A11 KTV thiết bị · BẢO TRÌ / SỬA CHỮA.
+    maintenance: {
+      table: "maintenance_logs", title: "Bảo trì / sửa chữa", targetLabel: "Thiết bị", targetKey: "target_device_id", allowScanInput: true,
+      targets: r.devices.map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "kind", label: "Loại việc", type: "choice", required: true, options: [{ id: "DINH_KY", label: "Bảo trì định kỳ" }, { id: "SUA_CHUA", label: "Sửa chữa hỏng" }, { id: "THAY_THE", label: "Thay phụ tùng" }, { id: "KIEM_TRA", label: "Kiểm tra" }] },
+        { key: "symptom", label: "Hiện tượng hỏng", type: "text", placeholder: "Kêu to, rung, không lên nguồn…" },
+        { key: "action", label: "Đã làm gì", type: "text", required: true },
+        { key: "parts", label: "Phụ tùng đã thay", type: "text" },
+        { key: "downtime_min", label: "Máy ngừng bao lâu", type: "number", unit: "phút", min: 0, step: 15 },
+        { key: "result", label: "Kết quả", type: "choice", required: true, options: [{ id: "XONG", label: "Xong, chạy lại được" }, { id: "CHO_PHU_TUNG", label: "Chờ phụ tùng" }, { id: "NGUNG_DUNG", label: "Ngừng dùng — chờ xử lý" }] },
+        { key: "next_due", label: "Hạn bảo trì kế tiếp", type: "date" },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+    },
+    // A12 Lễ tân · ĐẶT PHÒNG / TOUR — ghi vào sổ khách `hosp_folio` đã có sẵn.
+    booking: {
+      table: "hosp_folio", title: "Đặt phòng / tour", targetLabel: "Khách", targetKey: "guest_partner_id", allowScanInput: true,
+      targets: r.partners.map((p) => ({ id: s(p.id), label: s(p.name), sub: s(p.kind) })),
+      fields: [
+        { key: "kind", label: "Dịch vụ", type: "choice", required: true, options: [{ id: "PHONG", label: "Phòng nghỉ" }, { id: "TOUR", label: "Tour trải nghiệm" }, { id: "AN_UONG", label: "Ăn uống" }, { id: "TIEC", label: "Tiệc / đoàn" }, { id: "DICH_VU", label: "Dịch vụ khác" }] },
+        { key: "description", label: "Nội dung", type: "text", required: true, placeholder: "2 phòng đôi, 2 đêm…" },
+        { key: "qty", label: "Số lượng", type: "number", min: 0, step: 1, default: 1 },
+        { key: "unit_price", label: "Đơn giá", type: "number", unit: "đ", min: 0, step: 50000 },
+        { key: "amount", label: "Thành tiền", type: "number", unit: "đ", min: 0, step: 50000, required: true },
+        { key: "payment", label: "Thanh toán", type: "choice", options: [{ id: "TM", label: "Tiền mặt" }, { id: "CK", label: "Chuyển khoản" }, { id: "NO", label: "Ghi nợ" }] },
+      ],
+    },
+    // A6 CN ủ chua · Ủ CHUA — dùng `batch_logs` đã có sẵn, thêm dây chuyền U_CHUA.
+    silage: {
+      table: "batch_logs", title: "Ủ chua (hố / bao)", targetLabel: "Chọn hố / kho ủ", targetKey: "location_id", allowScanInput: true,
+      targets: locOpts(r),
+      fields: [
+        { key: "line", label: "Việc", type: "choice", required: true, options: [{ id: "U_CHUA_NAP", label: "Nạp hố / vào bao" }, { id: "U_CHUA_NEN", label: "Nén – phủ bạt" }, { id: "U_CHUA_MO", label: "Mở hố lấy dùng" }] },
+        { key: "kg", label: "Khối lượng", type: "number", unit: "kg", min: 0, step: 100, required: true },
+        { key: "moisture_pct", label: "Độ ẩm nguyên liệu", type: "number", unit: "%", min: 0, max: 100, step: 1 },
+        { key: "ph", label: "pH (đo khi mở hố)", type: "number", min: 3, max: 9, step: 0.1 },
+        { key: "temp_c", label: "Nhiệt độ khối ủ", type: "number", unit: "°C", min: 0, max: 80, step: 1 },
+        { key: "note", label: "Ghi chú (mùi, nấm mốc…)", type: "text" },
+        { key: "photo", label: "Ảnh", type: "photo" },
+      ],
+      build: (t, v) => ({ ...v, location_id: t.id, batch_code: `UC-${new Date().toISOString().slice(0, 10)}`, qc: v.ph != null ? { ph: v.ph } : {} }),
     },
     // Chung · sự cố · checklist
     incident: {

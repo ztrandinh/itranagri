@@ -64,6 +64,10 @@ export const EVENT_SCHEMAS = {
   cold_chain_logs: z.object({ ...base, vehicle_id: z.string().nullable().optional(), leg: z.enum(["XEP_HANG","DOC_DUONG","GIAO_HANG"]), temp_c: num, temp_max_c: num.nullable().optional(), door_open: z.boolean().default(false), location_note: z.string().nullable().optional(), note: z.string().nullable().optional(), photo_urls: strArr }),
   // Hiệu chuẩn thiết bị — bảng đã có sẵn từ trước, chỉ thiếu form cho KTV thiết bị.
   calibrations: z.object({ ...base, target_device_id: z.string(), method: z.string().nullable().optional(), before_val: num.nullable().optional(), after_val: num.nullable().optional(), result: z.enum(["DAT","KHONG_DAT","DA_HIEU_CHINH"]), next_due: z.string().nullable().optional() }),
+  // Chấm công — sổ ghi append-only. Bảng `attendance` vẫn giữ vai trò bảng tổng hợp.
+  attendance_logs: z.object({ ...base, staff_id: z.string(), kind: z.enum(["VAO_CA","RA_CA","NGHI_PHEP","NGHI_OM","DI_MUON","TANG_CA"]), shift: z.string().nullable().optional(), minutes: num.nullable().optional(), reason: z.string().nullable().optional(), note: z.string().nullable().optional(), photo_urls: strArr }),
+  // Bảo trì / sửa chữa thiết bị.
+  maintenance_logs: z.object({ ...base, target_device_id: z.string(), kind: z.enum(["DINH_KY","SUA_CHUA","THAY_THE","KIEM_TRA"]), symptom: z.string().nullable().optional(), action: z.string().nullable().optional(), parts: z.string().nullable().optional(), downtime_min: num.nullable().optional(), cost: num.nullable().optional(), result: z.enum(["XONG","CHO_PHU_TUNG","NGUNG_DUNG"]).nullable().optional(), next_due: z.string().nullable().optional(), note: z.string().nullable().optional(), photo_urls: strArr }),
   hosp_folio: z.object({ ...base, booking_id: z.string().nullable().optional(), event_id: z.string().nullable().optional(), tour_booking_id: z.string().nullable().optional(), guest_partner_id: z.string().nullable().optional(), kind: z.string(), description: z.string().nullable().optional(), service_id: z.string().nullable().optional(), menu_id: z.string().nullable().optional(), sku: z.string().nullable().optional(), qty: num.nullable().optional(), unit_price: num.nullable().optional(), amount: num, payment: z.string().nullable().optional(), note: z.string().nullable().optional() }),
 } as const;
 
@@ -79,4 +83,5 @@ export const WRITE_MATRIX: Record<EventTable, string[]> = {
   adjustments: ["team_lead","tech_head","accountant","director"], paper_scans: ["worker","team_lead","tech_head","director","accountant"],
   irrigation_logs: ["worker","team_lead","tech_head","director"], pest_scouting: ["worker","team_lead","tech_head","director"], crop_inputs: ["worker","team_lead","tech_head","director"], harvests: ["worker","team_lead","tech_head","director"], pos_receipts: ["worker","team_lead","director","accountant"], hosp_folio: ["worker","team_lead","director","accountant"],
   food_samples: ["worker","team_lead","tech_head","auditor"], cold_chain_logs: ["worker","team_lead","tech_head"], calibrations: ["worker","team_lead","tech_head","it_engineer"],
+  attendance_logs: ["worker","team_lead","director"], maintenance_logs: ["worker","team_lead","tech_head","it_engineer"],
 };
