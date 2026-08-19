@@ -14,7 +14,7 @@ type Note = { id: string; ts: string; note: string; by_name: string; ack_by: str
 export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?: string[] }) {
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"),
     plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
-  const tasks = useData<Task>("tasks_today"); const notes = useData<Note>("shift_notes"); const recent = useData("events_recent");
+  const tasks = useData<Task>("tasks_today"); const notes = useData<Note>("shift_notes"); const recent = useData("events_mine");
   const [form, setForm] = useState<string | null>(null);
   const [noteTxt, setNoteTxt] = useState("");
   // Đọc ?tab= để nút "✍ Ghi" ở thanh dưới (BottomNav) mở đúng tab Ghi 3 chạm
@@ -37,7 +37,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   return (
     <div className="space-y-4">
       {promptElement}
-      <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Gần đây"]]} />
+      <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Tôi vừa ghi"]]} />
       
       {tab === "viec" && (
         <div className="space-y-2">
@@ -77,8 +77,12 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
           {(notes.rows ?? []).map((n) => <div key={n.id} className="card text-base"><div className="text-sm text-stone-500">{fmt.dt(n.ts)} · {n.by_name} · {n.dept}</div><div>{n.note}</div>{!n.ack_by && <button className="text-sm underline mt-1" onClick={async () => { await act("ack_note", { id: n.id }); notes.reload(); }}>Đã đọc</button>}{n.ack_by && <span className="b-grn mt-1">đã nhận</span>}</div>)}
         </div>)}
       {tab === "gan_day" && (
-        <div className="card overflow-auto"><table className="tbl"><thead><tr><th>Lúc</th><th>Loại</th><th>Gì</th><th>Đối tượng</th><th>Nguồn</th></tr></thead><tbody>
-          {(recent.rows ?? []).slice(0, 60).map((e, i) => <tr key={i}><td>{fmt.dt(e.ts)}</td><td>{String(e.kind)}</td><td>{String(e.what)}</td><td>{String(e.who ?? "")}</td><td>{String(e.source)}{e.is_backfill ? " (bù)" : ""}</td></tr>)}
-        </tbody></table></div>)}
+        <div className="card overflow-auto">
+          {recent.rows && !recent.rows.length
+            ? <div className="text-stone-500 py-6 text-center">Bạn chưa ghi gì. Mọi bản ghi bạn tạo sẽ hiện ở đây ngay sau khi lưu.</div>
+            : <table className="tbl"><thead><tr><th>Lúc</th><th>Loại</th><th>Gì</th><th>Đối tượng</th><th>Nguồn</th></tr></thead><tbody>
+              {(recent.rows ?? []).slice(0, 60).map((e, i) => <tr key={i}><td>{fmt.dt(e.ts)}</td><td>{String(e.kind)}</td><td>{String(e.what)}</td><td>{String(e.who ?? "")}</td><td>{String(e.source)}{e.is_backfill ? " (bù)" : ""}</td></tr>)}
+            </tbody></table>}
+        </div>)}
     </div>);
 }
