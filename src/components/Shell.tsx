@@ -8,6 +8,8 @@ import { Bell } from "@/components/panels/Notify";
 import { Search } from "@/components/Search";
 import { Toaster } from "@/components/ui/Toast";
 import { ThemeToggle, ThemeBoot } from "@/components/ui/ThemeToggle";
+import { BottomNav } from "@/components/ui/BottomNav";
+import { SunToggle, SunBoot } from "@/components/ui/SunMode";
 
 export type Sess = { staffId: string; staffName: string; role: string; position: string | null; dept?: string | null; farmId: string; farmIds: string[]; orgId: string };
 
@@ -79,6 +81,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
     <div className="min-h-screen flex bg-slate-50 text-slate-900">
       <Toaster />
       <ThemeBoot />
+      <SunBoot />
       <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-slate-900 text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
         <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
         {SideNav}
@@ -96,6 +99,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
             </select>) : <span className="hidden sm:inline text-sm font-semibold text-slate-600">Trại {sess.farmId}</span>}
           <div className="ml-auto flex items-center gap-2 text-sm">
             <Search />
+            <SunToggle compact />
             <span className="hidden md:inline-flex"><ThemeToggle compact /></span>
             <Bell />
             <button onClick={() => setShowQ(!showQ)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${!online ? "bg-amber-400 text-black" : q.length ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-800"}`} title="Hàng đợi đồng bộ">
@@ -116,6 +120,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
           {children}
         </main>
         <footer className="text-center text-xs text-slate-400 py-3">ITRAN FARM · "Một vòng tròn — không gì bị bỏ đi" · người tạo bản ghi, máy viết báo cáo</footer>
+        <BottomNav role={sess.role} />
       </div>
     </div>
   );

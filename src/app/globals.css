@@ -114,6 +114,25 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
   color-scheme: dark;
 } }
 
+/* ===== CHẾ ĐỘ NẮNG (đợt 3) — đọc được ngoài trời: tương phản tối đa, chữ đậm hơn, bỏ nền nhạt =====
+   Bật bằng [data-sun="1"] trên <html>. Chỉ đổi token + vài lớp nền → không đụng component. */
+:root[data-sun="1"] {
+  --bg: #ffffff; --surface: #ffffff; --surface-2: #f0f2f5; --line: #6b7280;
+  --ink: #000000; --muted: #333a44;
+  --brand: #046c47; --brand-strong: #024a31; --brand-soft: #d9f2e6;
+  --success: #045c39; --warning: #7a4a06; --danger: #96170b; --info: #0f4c81;
+  --sh-1: 0 0 0 1px #6b7280; --sh-2: 0 0 0 1px #6b7280; --sh-3: 0 0 0 2px #374151;
+}
+:root[data-sun="1"] body { font-weight: 500; }
+:root[data-sun="1"] .card, :root[data-sun="1"] .kpi, :root[data-sun="1"] .tile { border-width: 2px !important; border-color: var(--line) !important; }
+:root[data-sun="1"] .btn-primary { background: #046c47 !important; }
+:root[data-sun="1"] .text-slate-400, :root[data-sun="1"] .text-slate-500, :root[data-sun="1"] .text-stone-500, :root[data-sun="1"] .text-slate-600, :root[data-sun="1"] .text-stone-600 { color: #333a44 !important; }
+:root[data-sun="1"] .input { border-width: 2px !important; border-color: var(--line) !important; }
+:root[data-sun="1"] table.tbl th { color: #000 !important; background: #e5e7eb !important; }
+:root[data-sun="1"] .b-yel { background: #fde68a !important; color: #713f12 !important; }
+:root[data-sun="1"] .b-grn { background: #bbf7d0 !important; color: #064e3b !important; }
+:root[data-sun="1"] .b-red { background: #fecaca !important; color: #7f1d1d !important; }
+
 /* ===== MOTION (đợt 2): chuyển động có chủ đích, dịu, thống nhất bằng token ===== */
 @keyframes ui-fade-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ui-sheet-up { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
