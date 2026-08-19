@@ -46,7 +46,7 @@ export default function DanPanel({ sess }: { sess: Sess }) {
         </div>
         <div className="card p-0 overflow-auto"><div className="px-3 py-2 font-bold bg-stone-100 rounded-t-2xl">Tầng 1 · Khu / chuồng / ô — bấm để xuống cá thể</div>
           <table className="tbl"><thead><tr><th className="pl-3">Khu/chuồng</th><th>Loại</th><th className="text-right">Cá thể</th><th className="text-right">Đàn nhóm</th><th className="text-right">Cần chú ý</th><th className="text-right">Việc mở</th></tr></thead><tbody>
-            {(locs.rows ?? []).filter((r) => Number(r.head_individual) + Number(r.head_group) > 0 || Number(r.open_tasks) > 0).map((r) => <tr key={String(r.location_id)} className="hover:bg-green-50 cursor-pointer" onClick={() => goto({ location: String(r.location_id) })}><td className="pl-3 font-semibold">{String(r.name)}</td><td className="text-sm text-stone-500">{String(r.kind)}</td><td className="text-right">{fmt.n(r.head_individual)}</td><td className="text-right">{fmt.n(r.head_group)}</td><td className={`text-right ${Number(r.attention) ? "text-amber-700 font-bold" : ""}`}>{fmt.n(r.attention)}</td><td className="text-right">{fmt.n(r.open_tasks)}</td></tr>)}
+            {(locs.rows ?? []).filter((r) => Number(r.head_individual) + Number(r.head_group) > 0 || Number(r.open_tasks) > 0).map((r) => <tr key={String(r.location_id)} className="hover:bg-green-50 cursor-pointer" role="button" tabIndex={0} aria-label={`Xem cá thể tại ${String(r.name)}`} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goto({ location: String(r.location_id) }); } }} onClick={() => goto({ location: String(r.location_id) })}><td className="pl-3 font-semibold">{String(r.name)}</td><td className="text-sm text-stone-500">{String(r.kind)}</td><td className="text-right">{fmt.n(r.head_individual)}</td><td className="text-right">{fmt.n(r.head_group)}</td><td className={`text-right ${Number(r.attention) ? "text-amber-700 font-bold" : ""}`}>{fmt.n(r.attention)}</td><td className="text-right">{fmt.n(r.open_tasks)}</td></tr>)}
           </tbody></table></div>
       </div>)}
 
@@ -95,10 +95,10 @@ function NewAnimal({ groups, lots, locations, onDone }: { groups: Record<string,
         <select className="input" value={f.source} onChange={(e) => set("source", e.target.value)}><option value="SINH">Sinh tại trại</option><option value="MUA">Mua (→ cách ly 21 ngày)</option></select>
         <select className="input" value={f.sex} onChange={(e) => set("sex", e.target.value)}><option value="F">Cái</option><option value="M">Đực</option></select>
         <input className="input" type="date" value={f.birth_date} onChange={(e) => set("birth_date", e.target.value)} />
-        <input className="input" placeholder="Giống" value={f.breed ?? ""} onChange={(e) => set("breed", e.target.value)} />
-        <input className="input" placeholder="Mã mẹ (F01-BO-…)" value={f.dam_id ?? ""} onChange={(e) => set("dam_id", e.target.value)} />
-        <input className="input" placeholder="RFID 15 số (nếu có)" value={f.rfid ?? ""} onChange={(e) => set("rfid", e.target.value)} />
-        <input className="input" placeholder="Số tai nhìn (B123)" value={f.visual_tag ?? ""} onChange={(e) => set("visual_tag", e.target.value)} />
+        <input className="input" placeholder="Giống" aria-label="Giống" value={f.breed ?? ""} onChange={(e) => set("breed", e.target.value)} />
+        <input className="input" placeholder="Mã mẹ (F01-BO-…)" aria-label="Mã mẹ (F01-BO-…)" value={f.dam_id ?? ""} onChange={(e) => set("dam_id", e.target.value)} />
+        <input className="input" placeholder="RFID 15 số (nếu có)" aria-label="RFID 15 số (nếu có)" value={f.rfid ?? ""} onChange={(e) => set("rfid", e.target.value)} />
+        <input className="input" placeholder="Số tai nhìn (B123)" aria-label="Số tai nhìn (B123)" value={f.visual_tag ?? ""} onChange={(e) => set("visual_tag", e.target.value)} />
         <select className="input" value={f.group_id ?? ""} onChange={(e) => set("group_id", e.target.value)}><option value="">Đàn</option>{groups.filter((g) => g.kind === "BO_NHOM" || g.kind === "DE").map((g) => <option key={String(g.id)} value={String(g.id)}>{String(g.name)}</option>)}</select>
         <select className="input" value={f.location_id ?? ""} onChange={(e) => set("location_id", e.target.value)}><option value="">Chuồng</option>{locations.map((l) => <option key={String(l.id)} value={String(l.id)}>{String(l.name)}</option>)}</select>
         <select className="input" value={f.intake_lot_id ?? ""} onChange={(e) => set("intake_lot_id", e.target.value)}><option value="">Lô nhập</option>{lots.map((l) => <option key={String(l.id)} value={String(l.id)}>{String(l.id)} ({String(l.kind)})</option>)}</select>

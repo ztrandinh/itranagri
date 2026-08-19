@@ -1,7 +1,15 @@
 "use client";
 import { useState } from "react";
-import AnyChart from "@/components/AnyChart";
+import dynamic from "next/dynamic";
 import { CFG } from "@/components/panels/Obj360";
+import { SkeletonText } from "@/components/ui/Skeleton";
+/** LAZY: ChartIcon nằm ở MỌI DÒNG bảng — nếu nạp AnyChart (kéo theo recharts ~400KB)
+ *  tĩnh thì mọi trang đều phải tải thư viện biểu đồ dù người dùng không mở lần nào.
+ *  Chỉ tải khi thật sự bấm 📈. */
+const AnyChart = dynamic(() => import("@/components/AnyChartInner"), {
+  ssr: false,
+  loading: () => <div className="p-3"><SkeletonText lines={4} /></div>,
+});
 /** 📈 ở cuối MỖI DÒNG đối tượng: bấm → biểu đồ biến động của chính đối tượng đó (so kỳ trước) — dùng cấu hình 360 (CFG) nên mọi loại đối tượng đều có */
 export default function ChartIcon({ type, id, label }: { type: string; id: string; label?: string }) {
   const [open, setOpen] = useState(false); const cfg = CFG[type]; if (!cfg || !cfg.charts.length) return null;

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { fmt, useData } from "@/lib/client";
+import { fmt, useData , noAccent} from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { RecordsTable } from "@/components/AnyChart";
 import Attachments from "@/components/Attachments";
@@ -22,7 +22,11 @@ export default function QuanTri({ sess, initialTable, initialPk, initialTab }: {
   useEffect(() => { fetch(`/api/admin/${table}?meta=1`).then((r) => r.json()).then(setMeta); setEdit(null); load(); if (initialPk && table === initialTable) { setTab("lichsu"); } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, inactive, all]);
   useEffect(() => { if (tab === "lichsu") fetch(`/api/admin/${table}?history=1${histPk ? `&pk=${encodeURIComponent(histPk)}` : ""}`).then((r) => r.json()).then((j) => setHist(j.rows ?? [])); }, [tab, table, histPk]);
-  const t = tables.find((x) => x.table === table); const groups = [...new Set(tables.map((x) => x.group))];
+  const t = tables.find((x) => x.table === table);
+  // Lọc nhanh trong 124 bảng: gõ vài chữ (không dấu) thay vì cuộn danh sách dài
+  const [tq, setTq] = useState("");
+  const shown = useMemo(() => { const s = noAccent(tq.trim()); return s ? tables.filter((x) => noAccent(`${x.label} ${x.table} ${x.group}`).includes(s)) : tables; }, [tables, tq]);
+  const groups = [...new Set(shown.map((x) => x.group))];
   const cols = useMemo(() => (meta?.cols ?? []).filter((c) => !SYS.has(c.name) && c.name !== "attrs"), [meta]); const hasAttrs = !!(meta?.cols ?? []).find((c) => c.name === "attrs"); const cfs = meta?.customFields ?? [];
   const showCols = cols.slice(0, 12);
   const { confirm, confirmElement } = useConfirm();
@@ -31,12 +35,12 @@ export default function QuanTri({ sess, initialTable, initialPk, initialTab }: {
   return (
     <div className="space-y-3">{confirmElement}
       <div className="card grid sm:grid-cols-3 gap-2 items-end">
-        <div className="sm:col-span-2"><label className="text-xs text-stone-500">Bảng dữ liệu ({tables.length}) — chỉ vai được phân quyền mới thêm/sửa/gỡ; mọi thay đổi ghi lịch sử và gửi admin</label><select className="input" value={table} onChange={(e) => { setTable(e.target.value); setTab("ds"); setHistPk(null); }}>{groups.map((g) => <optgroup key={g} label={g}>{tables.filter((x) => x.group === g).map((x) => <option key={x.table} value={x.table}>{x.label} {x.canWrite ? "" : "(chỉ xem)"}</option>)}</optgroup>)}</select></div>
+        <div className="sm:col-span-2"><label className="text-xs text-stone-500">Bảng dữ liệu ({shown.length}/{tables.length}) — chỉ vai được phân quyền mới thêm/sửa/gỡ; mọi thay đổi ghi lịch sử và gửi admin</label><input className="input mb-1" placeholder="Lọc nhanh: gõ tên bảng (vd: kho, luong, bo)" aria-label="Lọc nhanh danh sách bảng" value={tq} onChange={(e) => setTq(e.target.value)} /><select className="input" value={table} onChange={(e) => { setTable(e.target.value); setTab("ds"); setHistPk(null); }} size={tq ? 8 : undefined}>{groups.map((g) => <optgroup key={g} label={g}>{shown.filter((x) => x.group === g).map((x) => <option key={x.table} value={x.table}>{x.label} {x.canWrite ? "" : "(chỉ xem)"}</option>)}</optgroup>)}</select></div>
         <div className="flex gap-2 flex-wrap">{[["ds", `Danh sách (${total})`], ["them", "＋ Thêm"], ["nhap", "⬆ Nhập CSV"], ["lichsu", "🕘 Lịch sử"]].map(([k, l]) => <button key={k} disabled={(k === "them" || k === "nhap") && !meta?.canWrite} className={`px-3 py-2 rounded-xl font-semibold text-sm disabled:opacity-40 ${tab === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => { setTab(k as typeof tab); if (k === "them") setEdit({}); }}>{l}</button>)}</div>
       </div>
       {msg && <div className="text-sm bg-green-50 border border-green-200 rounded-xl px-3 py-2">{msg}</div>}
       {tab === "ds" && <div className="card p-0 overflow-auto">
-        <div className="px-3 py-2 flex flex-wrap gap-2 items-center bg-stone-100 rounded-t-2xl text-sm"><input className="input !w-64 !py-1" placeholder="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /><button className="underline" onClick={load}>tìm</button>
+        <div className="px-3 py-2 flex flex-wrap gap-2 items-center bg-stone-100 rounded-t-2xl text-sm"><input className="input !w-64 !py-1" placeholder="Tìm…" aria-label="Tìm…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /><button className="underline" onClick={load}>tìm</button>
           <label><input type="checkbox" checked={inactive} onChange={(e) => setInactive(e.target.checked)} /> hiện cả đã gỡ</label>{t?.farmScoped && ["owner", "it_engineer", "auditor"].includes(sess.role) && <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> mọi trại</label>}
           <a className="ml-auto underline" href={`/api/admin/${table}?csv=1${all ? "&all=1" : ""}${inactive ? "&inactive=1" : ""}`}>⬇ Xuất CSV</a><a className="underline" href={`/api/import/csv?template=${table}`}>⬇ File mẫu</a></div>
         <table className="tbl text-sm"><thead><tr>{showCols.map((c) => <th key={c.name} className="pl-2">{c.name}</th>)}<th></th></tr></thead><tbody>

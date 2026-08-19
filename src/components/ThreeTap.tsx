@@ -1,9 +1,10 @@
 "use client";
 import QrScan from "@/components/QrScan";
 /** Component chuẩn "ghi 3 chạm": Bước 1 QUÉT/CHỌN đối tượng → Bước 2 CHỌN/NHẬP giá trị → Bước 3 XÁC NHẬN → enqueue (offline-first). */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { enqueue, newClientRef } from "@/lib/offline";
 import { noAccent } from "@/lib/client";
+import { uxTask, uxFormError } from "@/lib/ux";
 
 export type Option = { id: string; label: string; sub?: string; meta?: Record<string, unknown> };
 export type Field =
@@ -37,6 +38,9 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   const [msgErr, setMsgErr] = useState(false);
   const [busy, setBusy] = useState(false);
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const uxRef = useRef<ReturnType<typeof uxTask> | null>(null);
+  // Đo HEART: bắt đầu tính giờ khi người dùng thật sự bắt tay ghi (đã chọn đối tượng)
+  useEffect(() => { if (step === 2 && !uxRef.current) uxRef.current = uxTask(`ghi_${spec.table}`); }, [step, spec.table]);
   useEffect(() => { const d: Record<string, unknown> = {}; for (const f of spec.fields) if (f.type === "number" && f.default != null) d[f.key] = f.default; setVals(d); }, [spec.fields]);
 
   const filtered = useMemo(() => {
@@ -56,11 +60,13 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
       const ev = spec.build ? spec.build(target, base) : base;
       await enqueue(spec.table, ev);
       setMsgErr(false);
+      uxRef.current?.done(); uxRef.current = null;
       setMsg(`Đã ghi ${spec.title} · ${target.label} · ${new Date().toLocaleTimeString("vi-VN")}`);
       setStep(1); setTarget(null); setSearch(""); setVals({}); setPhotoUrls([]);
       spec.onDone?.();
     } catch (e) {
       // Không để treo nút: validate (spec.build) hoặc enqueue có thể ném lỗi → báo rõ, giữ nguyên bước để sửa.
+      uxFormError(`ghi_${spec.table}`, (e as Error)?.message?.slice(0, 40) || "unknown");
       setMsgErr(true);
       setMsg("Chưa ghi được: " + ((e as Error)?.message || "lỗi không xác định") + " — kiểm tra lại số liệu rồi thử lại.");
     } finally {
@@ -100,7 +106,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
       {step === 1 && (
         <div>
           <label className="block text-sm text-stone-600 mb-1">{spec.targetLabel}</label>
-          <div className="flex gap-2"><QrScan onResult={(v) => setSearch(v)} /><input className="input" autoFocus placeholder="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" value={search} onChange={(e) => setSearch(e.target.value)}
+          <div className="flex gap-2"><QrScan onResult={(v) => setSearch(v)} /><input className="input" autoFocus placeholder="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" aria-label="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { const exact = spec.targets.find((t) => t.id.toLowerCase() === search.trim().toLowerCase() || t.meta?.rfid === search.trim() || t.meta?.visual_tag?.toString().toLowerCase() === search.trim().toLowerCase()); if (exact) { setTarget(exact); setStep(2); } else if (spec.allowScanInput && search.trim()) { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); } } }} /></div>
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-auto">
             {filtered.map((t) => (

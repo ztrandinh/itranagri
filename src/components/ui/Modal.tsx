@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, children, labelledBy }: {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" aria-hidden="true" />
+      <div className="ui-fade absolute inset-0" style={{ background: "rgba(8,14,11,.45)" }} aria-hidden="true" />
       <div
         ref={panelRef}
         role="dialog"
@@ -49,7 +49,7 @@ export function Modal({ open, onClose, title, children, labelledBy }: {
         aria-label={labelledBy ? undefined : title}
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className="relative bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-5 outline-none"
+        className="ui-pop-in relative rounded-2xl shadow-xl w-full max-w-md p-5 outline-none" style={{ background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line)", boxShadow: "var(--sh-3)" }}
         onClick={(e) => e.stopPropagation()}
       >
         {title && <h2 className="text-lg font-bold text-slate-800 mb-3">{title}</h2>}

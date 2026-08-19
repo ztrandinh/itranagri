@@ -65,7 +65,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
         <div className="space-y-3">
           <div className="card">
             <div className="font-semibold mb-1">Ghi sổ giao ca</div>
-            <textarea className="input" rows={3} placeholder="Con B012 bỏ ăn sáng, ca sau theo dõi…" value={noteTxt} onChange={(e) => setNoteTxt(e.target.value)} />
+            <textarea className="input" rows={3} placeholder="Con B012 bỏ ăn sáng, ca sau theo dõi…" aria-label="Con B012 bỏ ăn sáng, ca sau theo dõi…" value={noteTxt} onChange={(e) => setNoteTxt(e.target.value)} />
             <div className="flex gap-2 mt-2"><button className="btn-secondary" onClick={async () => { if (!noteTxt.trim()) return; await act("shift_note", { note: noteTxt, dept: sess.position, shift: new Date().getHours() < 12 ? "SANG" : "CHIEU" }); setNoteTxt(""); notes.reload(); }}>Lưu ghi chú</button><button className="btn-primary" onClick={async () => { if (!noteTxt.trim()) return; await act("shift_note", { note: noteTxt, dept: sess.position, make_task: true, role_hint: myRoleKey ? `worker:${myRoleKey}` : sess.role }); setNoteTxt(""); notes.reload(); tasks.reload(); }}>Lưu + tạo việc cho ca sau</button></div>
           </div>
           {(notes.rows ?? []).map((n) => <div key={n.id} className="card text-base"><div className="text-sm text-stone-500">{fmt.dt(n.ts)} · {n.by_name} · {n.dept}</div><div>{n.note}</div>{!n.ack_by && <button className="text-sm underline mt-1" onClick={async () => { await act("ack_note", { id: n.id }); notes.reload(); }}>Đã đọc</button>}{n.ack_by && <span className="b-grn mt-1">đã nhận</span>}</div>)}

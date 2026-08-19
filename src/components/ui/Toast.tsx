@@ -39,7 +39,7 @@ export function Toaster() {
         <div
           key={t.id}
           role={t.kind === "err" ? "alert" : "status"}
-          className={`flex items-start gap-2 rounded-xl border px-4 py-3 shadow-lg text-sm ${
+          className={`ui-toast-in flex items-start gap-2 rounded-xl border px-4 py-3 shadow-lg text-sm ${
             t.kind === "err" ? "bg-red-50 border-red-200 text-red-800"
             : t.kind === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-900"
             : "bg-slate-800 border-slate-700 text-white"

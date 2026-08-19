@@ -7,6 +7,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "@/components/panels/Notify";
 import { Search } from "@/components/Search";
 import { Toaster } from "@/components/ui/Toast";
+import { ThemeToggle, ThemeBoot } from "@/components/ui/ThemeToggle";
+import { BottomNav } from "@/components/ui/BottomNav";
+import { SunToggle, SunBoot } from "@/components/ui/SunMode";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 
 export type Sess = { staffId: string; staffName: string; role: string; position: string | null; dept?: string | null; farmId: string; farmIds: string[]; orgId: string };
 
@@ -77,6 +81,10 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   return (
     <div className="min-h-screen flex bg-slate-50 text-slate-900">
       <Toaster />
+      <ThemeBoot />
+      <SunBoot />
+      <CommandPalette />
+      <a href="#main" className="ui-skip">Tới nội dung chính</a>
       <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-slate-900 text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
         <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
         {SideNav}
@@ -94,6 +102,8 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
             </select>) : <span className="hidden sm:inline text-sm font-semibold text-slate-600">Trại {sess.farmId}</span>}
           <div className="ml-auto flex items-center gap-2 text-sm">
             <Search />
+            <SunToggle compact />
+            <span className="hidden md:inline-flex"><ThemeToggle compact /></span>
             <Bell />
             <button onClick={() => setShowQ(!showQ)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${!online ? "bg-amber-400 text-black" : q.length ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-800"}`} title="Hàng đợi đồng bộ">
               {online ? (q.length ? `⏳ ${q.length}` : "✓ đồng bộ") : `📴 offline ${q.length}`}
@@ -108,11 +118,12 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
             <ul className="mt-1 max-h-48 overflow-auto">{q.map((x) => <li key={x.key} className="flex gap-2 py-0.5 border-t border-amber-100"><span className="font-mono text-xs">{x.table}</span><span className="truncate flex-1">{JSON.stringify(x.event).slice(0, 90)}</span>{x.last_error && <span className="text-red-700 text-xs">{x.last_error.slice(0, 60)}</span>}{x.last_error && <button className="text-xs underline" onClick={() => discard(x.key)}>bỏ</button>}</li>)}</ul>
           </div>
         </div>)}
-        <main className="flex-1 w-full max-w-[1800px] mx-auto px-3 md:px-5 py-4">
+        <main id="main" className="flex-1 w-full max-w-[1800px] mx-auto px-3 md:px-5 py-4">
           {title && <h1 className="text-xl md:text-2xl font-bold mb-3 text-slate-800">{title}</h1>}
           {children}
         </main>
         <footer className="text-center text-xs text-slate-400 py-3">ITRAN FARM · "Một vòng tròn — không gì bị bỏ đi" · người tạo bản ghi, máy viết báo cáo</footer>
+        <BottomNav role={sess.role} />
       </div>
     </div>
   );
