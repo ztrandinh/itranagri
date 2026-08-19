@@ -8,7 +8,7 @@ import type { Sess } from "@/components/Shell";
 import { usePrompt } from "@/components/ui/PromptDialog";
 import { useUrlTab } from "@/lib/useUrlTab";
 
-type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null };
+type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null; assignee_id: string | null };
 type Note = { id: string; ts: string; note: string; by_name: string; ack_by: string | null; dept: string | null };
 
 export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?: string[] }) {
@@ -34,15 +34,26 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   useEffect(() => { void act("generate_tasks", {}).then(() => tasks.reload()); /* sinh việc khi mở ca */ // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const overdue = myTasks.filter((t) => new Date(t.due_at) < new Date() && t.status !== "XONG");
+  // Tách "việc ĐÍCH DANH của tôi" khỏi "việc chung chưa có người nhận".
+  // Lý do: hiện có 12.751 việc mở nhưng chỉ 34 việc (0,27%) có người nhận; riêng nhóm role_hint='worker'
+  // có 2.310 việc và MỌI công nhân đều nhận chung, nên A1 TMR, A3 Gà, A4 RAS, A5 Lái máy mở máy ra đều
+  // thấy y hệt "300 việc · 296 quá hạn", đứng đầu là "Cân định kỳ bò" — không ai biết việc nào là của mình.
+  // Trộn chung như cũ thì danh sách vô nghĩa: công nhân bỏ qua toàn bộ, kể cả việc thật của họ.
+  const laCuaToi = (t: Task) => t.assignee_id === sess.staffId || (!!myRoleKey && t.role_hint === `worker:${myRoleKey}`);
+  const theoHan = (a: Task, b: Task) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+  const viecCuaToi = myTasks.filter(laCuaToi).sort(theoHan);
+  const viecChung = myTasks.filter((t) => !laCuaToi(t)).sort(theoHan);
+  const chungQuaHan = viecChung.filter((t) => new Date(t.due_at) < new Date()).length;
+  const quaHanCuaToi = viecCuaToi.filter((t) => new Date(t.due_at) < new Date()).length;
   return (
     <div className="space-y-4">
       {promptElement}
-      <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${myTasks.length}${overdue.length ? ` · ${overdue.length} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Tôi vừa ghi"]]} />
-      
+      <Tabs value={tab} onChange={(k) => setTab(k as typeof tab)} items={[["viec", `Việc hôm nay (${viecCuaToi.length}${quaHanCuaToi ? ` · ${quaHanCuaToi} quá hạn` : ""})`], ["ghi", "Ghi 3 chạm"], ["giaoca", "Giao ca"], ["gan_day", "Tôi vừa ghi"]]} />
+
       {tab === "viec" && (
         <div className="space-y-2">
-          {!myTasks.length && <div className="card text-stone-500">Không có việc đến hạn. Bấm "Ghi 3 chạm" để ghi việc thường ngày.</div>}
-          {myTasks.map((t) => (
+          {!viecCuaToi.length && <div className="card text-stone-500">Bạn không có việc nào được giao đích danh. Bấm "Ghi 3 chạm" để ghi việc thường ngày.</div>}
+          {viecCuaToi.map((t) => (
             <div key={t.id} className={`card flex items-start gap-3 ${t.priority === "KHAN" ? "border-red-300" : t.priority === "CAO" ? "border-amber-300" : ""}`}>
               <div className="flex-1">
                 <div className="font-semibold">{t.title}</div>
@@ -57,6 +68,23 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                 <button className="text-xs underline text-stone-500" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { id: t.id, status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
               </div>
             </div>))}
+          {/* KHÔNG xoá việc chung — chỉ gấp lại để nó không nhấn chìm việc đích danh. */}
+          {!!viecChung.length && (
+            <details className="card">
+              <summary className="cursor-pointer font-semibold">Việc chung của bộ phận, chưa giao ai — {viecChung.length}{chungQuaHan ? ` · ${chungQuaHan} quá hạn` : ""}</summary>
+              <div className="text-sm text-stone-500 mt-1 mb-2">Đây là việc hệ thống sinh cho cả nhóm, chưa chỉ định người làm. Ai làm thì bấm ✓ Xong; nếu thấy đúng là việc của mình, báo tổ trưởng giao đích danh để lần sau hiện ở trên.</div>
+              <div className="space-y-2">
+                {viecChung.slice(0, 30).map((t) => (
+                  <div key={t.id} className="rounded-xl border px-3 py-2 flex items-start gap-3">
+                    <div className="flex-1">
+                      <div className="font-semibold">{t.title}</div>
+                      <div className="text-sm text-stone-500">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>}</div>
+                    </div>
+                    <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { id: t.id, status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
+                  </div>))}
+                {viecChung.length > 30 && <div className="text-sm text-stone-500">…còn {viecChung.length - 30} việc nữa. Danh sách quá dài là do việc được sinh mà không giao người — cần tổ trưởng phân công.</div>}
+              </div>
+            </details>)}
         </div>)}
       {tab === "ghi" && (
         <div className="space-y-3">
