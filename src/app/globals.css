@@ -133,6 +133,12 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
 :root[data-sun="1"] .b-grn { background: #bbf7d0 !important; color: #064e3b !important; }
 :root[data-sun="1"] .b-red { background: #fecaca !important; color: #7f1d1d !important; }
 
+/* ===== BẢNG (đợt 5): tiêu đề cột DÍNH khi cuộn — bảng dài không mất ngữ cảnh cột ===== */
+.card.overflow-auto, .overflow-auto > table.tbl { scrollbar-gutter: stable; }
+table.tbl thead th { position: sticky; top: 0; z-index: 2; }
+/* trong khung cuộn dọc (card p-0 overflow-auto) header vẫn dính vào mép khung */
+.card.p-0.overflow-auto { max-height: 76vh; }
+
 /* ===== MOTION (đợt 2): chuyển động có chủ đích, dịu, thống nhất bằng token ===== */
 @keyframes ui-fade-in { from { opacity: 0 } to { opacity: 1 } }
 @keyframes ui-sheet-up { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
