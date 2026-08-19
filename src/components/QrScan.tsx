@@ -25,7 +25,7 @@ export default function QrScan({ onResult, className }: { onResult: (v: string) 
         <div className="flex items-center mb-2"><b>Quét QR / mã vạch</b><button className="ml-auto text-xl" onClick={() => setOpen(false)}>✕</button></div>
         <video ref={videoRef} className="w-full rounded-xl bg-black aspect-square object-cover" muted playsInline />
         {err && <div className="text-sm text-red-700 mt-2">{err}</div>}
-        <input className="input mt-2" placeholder="hoặc gõ mã rồi Enter" onKeyDown={(e) => { if (e.key === "Enter") { onResult((e.target as HTMLInputElement).value.trim()); setOpen(false); } }} />
+        <input className="input mt-2" placeholder="hoặc gõ mã rồi Enter" aria-label="hoặc gõ mã rồi Enter" onKeyDown={(e) => { if (e.key === "Enter") { onResult((e.target as HTMLInputElement).value.trim()); setOpen(false); } }} />
         <div className="text-xs text-slate-500 mt-1">Đưa QR trên thẻ tai / nhãn lô / bao bì vào khung; hỗ trợ QR, Code128, EAN-13, DataMatrix.</div>
       </div></div>}
   </>);

@@ -46,8 +46,8 @@ export function AlertSettings({ sess }: { sess: Sess }) {
         <div className="text-xs text-stone-500 mt-1">Zalo/SMS/email: kênh được xếp hàng (cột sent) — kích hoạt khi có Zalo OA/brandname; app luôn có.</div></div>
       {canW && <div className="card"><h3 className="font-bold">Tạo / sửa luật cảnh báo (không cần code — thêm luật mới bất kỳ lúc nào)</h3>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-2">
-          <input className="input" placeholder="Mã luật (AL-…)" value={String(f.code ?? "")} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} />
-          <input className="input lg:col-span-2" placeholder="Tên luật" value={String(f.name ?? "")} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <input className="input" placeholder="Mã luật (AL-…)" aria-label="Mã luật (AL-…)" value={String(f.code ?? "")} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} />
+          <input className="input lg:col-span-2" placeholder="Tên luật" aria-label="Tên luật" value={String(f.name ?? "")} onChange={(e) => setF({ ...f, name: e.target.value })} />
           <select className="input" value={t} onChange={(e) => setF({ ...f, type: e.target.value })}><option value="stock_days">Ngày-tồn mặt hàng (kho sắp hết)</option><option value="metric_threshold">Chỉ số vượt/dưới ngưỡng</option><option value="overdue_tasks">Việc quá hạn</option><option value="expand_biomass">Cần mở rộng vùng trồng (ủ chua thấp & đàn tăng)</option><option value="missing_event">Vắng bản ghi trong ngày</option><option value="due">Hiệu chuẩn thiết bị đến hạn</option></select>
           {t === "stock_days" && <select className="input" value={String(f.sku)} onChange={(e) => setF({ ...f, sku: e.target.value })}><option value="*">Mọi mặt hàng</option>{(products.rows ?? []).map((p) => <option key={String(p.sku)} value={String(p.sku)}>{String(p.name)}</option>)}</select>}
           {t === "metric_threshold" && <select className="input" value={String(f.metric)} onChange={(e) => setF({ ...f, metric: e.target.value })}>{METRICS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>}
@@ -55,7 +55,7 @@ export function AlertSettings({ sess }: { sess: Sess }) {
           {["stock_days","metric_threshold","overdue_tasks"].includes(t) && <select className="input" value={String(f.op)} onChange={(e) => setF({ ...f, op: e.target.value })}>{["<","<=",">",">=","="].map((o) => <option key={o}>{o}</option>)}</select>}
           <input className="input" type="number" placeholder={t === "missing_event" ? "sau giờ" : "ngưỡng"} value={String(f.value ?? "")} onChange={(e) => setF({ ...f, value: Number(e.target.value) })} />
           <select className="input" value={String(f.level)} onChange={(e) => setF({ ...f, level: e.target.value })}>{["XANH","VANG","CAM","DO"].map((l) => <option key={l}>{l}</option>)}</select>
-          <input className="input" type="number" placeholder="Cooldown phút" value={String(f.cooldown_min)} onChange={(e) => setF({ ...f, cooldown_min: Number(e.target.value) })} />
+          <input className="input" type="number" placeholder="Cooldown phút" aria-label="Cooldown phút" value={String(f.cooldown_min)} onChange={(e) => setF({ ...f, cooldown_min: Number(e.target.value) })} />
           <select className="input" value={String(f.scope)} onChange={(e) => setF({ ...f, scope: e.target.value })}><option value="FARM">Áp trại {sess.farmId}</option>{["owner","it_engineer"].includes(sess.role) && <option value="GLOBAL">Áp toàn công ty</option>}</select>
         </div>
         <div className="mt-2 text-sm"><b>Người/nhóm nhận:</b> {RECIP.map((r) => <label key={r} className="ml-2 inline-block"><input type="checkbox" checked={(f.recipients as string[]).includes(r)} onChange={() => setF({ ...f, recipients: toggle(f.recipients as string[], r) })} /> {r}</label>)}</div>

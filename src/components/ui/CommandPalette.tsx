@@ -79,7 +79,7 @@ export function CommandPalette() {
           ref={inputRef}
           className="w-full px-4 py-3.5 text-base outline-none"
           style={{ background: "transparent", color: "var(--ink)", borderBottom: "1px solid var(--line)" }}
-          placeholder="Tìm trang, việc, con bò, ô ruộng, mặt hàng, người…"
+          placeholder="Tìm trang, việc, con bò, ô ruộng, mặt hàng, người…" aria-label="Tìm trang, việc, con bò, ô ruộng, mặt hàng, người…"
           value={q}
           onChange={(e) => { setQ(e.target.value); setSel(0); }}
           onKeyDown={(e) => {
