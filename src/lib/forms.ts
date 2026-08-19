@@ -220,6 +220,52 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       table: "gate_logs", title: "Nhật ký cổng", targetLabel: "Biển số xe (gõ/OCR)", targetKey: "plate", targets: [], allowScanInput: true,
       fields: [{ key: "direction", label: "Chiều", type: "choice", options: [{ id: "VAO", label: "Vào" }, { id: "RA", label: "Ra" }], required: true }, { key: "weighed", label: "Đã qua cân", type: "bool" }, { key: "anolyte_wash", label: "Đã rửa hố anolyte", type: "bool" }, { key: "purpose", label: "Mục đích", type: "text" }, { key: "photo", label: "Ảnh xe", type: "photo" }],
     },
+    // A14 Bếp · LƯU MẪU THỨC ĂN — nghĩa vụ BẮT BUỘC theo ATTP. Trước đây bếp trưởng không có
+    // chỗ nào để ghi, tức là trại không có bằng chứng lưu mẫu khi đoàn kiểm tra hỏi.
+    food_sample: {
+      table: "food_samples", title: "Lưu mẫu thức ăn", targetLabel: "Bữa / suất ăn", targetKey: "meal", allowScanInput: false,
+      targets: [{ id: "SANG", label: "Sáng" }, { id: "TRUA", label: "Trưa" }, { id: "CHIEU", label: "Chiều" }, { id: "TIEC", label: "Tiệc / đoàn khách" }],
+      fields: [
+        { key: "dish_name", label: "Tên món", type: "text", required: true, placeholder: "Gà kho gừng…" },
+        { key: "sample_gram", label: "Khối lượng mẫu", type: "number", unit: "g", min: 0, step: 10, default: 100, required: true },
+        { key: "stored_at", label: "Lưu ở đâu", type: "text", placeholder: "Tủ mẫu bếp" },
+        { key: "temp_c", label: "Nhiệt độ tủ mẫu", type: "number", unit: "°C", min: -30, max: 30, step: 1 },
+        { key: "note", label: "Ghi chú", type: "text" },
+        { key: "photo", label: "Ảnh mẫu đã dán nhãn", type: "photo" },
+      ],
+      build: (t, v) => ({ ...v, meal: t.id, keep_until: new Date(Date.now() + 24 * 3600 * 1000).toISOString() }),
+    },
+    // A16 Tài xế · NHIỆT ĐỘ CHUỖI LẠNH trên đường. Thiếu mắt xích này thì hàng tới nơi
+    // không chứng minh được đã giữ đúng nhiệt suốt hành trình.
+    cold_chain: {
+      // Nhãn dùng luôn trong câu trạng thái rỗng ("gõ <nhãn> vào ô trên") nên phải là một
+      // danh từ đọc xuôi, không phải câu lệnh kiểu "Chọn xe".
+      table: "cold_chain_logs", title: "Nhiệt độ xe lạnh", targetLabel: "Biển số xe", targetKey: "vehicle_id", allowScanInput: true,
+      // Lọc CHÍNH XÁC xe vận chuyển lạnh. Dùng /XE/ chung là sai: nó bắt luôn XE_TRON
+      // (xe trộn TMR) — đo được lúc thử, tài xế được mời ghi nhiệt độ cho xe trộn thức ăn.
+      // Danh sách rỗng cũng không sao: form cho gõ tay biển số ở Bước 1.
+      targets: r.devices.filter((d) => /^(XE_LANH|XE_TAI|XE_DONG_LANH|REEFER|TRUCK)/i.test(s(d.kind))).map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "leg", label: "Chặng", type: "choice", required: true, options: [{ id: "XEP_HANG", label: "Lúc xếp hàng" }, { id: "DOC_DUONG", label: "Dọc đường" }, { id: "GIAO_HANG", label: "Lúc giao hàng" }] },
+        { key: "temp_c", label: "Nhiệt độ đo được", type: "number", unit: "°C", min: -30, max: 30, step: 1, required: true },
+        { key: "temp_max_c", label: "Ngưỡng cho phép của lô", type: "number", unit: "°C", min: -30, max: 30, step: 1 },
+        { key: "door_open", label: "Có mở cửa thùng không", type: "bool" },
+        { key: "location_note", label: "Đang ở đâu", type: "text", placeholder: "Quốc lộ 20, km 45…" },
+        { key: "photo", label: "Ảnh đồng hồ nhiệt", type: "photo" },
+      ],
+    },
+    // A11 KTV thiết bị · PHIẾU HIỆU CHUẨN. Bảng `calibrations` có sẵn từ lâu, chỉ thiếu form.
+    calibration: {
+      table: "calibrations", title: "Hiệu chuẩn thiết bị", targetLabel: "Chọn thiết bị cần hiệu chuẩn", targetKey: "target_device_id", allowScanInput: true,
+      targets: r.devices.map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      fields: [
+        { key: "method", label: "Cách hiệu chuẩn", type: "choice", required: true, options: [{ id: "QUA_CAN_CHUAN", label: "Quả cân chuẩn" }, { id: "DUNG_DICH_CHUAN", label: "Dung dịch chuẩn" }, { id: "MAY_CHUAN", label: "Máy chuẩn" }, { id: "DON_VI_NGOAI", label: "Đơn vị ngoài" }] },
+        { key: "before_val", label: "Số đo TRƯỚC hiệu chuẩn", type: "number", step: 0.1 },
+        { key: "after_val", label: "Số đo SAU hiệu chuẩn", type: "number", step: 0.1 },
+        { key: "result", label: "Kết quả", type: "choice", required: true, options: [{ id: "DAT", label: "Đạt" }, { id: "DA_HIEU_CHINH", label: "Đã hiệu chỉnh" }, { id: "KHONG_DAT", label: "Không đạt — ngừng dùng" }] },
+        { key: "next_due", label: "Hạn hiệu chuẩn kế tiếp", type: "date" },
+      ],
+    },
     // Chung · sự cố · checklist
     incident: {
       table: "incidents", title: "Báo sự cố / near-miss", targetLabel: "Nơi xảy ra", targetKey: "location_id", targets: locOpts(r), allowScanInput: true,
