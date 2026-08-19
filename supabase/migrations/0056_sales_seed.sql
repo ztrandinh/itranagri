@@ -25,4 +25,12 @@ insert into price_list(org_id, farm_id, sku, kind, subject, price, unit, valid_f
 update partners set customer_group='DAI_LY', payment_terms='NET15' where id='KH-0001' and customer_group is null;
 insert into discount_tiers(id, farm_id, sku, customer_group, min_qty, discount_pct, note) values ('DT-2','F01',null,'DAI_LY',200,8,'Đại lý ≥200 đv') on conflict do nothing;
 insert into sales_targets(id, farm_id, staff_id, period, target_amount, commission_pct) values ('ST-1','F01','NS-002',to_char(current_date,'YYYY-MM'),300000000,1.5) on conflict do nothing;
-select gen_contract_deliveries('F01-HD-0001', 14);
+-- Hợp đồng F01-HD-0001 KHÔNG được tạo bởi migration nào — nó chỉ tồn tại trong CSDL đang chạy
+-- vì có người tạo qua giao diện. Gọi thẳng như cũ thì `pnpm db:migrate --reset` chết ở đây với
+-- ERR_NOT_FOUND, tức là không dựng lại được từ Postgres trắng (vi phạm luật 9 trong CLAUDE.md).
+-- Seed phải tự đứng được: có hợp đồng thì sinh lịch giao, không có thì thôi.
+do $$ begin
+  if exists (select 1 from contracts where id = 'F01-HD-0001') then
+    perform gen_contract_deliveries('F01-HD-0001', 14);
+  end if;
+end $$;
