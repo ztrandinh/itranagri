@@ -2,7 +2,7 @@
 import QrScan from "@/components/QrScan";
 /** Component chuẩn "ghi 3 chạm": Bước 1 QUÉT/CHỌN đối tượng → Bước 2 CHỌN/NHẬP giá trị → Bước 3 XÁC NHẬN → enqueue (offline-first). */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { enqueue, newClientRef } from "@/lib/offline";
+import { enqueue, newClientRef, flush, pending } from "@/lib/offline";
 import { noAccent } from "@/lib/client";
 import { uxTask, uxFormError } from "@/lib/ux";
 
@@ -80,10 +80,30 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
       if (photoUrls.length) base.photo_urls = photoUrls;
       if (spec.paper?.serial) { base.source = "PAPER"; base.paper_serial = spec.paper.serial; base.is_backfill = true; }
       const ev = spec.build ? spec.build(target, base) : base;
-      await enqueue(spec.table, ev);
+      const q = await enqueue(spec.table, ev);
+
+      // KHÔNG báo "Đã ghi" ngay sau khi xếp hàng. Trước đây làm vậy nên khi máy chủ TỪ CHỐI
+      // bản ghi (đo được: khoá ngoại checklist_runs_sop_code_fkey chặn, CSDL 0 dòng) màn hình
+      // vẫn hiện "Đã ghi …" — công nhân tưởng xong, thực tế mất trắng. Nay đợi gửi rồi mới kết luận.
+      await flush().catch(() => {});
+      const conNam = (await pending()).find((p) => p.key === q.key);
+      const coMang = typeof navigator === "undefined" || navigator.onLine;
+
+      if (conNam && coMang) {
+        // Có mạng mà vẫn kẹt = máy chủ từ chối vì dữ liệu. Giữ nguyên bước 3 để công nhân sửa.
+        uxFormError(`ghi_${spec.table}`, (conNam.last_error ?? "pending").slice(0, 40));
+        setMsgErr(true);
+        setMsg(conNam.last_error
+          ? `CHƯA GHI ĐƯỢC — máy chủ từ chối: ${conNam.last_error}. Bản ghi đang giữ trong máy, sửa lại rồi gửi tiếp; báo tổ trưởng nếu lặp lại.`
+          : "CHƯA GHI ĐƯỢC — máy chủ chưa nhận. Bản ghi đang giữ trong máy và sẽ tự gửi lại; đừng nhập lại kẻo trùng.");
+        return;
+      }
+
       setMsgErr(false);
       uxRef.current?.done(); uxRef.current = null;
-      setMsg(`Đã ghi ${spec.title} · ${target.label} · ${new Date().toLocaleTimeString("vi-VN")}`);
+      setMsg(conNam
+        ? `Đã lưu trong máy (chưa có mạng) · ${spec.title} · ${target.label} — sẽ tự gửi khi có mạng.`
+        : `Đã ghi ${spec.title} · ${target.label} · ${new Date().toLocaleTimeString("vi-VN")}`);
       setStep(1); setTarget(null); setSearch(""); setVals({}); setPhotoUrls([]);
       spec.onDone?.();
     } catch (e) {
