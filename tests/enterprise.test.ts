@@ -56,8 +56,9 @@ describe("Tiêu chuẩn & ICFS", () => {
 });
 describe("Audit trail danh mục", () => {
   it("sửa facilities ghi audit_log trước/sau + sự kiện master.changed", async () => {
-    await admin.query("update facilities set note='audit-test-'||now()::text where id='F01-FC-CAN'");
-    const a = (await admin.query("select action, changed_cols from audit_log where table_name='facilities' and pk='F01-FC-CAN' order by ts desc limit 1")).rows[0]; expect(a.action).toBe("UPDATE"); expect(a.changed_cols).toContain("note");
+    const fid = (await admin.query("select id from facilities where farm_id='F01' order by id limit 1")).rows[0].id;   // tra id động — bền với chuẩn hóa mã (0106 đổi id facility tại chỗ)
+    await admin.query("update facilities set note='audit-test-'||now()::text where id=$1", [fid]);
+    const a = (await admin.query("select action, changed_cols from audit_log where table_name='facilities' and pk=$1 order by ts desc limit 1", [fid])).rows[0]; expect(a.action).toBe("UPDATE"); expect(a.changed_cols).toContain("note");
   });
 });
 describe("Thuật toán thuần", () => {
