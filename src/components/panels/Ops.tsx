@@ -1,5 +1,6 @@
 "use client";
 import Tabs from "@/components/Tabs";
+import { Term } from "@/components/ui/Term";
 import { useUrlTab } from "@/lib/useUrlTab";
 import { AlertSettings } from "@/components/panels/Notify";
 import { CrmPanel, PosPanel, KenhPanel } from "@/components/panels/KinhDoanh";
@@ -24,7 +25,7 @@ export function DoiSoatPanel({ sess }: { sess: Sess }) {
   const [busy, setBusy] = useState(false); const [date, setDate] = useState(new Date(Date.now() - 86400e3).toISOString().slice(0, 10));
   return (
     <div className="space-y-3">
-      <div className="card flex flex-wrap items-center gap-2"><b>Reconciliation engine</b> — RC1–RC10 bộ gốc · RC11 giấy–số · RC12 tem. Chạy đêm 01:00; chạy tay: <input type="date" className="input !w-44" value={date} onChange={(e) => setDate(e.target.value)} />
+      <div className="card flex flex-wrap items-center gap-2"><b>Đối soát tự động</b> — <Term k="RC1" />, <Term k="RC2" />, <Term k="RC4" />, <Term k="RC7" />, <Term k="RC10" /> · <Term k="RC11">RC11 giấy–số</Term> · <Term k="RC12">RC12 tem</Term>. Chạy đêm 01:00; chạy tay: <input type="date" className="input !w-44" value={date} onChange={(e) => setDate(e.target.value)} />
         {["tech_head","director","owner","it_engineer"].includes(sess.role) && <button className="btn-primary !py-2" disabled={busy} onClick={async () => { setBusy(true); await fetch(`/api/jobs/recon?farm=${sess.farmId}&date=${date}`, { method: "POST" }); setBusy(false); latest.reload(); }}>{busy ? "…" : "▶ Chạy đối soát"}</button>}
         <a className="btn-secondary !py-2 ml-auto" href="/api/exports/recon">⬇ CSV</a></div>
       <div className="card p-0 overflow-auto"><table className="tbl"><thead><tr><th className="pl-3">Mã</th><th>Đối soát</th><th>Kỳ</th><th className="text-right">Vế A</th><th className="text-right">Vế B</th><th className="text-right">Lệch</th><th>Trạng thái</th><th></th></tr></thead><tbody>

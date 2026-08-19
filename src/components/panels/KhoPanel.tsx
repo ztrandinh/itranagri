@@ -9,6 +9,7 @@ import { useData, act, fmt } from "@/lib/client";
 import { usePrompt } from "@/components/ui/PromptDialog";
 import { toast } from "@/components/ui/Toast";
 import { useUrlTab } from "@/lib/useUrlTab";
+import { Term } from "@/components/ui/Term";
 import type { Sess } from "@/components/Shell";
 type R = Record<string, unknown>;
 
@@ -27,9 +28,9 @@ export default function KhoPanel({ sess }: { sess: Sess }) {
     <div className="space-y-3">
       {promptElement}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <div className="kpi"><div className="l">Ngày-tồn ủ chua (K3)</div><div className={`v ${ds && Number(ds.days_silage) < 30 ? "text-red-700" : ds && Number(ds.days_silage) < 45 ? "text-amber-700" : ""}`}>{ds?.days_silage != null ? fmt.n(ds.days_silage) : "—"}</div><div className="text-xs">{fmt.n(ds?.k3_kg)} kg / {fmt.n(ds?.kg_per_day)} kg·ngày</div></div>
-        <div className="kpi"><div className="l">Sổ đàn K8</div><div className="v">{fmt.n(hv?.head_count)} con</div><div className="text-xs">{fmt.vnd(hv?.value)}</div></div>
-        <div className="kpi"><div className="l">FEFO đỏ (&lt;20% hạn)</div><div className={`v ${(fefo.rows?.length ?? 0) > 0 ? "text-red-700" : ""}`}>{fefo.rows?.length ?? "—"}</div></div>
+        <div className="kpi"><div className="l"><Term k="NGAY-TON">Ngày-tồn</Term> ủ chua (<Term k="K3" />)</div><div className={`v ${ds && Number(ds.days_silage) < 30 ? "text-red-700" : ds && Number(ds.days_silage) < 45 ? "text-amber-700" : ""}`}>{ds?.days_silage != null ? fmt.n(ds.days_silage) : "—"}</div><div className="text-xs">{fmt.n(ds?.k3_kg)} kg / {fmt.n(ds?.kg_per_day)} kg·ngày</div></div>
+        <div className="kpi"><div className="l">Sổ đàn (<Term k="K8" />)</div><div className="v">{fmt.n(hv?.head_count)} con</div><div className="text-xs">{fmt.vnd(hv?.value)}</div></div>
+        <div className="kpi"><div className="l"><Term k="FEFO" /> đỏ (&lt;20% hạn)</div><div className={`v ${(fefo.rows?.length ?? 0) > 0 ? "text-red-700" : ""}`}>{fefo.rows?.length ?? "—"}</div></div>
         <div className="kpi"><div className="l">Điều chỉnh chờ duyệt</div><div className="v">{adj.rows?.length ?? "—"}</div></div>
       </div>
       <Tabs items={[["ton", "Tồn · Tồn kho"], ["so", "Tồn · Ngày-tồn nguyên liệu"], ["the", "Tồn · Thẻ kho theo lô"], ["giatri", "Tồn · 💰 Giá trị tồn"], ["bieudo", "Tồn · 📈 Biểu đồ"], ["ghi", "Nhập/Xuất · Ghi nhập / xuất"], ["bin", `Nhập/Xuất · Vị trí bin (${(bins.rows ?? []).length})`], ["kiemke", "Kiểm soát · Kiểm kê, điều chỉnh"], ["rop", `Kiểm soát · Bổ sung ROP (${(repl.rows ?? []).filter((r) => Number(r.suggest_qty) > 0).length})`], ["lanh", "Kiểm soát · Kho lạnh"], ["van", `Vận tải · Chuyến xe (${(trips.rows ?? []).filter((t) => t.status !== "XONG" && t.status !== "HUY").length})`], ["ncc", "Vận tải · NCC scorecard"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
