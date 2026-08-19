@@ -1,7 +1,7 @@
-# CLAUDE.md — HIẾN PHÁP REPO `itran-os` (copy vào gốc repo, đọc mỗi phiên)
+# CLAUDE.md — HIẾN PHÁP REPO `itran-agri` (copy vào gốc repo, đọc mỗi phiên)
 
 ## Dự án
-ITRAN OS — hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công ty mẹ → vùng → nhiều trại F0x). Kế hoạch đầy đủ: `docs/plan/00…09` (bản gốc tại `F:\ITRAN FARM\KE-HOACH-PHAN-MEM`). Nghiệp vụ gốc: `docs/bo-goc/` (FILE-GỐC v3.1, Quyển 1–5, Phụ lục A/B). Bộ gốc thắng về nghiệp vụ; kế hoạch thắng về công nghệ.
+ITRAN AGRI — hệ điều hành số cho chuỗi trang trại tuần hoàn ITRAN FARM (công ty mẹ → vùng → nhiều trại F0x). Kế hoạch đầy đủ: `docs/plan/00…09` (bản gốc tại `F:\ITRAN FARM\KE-HOACH-PHAN-MEM`). Nghiệp vụ gốc: `docs/bo-goc/` (FILE-GỐC v3.1, Quyển 1–5, Phụ lục A/B). Bộ gốc thắng về nghiệp vụ; kế hoạch thắng về công nghệ.
 
 ## 10 luật không được vi phạm
 1. `farm_id` (+ `org_id`) trong mọi bảng nghiệp vụ; RLS bật; mọi truy vấn qua repository có farmId; HQ đọc qua view `hq_*`.

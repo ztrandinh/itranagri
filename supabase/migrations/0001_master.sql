@@ -1,4 +1,4 @@
--- ITRAN OS · SPEC-01 v1.1 · 0001 master data (Postgres 17 / Supabase compatible)
+-- ITRAN AGRI · SPEC-01 v1.1 · 0001 master data (Postgres 17 / Supabase compatible)
 create extension if not exists pgcrypto;
 create extension if not exists "uuid-ossp";
 

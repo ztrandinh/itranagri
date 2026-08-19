@@ -12,6 +12,7 @@ import Link from "next/link";
 import ThreeTap from "@/components/ThreeTap";
 import { buildForms, type Ref } from "@/lib/forms";
 import { useData, act, fmt } from "@/lib/client";
+import { OrderMarginPanel } from "@/components/panels/CloseoutBits";
 import { toast } from "@/components/ui/Toast";
 import type { Sess } from "@/components/Shell";
 import { KpiTile, HourHistogram } from "./Dashboards";
@@ -59,7 +60,7 @@ export function SopPanel({ code }: { code?: string }) {
 
 export function BanHangPanel({ sess }: { sess: Sess }) {
   const sales = useData("sales_recent"); const recv = useData("receivables"); const price = useData("price_list"); const orders = useData("orders"); const contracts = useData("contracts"); const cov = useData("contract_coverage"); const custody = useData("custody"); const aging = useData("receivable_aging");
-  const [tab, setTab] = useUrlTab(["ban", "don", "hd", "nn", "crm", "pos", "kenh", "tra", "gia", "bg", "ct", "diem", "no", "lich"] as const, "ban", { "nhan-nuoi": "nn" }); const [of, setOf] = useState<Record<string, string>>({});
+  const [tab, setTab] = useUrlTab(["ban", "don", "hd", "nn", "crm", "pos", "kenh", "tra", "gia", "bg", "ct", "diem", "no", "lich", "margin"] as const, "ban", { "nhan-nuoi": "nn" }); const [of, setOf] = useState<Record<string, string>>({});
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"), plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null, [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = ref ? buildForms(ref, sess.farmId) : null;
@@ -70,7 +71,8 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((c) => <KpiTile key={c} l={`Kênh ${c}`} v={tot ? `${Math.round((100 * (byChannel[String(c)] ?? 0)) / tot)}%` : "—"} sub={fmt.vnd(byChannel[String(c)] ?? 0)} warn={tot && (byChannel[String(c)] ?? 0) / tot > 0.4 ? "yel" : null} />)}</div>
       <div className="text-xs text-stone-500">Luật: không kênh nào &gt;40% doanh thu một SKU · ≥70% sản lượng có hợp đồng trước · công nợ ≤15 ngày, &gt;30 ngày ngừng giao · giá sàn (bảng giá SAN) — bán dưới sàn cần GĐ duyệt.</div>
-      <Tabs items={[["ban", "Bán hàng · Bán / giao"], ["don", `Bán hàng · Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Bán hàng · Trả hàng"], ["bg", "Bán hàng · Báo giá"], ["gia", "Giá · Giá theo khách, bậc CK"], ["hd", "Hợp đồng · Bao tiêu"], ["lich", "Hợp đồng · Lịch giao"], ["nn", "Hợp đồng · Nhận nuôi / chăm sóc hộ"], ["crm", "Khách · CRM tiềm năng"], ["diem", "Khách · Điểm thưởng"], ["no", "Khách · Công nợ hạn, nhắc nợ"], ["pos", "Kênh · POS cửa hàng"], ["kenh", "Kênh · Online, khuyến mãi"], ["ct", "NVKD · Chỉ tiêu, hoa hồng"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+      <Tabs items={[["ban", "Bán hàng · Bán / giao"], ["don", `Bán hàng · Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Bán hàng · Trả hàng"], ["bg", "Bán hàng · Báo giá"], ["gia", "Giá · Giá theo khách, bậc CK"], ["hd", "Hợp đồng · Bao tiêu"], ["lich", "Hợp đồng · Lịch giao"], ["nn", "Hợp đồng · Nhận nuôi / chăm sóc hộ"], ["crm", "Khách · CRM tiềm năng"], ["diem", "Khách · Điểm thưởng"], ["no", "Khách · Công nợ hạn, nhắc nợ"], ["margin", "💰 Lãi gộp theo đơn"], ["pos", "Kênh · POS cửa hàng"], ["kenh", "Kênh · Online, khuyến mãi"], ["ct", "NVKD · Chỉ tiêu, hoa hồng"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+      {tab === "margin" && <OrderMarginPanel sess={sess} />}
       {tab === "nn" && <KhachMessages />}
       {tab === "tra" && <ReturnsPanel sess={sess} />}
       {tab === "gia" && <GiaPanel sess={sess} />}{tab === "bg" && <BaoGiaPanel sess={sess} />}{tab === "ct" && <ChiTieuPanel />}{tab === "diem" && <DiemPanel />}{tab === "no" && <CongNoPanel sess={sess} />}{tab === "lich" && <LichHDPanel />}

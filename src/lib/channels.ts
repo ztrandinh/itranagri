@@ -48,8 +48,8 @@ export async function deliverChannels(limit = 200): Promise<{ queued: number; se
   for (const d of q) {
     const cfg = await integration(d.channel === "zalo" ? "ZALO_OA" : d.channel === "sms" ? "SMS" : "EMAIL", d.farm_id);
     if (!cfg) { await p.query("update notification_deliveries set status='SKIPPED', error='chưa cấu hình integrations '||$2, attempts=attempts+1 where id=$1", [d.id, d.channel]); skipped++; continue; }
-    const text = `[ITRAN OS] ${d.title}${d.body ? " — " + d.body : ""}${d.link ? " " + (process.env.PUBLIC_URL ?? "") + d.link : ""}`;
-    try { const ref = d.channel === "zalo" ? await sendZalo(cfg, d.to_addr, text) : d.channel === "sms" ? await sendSms(cfg, d.to_addr, text) : await sendEmail(cfg, d.to_addr, `[ITRAN OS] ${d.title}`, text); await p.query("update notification_deliveries set status='SENT', provider=$2, provider_ref=$3, sent_at=now(), attempts=attempts+1 where id=$1", [d.id, cfg.provider ?? d.channel, ref]); sent++; }
+    const text = `[ITRAN AGRI] ${d.title}${d.body ? " — " + d.body : ""}${d.link ? " " + (process.env.PUBLIC_URL ?? "") + d.link : ""}`;
+    try { const ref = d.channel === "zalo" ? await sendZalo(cfg, d.to_addr, text) : d.channel === "sms" ? await sendSms(cfg, d.to_addr, text) : await sendEmail(cfg, d.to_addr, `[ITRAN AGRI] ${d.title}`, text); await p.query("update notification_deliveries set status='SENT', provider=$2, provider_ref=$3, sent_at=now(), attempts=attempts+1 where id=$1", [d.id, cfg.provider ?? d.channel, ref]); sent++; }
     catch (e) { await p.query("update notification_deliveries set status=case when attempts+1>=3 then 'FAILED' else 'QUEUED' end, error=$2, attempts=attempts+1 where id=$1", [d.id, (e as Error).message.slice(0, 300)]); failed++; }
   }
   await deliverWebhooks(); await deliverPush();

@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import "dotenv/config";
 
-const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranos@localhost:54499/itranos";
+const ADMIN_URL = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranagri@localhost:54499/itranagri";
 const dir = join(process.cwd(), "supabase", "migrations");
 
 async function main() {

@@ -6,7 +6,7 @@ jobs:
     services:
       pg:
         image: postgres:17
-        env: { POSTGRES_PASSWORD: itranos, POSTGRES_DB: itranos }
+        env: { POSTGRES_PASSWORD: itranagri, POSTGRES_DB: itranagri }
         ports: ["54499:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 10
@@ -18,13 +18,13 @@ jobs:
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Migrate
-        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm db:migrate
       - name: Lint & types
         run: pnpm lint && pnpm exec tsc --noEmit
       - name: Tests
-        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm test
       - name: Build
-        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranos@localhost:54499/itranos", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranos", SESSION_SECRET: ci-secret }
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm build

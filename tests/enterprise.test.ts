@@ -4,7 +4,7 @@ import { Client } from "pg";
 import "dotenv/config";
 import { solveRation } from "../src/lib/ration";
 import { vietqr } from "../src/lib/vietqr";
-const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranos@localhost:54499/itranos";
+const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranagri@localhost:54499/itranagri";
 let admin: Client;
 beforeAll(async () => { admin = new Client({ connectionString: ADMIN }); await admin.connect(); await admin.query("select set_config('app.org_id','ITRAN',false), set_config('app.farm_id','F01',false), set_config('app.role','tech_head',false), set_config('app.staff_id','NS-003',false), set_config('app.farm_ids','F01',false)"); });
 afterAll(async () => { await admin.query("delete from tasks where ref_table='process_runs' and ref_id in (select id::text from process_runs where process_code='P-TEST-WF')"); await admin.query("delete from process_runs where process_code='P-TEST-WF'"); await admin.query("delete from process_steps where process_code='P-TEST-WF'"); await admin.query("delete from processes where code='P-TEST-WF'"); await admin.end(); });

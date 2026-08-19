@@ -10,10 +10,10 @@ const sans = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: "ITRAN OS",
+  title: "ITRAN AGRI",
   description: "Hệ điều hành số trang trại tuần hoàn ITRAN FARM",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "ITRAN OS", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "ITRAN AGRI", statusBarStyle: "default" },
 };
 // Bỏ maximumScale để không chặn phóng to (WCAG 1.4.4 Resize text) — người thị lực kém phóng to được.
 export const viewport: Viewport = { themeColor: "#166534", width: "device-width", initialScale: 1 };

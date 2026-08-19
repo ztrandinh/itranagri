@@ -1,4 +1,4 @@
-# 04 · MÔ HÌNH DỮ LIỆU ITRAN OS
+# 04 · MÔ HÌNH DỮ LIỆU ITRAN AGRI
 *Nguồn: FILE-GỐC Phần IX mục 2–4 · Phụ lục B (sổ cái 9 kho, RC1–RC10, B4) · Quyển 4 mục 07 · Quyển 3 mục 15 (SOP). Nâng chuẩn theo GS1 EPCIS 2.0, ICAR ADE, ISO 11784/85, ISO 8601, GeoJSON.*
 
 ## 1. NGUYÊN TẮC MÔ HÌNH

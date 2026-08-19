@@ -14,5 +14,5 @@ export async function register() {
     if (now.getMinutes() % 5 === 0 && now.getSeconds() < 30) { for (const f of await farms()) await call("cache", f); }
     if (hm === "02:30" && now.getDay() === 0 && lastMorning !== "maint" + day) { for (const f of await farms()) { await call("maint", f); break; } }
   }, 30e3);
-  console.log("[ITRAN OS] scheduler on: dispatch mỗi phút · jobs/all+backup 01:15 · tasks 06:00");
+  console.log("[ITRAN AGRI] scheduler on: dispatch mỗi phút · jobs/all+backup 01:15 · tasks 06:00");
 }

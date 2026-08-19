@@ -1,4 +1,4 @@
-# ITRAN OS — KẾ HOẠCH TỔNG THỂ PHÁT TRIỂN PHẦN MỀM QUẢN TRỊ TRANG TRẠI TUẦN HOÀN
+# ITRAN AGRI — KẾ HOẠCH TỔNG THỂ PHÁT TRIỂN PHẦN MỀM QUẢN TRỊ TRANG TRẠI TUẦN HOÀN
 **Phiên bản kế hoạch: v1.0 · Ngày: 18/08/2026 · Vai trò soạn: CTO / Kiến trúc sư trưởng**
 **Căn cứ:** Bộ gốc ITRAN FARM 12 file (FILE-GỐC v3.1 Phần IX "Đặc tả nền phần mềm", Phụ lục A/B sổ tay 14 vai + sổ cái 9 kho + 10 luật đối soát, Quyển 1–5).
 
@@ -25,14 +25,14 @@
 
 ## 1. TẦM NHÌN SẢN PHẨM
 
-**ITRAN OS** = hệ điều hành số của trang trại tuần hoàn: *"người tạo bản ghi — máy viết báo cáo — não gợi ý quyết định"*. Không phải phần mềm ghi chép; là **hệ thần kinh + bộ não** cho mô hình 5 trục · 5 phòng · 12 điểm giao nhận · 19 rủi ro · 4 cổng chặn — chạy được cho trại 4 ha lẫn 60 ha, và nhân bản F02, F03… chỉ bằng đổi mã trại + bộ tham số.
+**ITRAN AGRI** = hệ điều hành số của trang trại tuần hoàn: *"người tạo bản ghi — máy viết báo cáo — não gợi ý quyết định"*. Không phải phần mềm ghi chép; là **hệ thần kinh + bộ não** cho mô hình 5 trục · 5 phòng · 12 điểm giao nhận · 19 rủi ro · 4 cổng chặn — chạy được cho trại 4 ha lẫn 60 ha, và nhân bản F02, F03… chỉ bằng đổi mã trại + bộ tham số.
 
 **3 khách hàng của phần mềm:**
 1. **Trại F01 (nội bộ)** — vận hành hằng ngày, thay thế Google Sheets ngay từ bản ghi số 1.
 2. **Chuỗi F0x + nhượng quyền** — công ty mẹ nhìn mọi trại, đẩy SOP, so KPI, audit chéo.
-3. **Thương mại hóa (ITRAN OS SaaS)** — bán cho trại tuần hoàn khác; vì thế multi-tenant, API đầy đủ, dữ liệu xuất mở.
+3. **Thương mại hóa (ITRAN AGRI SaaS)** — bán cho trại tuần hoàn khác; vì thế multi-tenant, API đầy đủ, dữ liệu xuất mở.
 
-**Định vị so với thế giới:** không có phần mềm nào hiện nay bao trọn *chăn nuôi + trồng trọt + sinh học/chất thải + chế biến + kho + bán + resort + tài chính + tuân thủ* trong MỘT hệ với **cân bằng vật chất tuần hoàn** làm xương sống. Đó là khoảng trống ITRAN OS chiếm.
+**Định vị so với thế giới:** không có phần mềm nào hiện nay bao trọn *chăn nuôi + trồng trọt + sinh học/chất thải + chế biến + kho + bán + resort + tài chính + tuân thủ* trong MỘT hệ với **cân bằng vật chất tuần hoàn** làm xương sống. Đó là khoảng trống ITRAN AGRI chiếm.
 
 ## 2. MƯỜI NGUYÊN TẮC THIẾT KẾ (bất biến — sửa phải qua hội đồng kiến trúc)
 
@@ -51,7 +51,7 @@
 
 ## 2b. GÓC NHÌN CÔNG TY MẸ — ĐA TRẠI · ĐA VÙNG · ĐA PHÁP NHÂN LÀ MẶC ĐỊNH (không phải tính năng thêm sau)
 
-ITRAN OS được thiết kế **đứng ở vị trí công ty mẹ ITRAN FARM** (giữ thương hiệu – SOP – phần mềm), nhìn xuống nhiều trại F01, F02… ở nhiều vùng (Bắc bãi sông, ĐBSCL, trung du, miền núi…), mỗi trại có thể là pháp nhân con, S và tham số vùng khác nhau, module bật/tắt khác nhau — nhưng **cùng một Lớp A/B, cùng SOP, cùng chuẩn dữ liệu**.
+ITRAN AGRI được thiết kế **đứng ở vị trí công ty mẹ ITRAN FARM** (giữ thương hiệu – SOP – phần mềm), nhìn xuống nhiều trại F01, F02… ở nhiều vùng (Bắc bãi sông, ĐBSCL, trung du, miền núi…), mỗi trại có thể là pháp nhân con, S và tham số vùng khác nhau, module bật/tắt khác nhau — nhưng **cùng một Lớp A/B, cùng SOP, cùng chuẩn dữ liệu**.
 
 | Cấp | Thực thể | Nội dung quản lý |
 |---|---|---|
@@ -93,7 +93,7 @@ Hạ tầng: Docker Compose (edge) · k3s + Argo CD (cloud VN) · OpenTelemetry 
 
 **20 module nghiệp vụ** (+ cơ chế thêm module vô hạn) = 5 phòng + trục xuyên suốt + cấp công ty mẹ:
 
-| Phòng (bộ gốc) | Module ITRAN OS |
+| Phòng (bộ gốc) | Module ITRAN AGRI |
 |---|---|
 | Sản xuất chăn nuôi | **LIVESTOCK** (bò cá thể RFID · gà 2 khối · dê · RAS · tôm/bè), **FEEDING** (FEED_LOG, xe trộn) |
 | Sinh học – trồng trọt | **CROP** (lô PostGIS, lịch vụ, máy, NDVI, ủ chua), **BIO** (trùn/BSF/biogas/compost/IMO/anolyte), **FEEDMILL D5** (RECIPE, phối trộn, ép viên) |
@@ -147,8 +147,8 @@ Ngân sách tham chiếu: **LLM/Claude Code** theo mức dùng (ước 20–40 p
 ## 8. QUYẾT ĐỊNH CẦN CHỦ ĐẦU TƯ CHỐT (để bắt đầu Đợt A)
 
 1. **Cloud & vị trí dữ liệu** — khuyến nghị: cloud VN (Viettel/VNG/FPT) hoặc AWS ap-southeast-1 + bản sao offsite thứ 2; edge mini-PC tại trại. (Có thể bắt đầu Đợt A–B trên máy local/VPS nhỏ, chuyển cloud sau.)
-2. **Google Sheets GĐ1:** khuyến nghị bỏ qua — go-live lớp 1 trên ITRAN OS ngay cuối tuần 1; nếu đã có Sheets thì import 1 lần.
-3. **Tên miền/thương hiệu số:** itranfarm.vn, `id.itranfarm.vn` (QR truy xuất), app "ITRAN OS".
+2. **Google Sheets GĐ1:** khuyến nghị bỏ qua — go-live lớp 1 trên ITRAN AGRI ngay cuối tuần 1; nếu đã có Sheets thì import 1 lần.
+3. **Tên miền/thương hiệu số:** itranfarm.vn, `id.itranfarm.vn` (QR truy xuất), app "ITRAN AGRI".
 4. **Bộ thiết bị đợt 1** để dev driver thật (mua ngay để về kịp Đợt C): cân cầu/cân bàn RS-232, đầu đọc RFID BLE FDX-B (Agrident/Allflex/Gallagher), gateway LoRa + cảm biến DO/nhiệt/silo, mini-PC edge + UPS, máy in tem, điện thoại Android tầm trung.
 5. **Ai điều phối build** (chủ đầu tư hay KS công nghệ) và ai nghiệm thu nghiệp vụ mỗi ngày (KTT).
 

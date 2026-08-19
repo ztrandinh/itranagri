@@ -1,4 +1,4 @@
-# 13 · PHÒNG BAN – QUY TRÌNH A–Z – ĐỐI TƯỢNG – EVENT BUS (đã triển khai thành DỮ LIỆU trong ITRAN OS)
+# 13 · PHÒNG BAN – QUY TRÌNH A–Z – ĐỐI TƯỢNG – EVENT BUS (đã triển khai thành DỮ LIỆU trong ITRAN AGRI)
 
 > Nguồn sự thật là **cơ sở dữ liệu** (bảng `departments`, `processes`, `process_steps`, `event_topics`, `records_catalog`, `roles_catalog`, `positions_catalog`, `species`, `animal_classes`, `crops`, `product_kinds`) — xem/sửa tại `/to-chuc`, `/doi-tuong`, `/quan-tri`. File này là bản chụp để đọc nhanh (migration 0020–0023).
 > Tham khảo cấu trúc thực tế: TH true MILK/Vinamilk (chuỗi trang trại – nhà máy – phân phối), Vinamit/Organik (hữu cơ + xuất khẩu), HAGL Agrico (đa trại, đa quốc gia), khung GlobalG.A.P. IFA, IFOAM/EU 2018/848, ISO 22000/HACCP, SCOR (chuỗi cung ứng), FAO về tổ chức chứng nhận hữu cơ.
@@ -32,7 +32,7 @@ Màn hình: `/doi-tuong` (4 tab: con người · vật nuôi · cây trồng · 
 | | DL | Du lịch – lưu trú – ẩm thực – sự kiện | booking, tour, F&B, tiệc/MICE, folio | công suất, ADR/RevPAR, biên F&B |
 | Hỗ trợ | TCKT | Tài chính – kế toán | chi 2 chữ ký, P&L CC, ngân hàng, thuế, quỹ | đối chiếu 100%, đúng hạn |
 | | HCNS | Hành chính – nhân sự – đào tạo | tuyển, ca, KPI→lương, SOP, khám SK/ATTP | KPI TB, nghỉ việc, chứng chỉ đủ |
-| | CNTB | Công nghệ – thiết bị – IoT – dữ liệu | bảo trì, hiệu chuẩn, IoT, ITRAN OS, tích hợp, sao lưu | uptime, cảm biến off, job OK |
+| | CNTB | Công nghệ – thiết bị – IoT – dữ liệu | bảo trì, hiệu chuẩn, IoT, ITRAN AGRI, tích hợp, sao lưu | uptime, cảm biến off, job OK |
 | | QA | Chất lượng – tuân thủ – chứng nhận | SOP, audit nội bộ, RC1–RC16, chứng nhận, truy xuất/thu hồi | điểm audit, NC mở, lệch % |
 | Chiến lược | RD | R&D – đổi mới – tri thức | thử nghiệm có đối chứng, mẫu lab, SOP mới, chuyển giao | đề tài xong, cải thiện % |
 | | MR | Phát triển dự án – nhân rộng – franchise | khảo sát, thế số Lớp B, thiết kế, create_farm, chuyển giao | trại mới/năm, đúng tiến độ |

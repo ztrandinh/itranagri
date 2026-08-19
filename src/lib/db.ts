@@ -7,12 +7,16 @@ declare global {
 const g = globalThis as typeof globalThis & { __itranPools?: { app?: Pool; admin?: Pool } };
 g.__itranPools ??= {};
 
+// Fallback dev mặc định (khớp .env.example) để worktree/clone không có .env vẫn chạy; prod luôn set env nên fallback không kích hoạt.
+const DEV_APP_URL = "postgres://app_user:app_user_pw@localhost:54499/itranagri";
+const DEV_ADMIN_URL = "postgres://postgres:itranagri@localhost:54499/itranagri";
+
 export function appPool(): Pool {
-  g.__itranPools!.app ??= new Pool({ connectionString: process.env.DATABASE_URL, max: 10 });
+  g.__itranPools!.app ??= new Pool({ connectionString: process.env.DATABASE_URL ?? DEV_APP_URL, max: 10 });
   return g.__itranPools!.app;
 }
 export function adminPool(): Pool {
-  g.__itranPools!.admin ??= new Pool({ connectionString: process.env.DATABASE_ADMIN_URL, max: 3 });
+  g.__itranPools!.admin ??= new Pool({ connectionString: process.env.DATABASE_ADMIN_URL ?? DEV_ADMIN_URL, max: 3 });
   return g.__itranPools!.admin;
 }
 

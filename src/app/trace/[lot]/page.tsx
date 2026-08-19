@@ -13,6 +13,6 @@ export default async function Trace({ params }: { params: Promise<{ lot: string 
         <h2 className="font-semibold mt-3">Nhật ký chăm sóc (công khai)</h2><ul className="text-sm list-disc pl-5">{(j.events as Ev[] ?? []).map((e, k) => <li key={k}>{new Date(e.ts).toLocaleDateString("vi-VN")} · {e.event_type}{e.value != null ? ` ${e.value} ${e.unit ?? ""}` : ""}</li>)}</ul>
         <div className="text-xs text-stone-500 mt-3">Chương trình &quot;chăm sóc hộ – xem live&quot;: liên hệ ITRAN FARM.</div></div>)}
       {j.error && <div className="card text-red-700">Không tìm thấy mã này.</div>}
-      <div className="text-xs text-center text-stone-500">Dữ liệu từ ITRAN OS — bản ghi gốc không thể sửa xóa.</div>
+      <div className="text-xs text-center text-stone-500">Dữ liệu từ ITRAN AGRI — bản ghi gốc không thể sửa xóa.</div>
     </div></div>);
 }

@@ -2,8 +2,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "pg";
 import "dotenv/config";
-const APP = process.env.DATABASE_URL ?? "postgres://app_user:app_user_pw@localhost:54499/itranos";
-const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranos@localhost:54499/itranos";
+const APP = process.env.DATABASE_URL ?? "postgres://app_user:app_user_pw@localhost:54499/itranagri";
+const ADMIN = process.env.DATABASE_ADMIN_URL ?? "postgres://postgres:itranagri@localhost:54499/itranagri";
 let app: Client, admin: Client;
 const ctx = async (farm: string, role: string, staff = "NS-003") => app.query("select set_config('app.org_id','ITRAN',false), set_config('app.farm_id',$1,false), set_config('app.role',$2,false), set_config('app.staff_id',$3,false), set_config('app.farm_ids',$4,false)", [farm, role, staff, role === "owner" || role === "auditor" ? "F01,F99" : farm]);
 beforeAll(async () => { app = new Client({ connectionString: APP }); admin = new Client({ connectionString: ADMIN }); await app.connect(); await admin.connect(); });
