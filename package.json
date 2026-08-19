@@ -10,6 +10,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:reset": "tsx scripts/migrate.ts --reset",
     "test": "vitest run",
+    "ci:rebuild": "pnpm db:migrate --reset && pnpm db:seed:history && pnpm db:codes:check && pnpm exec tsc --noEmit",
     "db:codes": "tsx scripts/normalize-codes.ts",
     "db:codes:check": "tsx scripts/normalize-codes.ts --check",
     "db:seed:sim": "tsx scripts/simulate.ts && tsx scripts/normalize-codes.ts",

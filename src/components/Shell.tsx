@@ -70,7 +70,16 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   useEffect(() => { setSide(false); }, [path]);
   useEffect(() => { try { setCollapsed(localStorage.getItem("itran.side") === "1"); } catch { /* */ } }, []);
   const myDept = sess.dept ?? ""; const zonesRaw = ZONES.filter((z) => z.roles.includes(sess.role) || z.roles.includes("*")).map((z) => ({ ...z, items: z.items.filter((i) => !i.roles || i.roles.includes(sess.role)) })).filter((z) => z.items.length);
-  const rank = (z: (typeof zonesRaw)[number]) => z.key === "me" ? 0 : (myDept && z.dept === myDept ? 1 : 2); const zones = [...zonesRaw].sort((a, b) => rank(a) - rank(b));
+  const rank = (z: (typeof zonesRaw)[number]) => z.key === "me" ? 0 : (myDept && z.dept === myDept ? 1 : 2);
+  const zonesSorted = [...zonesRaw].sort((a, b) => rank(a) - rank(b));
+  // CÔNG NHÂN chỉ thấy khu của MÌNH. Trước đây menu bày trọn mọi khu cho mọi vai, nên công nhân
+  // trộn TMR mở máy ra thấy cả "Canh tác", "Bản đồ ô thửa", "Thú y", "Cảnh báo & luật" — thứ họ
+  // không có quyền lẫn việc gì để làm. Menu dài thì họ ngừng đọc menu.
+  // KHÔNG xoá khu nào: gói phần còn lại sau nút "Xem thêm", bấm là hiện đủ như cũ.
+  const [xemHet, setXemHet] = useState(false);
+  const chiKhuCuaToi = sess.role === "worker" && !!myDept;
+  const zones = chiKhuCuaToi && !xemHet ? zonesSorted.filter((z) => z.key === "me" || z.dept === myDept || !z.dept) : zonesSorted;
+  const soKhuAn = zonesSorted.length - zones.length;
   const isActive = (href: string) => { const h = href.split("?")[0]; return path === h || path.startsWith(h + "/"); };
   const SideNav = (
     <nav className="flex-1 overflow-y-auto py-2 text-[15px]">
@@ -79,6 +88,11 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
         {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-emerald-700 text-white px-1 normal-case">phòng tôi</span> : null}</div>}
         {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-emerald-600 text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
       </div>)}
+      {chiKhuCuaToi && !collapsed && (soKhuAn > 0 || xemHet) && (
+        <button className="mx-2 mt-2 w-[calc(100%-1rem)] rounded-lg px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-800"
+          onClick={() => setXemHet(!xemHet)}>
+          {xemHet ? "▾ Thu gọn — chỉ hiện phòng tôi" : `▸ Xem thêm ${soKhuAn} khu khác của trại`}
+        </button>)}
       <div className="mt-3 border-t border-slate-800 pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
     </nav>);
   return (
