@@ -41,7 +41,18 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   const uxRef = useRef<ReturnType<typeof uxTask> | null>(null);
   // Đo HEART: bắt đầu tính giờ khi người dùng thật sự bắt tay ghi (đã chọn đối tượng)
   useEffect(() => { if (step === 2 && !uxRef.current) uxRef.current = uxTask(`ghi_${spec.table}`); }, [step, spec.table]);
-  useEffect(() => { const d: Record<string, unknown> = {}; for (const f of spec.fields) if (f.type === "number" && f.default != null) d[f.key] = f.default; setVals(d); }, [spec.fields]);
+  // Đặt giá trị mặc định cho ô số KHI ĐỔI SANG FORM KHÁC.
+  // KHÔNG được phụ thuộc vào `spec.fields` (danh tính mảng): cha dựng lại mảng này mỗi lần
+  // re-render (tải danh mục, sinh việc, đếm thông báo…), nên effect bắn hàng chục lần và
+  // setVals(mặc định) XOÁ SẠCH thứ công nhân vừa nhập giữa chừng — đo được 9 lần reset
+  // trong 0,3s ngay sau một cú chạm. Dùng chữ ký nội dung (bảng + khoá + mặc định) để
+  // chỉ reset khi thật sự đổi form.
+  const fieldSig = useMemo(() => spec.table + "|" + spec.fields.map((f) => `${f.key}:${f.type === "number" ? f.default ?? "" : ""}`).join(","), [spec.table, spec.fields]);
+  // useMemo khoá theo chữ ký → trả về CÙNG một đối tượng khi form không đổi, nên effect dưới chỉ chạy khi đổi form.
+  const soMacDinh = useMemo(() => { const d: Record<string, unknown> = {}; for (const f of spec.fields) if (f.type === "number" && f.default != null) d[f.key] = f.default; return d;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fieldSig]);
+  useEffect(() => { setVals(soMacDinh); }, [soMacDinh]);
 
   const filtered = useMemo(() => {
     const s = noAccent(search.trim());
@@ -113,8 +124,13 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
               <button key={t.id} className="btn-secondary !py-3 !text-base flex-col items-start" onClick={() => { setTarget(t); setStep(2); }}>
                 <span className="font-semibold">{t.label}</span>{t.sub && <span className="text-xs text-stone-500">{t.sub}</span>}
               </button>))}
-            {!filtered.length && <div className="col-span-full text-stone-500 py-6 text-center">Không thấy — kiểm tra mã{spec.allowScanInput ? " hoặc Enter để dùng mã vừa nhập" : ""}</div>}
+            {!filtered.length && <div className="col-span-full text-stone-500 py-6 text-center">{spec.allowScanInput ? (search.trim() ? "Chưa có trong danh sách — bấm nút xanh bên dưới để dùng mã vừa gõ." : `Quét mã, hoặc gõ ${spec.targetLabel.toLowerCase()} vào ô trên.`) : "Chưa có đối tượng nào để chọn — báo tổ trưởng."}</div>}
           </div>
+          {/* Trước đây lối đi duy nhất khi danh sách rỗng (vd bảo vệ ghi "Nhật ký cổng", đối tượng là
+              biển số xe nên không thể có sẵn danh sách) là bấm phím Enter — trên bàn phím điện thoại
+              phím đó ghi "Xong"/"Go", công nhân gõ xong không thấy nút nào và tắc hẳn. Nay có nút rõ ràng. */}
+          {spec.allowScanInput && search.trim() && !filtered.some((t) => t.id.toLowerCase() === search.trim().toLowerCase()) && (
+            <button className="btn-primary w-full mt-2 !py-3" onClick={() => { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); }}>Dùng “{search.trim()}” → Tiếp</button>)}
         </div>)}
       {step === 2 && target && (
         <div className="space-y-4">
