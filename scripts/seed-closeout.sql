@@ -49,3 +49,44 @@ select 'SR-SEED-'||:'farm', :'farm', po.id, po.supplier_id, po.sku, 10, po.price
 from (select id, supplier_id, (lines->0->>'sku') as sku, coalesce((lines->0->>'price')::numeric,1000) as price
       from purchase_orders where farm_id=:'farm' and supplier_id is not null and jsonb_array_length(coalesce(lines,'[]'::jsonb))>0 order by ts desc limit 1) po
 on conflict (id) do nothing;
+
+-- ===== (C5) ĐỌC SỐ MÁY/CÔNG-TƠ: cấu hình chỉ số cho máy thật + 14 ngày số đọc (1 ngày điện nhảy vọt = bất thường) =====
+insert into reading_metrics(id, farm_id, facility_id, code, name, unit, kind, freq, lo, hi, role_hint) values
+ ('RM-ELEC-'||:'farm', :'farm', :'farm'||'-FC-TRAM-DIEN', 'DIEN_KWH', 'Điện tiêu thụ (công-tơ tổng)', 'kWh', 'METER', 'NGAY', null, 400, 'it_engineer'),
+ ('RM-WATER-'||:'farm', :'farm', :'farm'||'-FC-GIENG', 'NUOC_M3', 'Nước bơm (công-tơ giếng)', 'm³', 'METER', 'NGAY', null, 60, 'it_engineer'),
+ ('RM-BIOGAS-'||:'farm', :'farm', :'farm'||'-FC-BIOGAS', 'BIOGAS_M3', 'Biogas sinh ra', 'm³', 'METER', 'NGAY', null, 90, 'tech_head'),
+ ('RM-D5OUT-'||:'farm', :'farm', :'farm'||'-FC-D5', 'SANLUONG_KG', 'Sản lượng viên D5', 'kg', 'METER', 'NGAY', null, 3000, 'team_lead')
+on conflict (id) do nothing;
+do $$
+declare m record; dday int; val numeric; cref text; who text;
+begin
+  who := coalesce((select id from staff where farm_id=:'farm' and dept='CNTB' and active limit 1), 'system');
+  delete from device_readings where farm_id=:'farm' and client_ref like 'seed-rd-%';
+  for m in select * from (values
+      ('RM-ELEC-'||:'farm', 52000::numeric, 180::numeric, 4::int),   -- điện: nhảy vọt 4 ngày trước
+      ('RM-WATER-'||:'farm', 8400::numeric, 25::numeric, -1),
+      ('RM-BIOGAS-'||:'farm', 12500::numeric, 40::numeric, -1),
+      ('RM-D5OUT-'||:'farm', 0::numeric, 1200::numeric, -1)
+    ) as t(mid, base, step, spikeday) loop
+    val := m.base;
+    for dday in reverse 13..0 loop
+      val := val + (case when dday = m.spikeday then m.step*4 else m.step*(0.9 + (dday % 3)*0.05) end);
+      cref := 'seed-rd-'||m.mid||'-'||dday;
+      perform record_reading(:'farm', m.mid, round(val,1), (current_date - dday)::timestamptz + time '07:00',
+        'SO-'||to_char(current_date-dday,'YYMMDD')||'-'||right(m.mid,4), 'Đọc ca sáng theo sổ giấy (demo)', who, cref, 'PAPER');
+    end loop;
+  end loop;
+end $$;
+
+-- ===== (C6) KHÂU GHI CHÉP BẮT BUỘC + CẢNH BÁO QUÊN CẬP NHẬT =====
+insert into recording_obligations(id, farm_id, code, name, dept, role_hint, source_kind, freq, grace_hours, escalate_hours, severity) values
+ ('RO-FEED-'||:'farm', :'farm', 'GHI_CHO_AN', 'Ghi cho ăn hằng ngày (bảng khẩu phần)', 'KTCN', 'team_lead', 'FEED', 'NGAY', 6, 24, 'NANG'),
+ ('RO-METER-'||:'farm', :'farm', 'DOC_CONGTO', 'Đọc số điện/nước/biogas (công-tơ)', 'CNTB', 'it_engineer', 'METER', 'NGAY', 8, 30, 'TRUNG'),
+ ('RO-CHECK-'||:'farm', :'farm', 'CHECKLIST_CA', 'Checklist đầu/cuối ca', 'KTCN', 'team_lead', 'CHECKLIST', 'NGAY', 6, 24, 'NANG'),
+ ('RO-PAPER-'||:'farm', :'farm', 'SO_HOA_GIAY', 'Số hóa phiếu giấy ≤24h (đối chiếu seri)', 'HCNS', 'team_lead', 'PAPER', 'NGAY', 4, 6, 'NANG'),
+ ('RO-STOCK-'||:'farm', :'farm', 'GHI_KHO', 'Ghi nhập/xuất kho trong ngày', 'CCU', 'worker', 'STOCK', 'NGAY', 8, 30, 'TRUNG'),
+ ('RO-IRR-'||:'farm', :'farm', 'GHI_TUOI', 'Ghi tưới theo thửa', 'TT', 'worker', 'IRRIGATION', 'NGAY', 12, 36, 'TRUNG'),
+ ('RO-PEST-'||:'farm', :'farm', 'SOI_SAU_BENH', 'Soi sâu bệnh (scouting) hằng tuần', 'TT', 'team_lead', 'PEST', 'TUAN', 24, 72, 'TRUNG'),
+ ('RO-HARVEST-'||:'farm', :'farm', 'GHI_THU_HOACH', 'Ghi thu hoạch theo đợt', 'TT', 'team_lead', 'HARVEST', 'DOT', 24, 72, 'NHE')
+on conflict (id) do nothing;
+select gen_recording_alerts(:'farm');
