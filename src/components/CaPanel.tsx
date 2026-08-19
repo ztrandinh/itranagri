@@ -6,6 +6,7 @@ import { buildForms, formsForPosition, type Ref } from "@/lib/forms";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { usePrompt } from "@/components/ui/PromptDialog";
+import { useUrlTab } from "@/lib/useUrlTab";
 
 type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null };
 type Note = { id: string; ts: string; note: string; by_name: string; ack_by: string | null; dept: string | null };
@@ -16,13 +17,14 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const tasks = useData<Task>("tasks_today"); const notes = useData<Note>("shift_notes"); const recent = useData("events_recent");
   const [form, setForm] = useState<string | null>(null);
   const [noteTxt, setNoteTxt] = useState("");
-  const [tab, setTab] = useState<"viec" | "ghi" | "giaoca" | "gan_day">("viec");
+  // Đọc ?tab= để nút "✍ Ghi" ở thanh dưới (BottomNav) mở đúng tab Ghi 3 chạm
+  const [tab, setTab] = useUrlTab(["viec", "ghi", "giaoca", "gan_day"] as const, "viec");
   const { prompt, promptElement } = usePrompt();
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows
     ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null,
     [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = useMemo(() => (ref ? buildForms(ref, sess.farmId) : null), [ref, sess.farmId]);
-  const keys = forceForms ?? formsForPosition(sess.position, sess.role);
+  const keys = forceForms ?? formsForPosition(sess.position, sess.role, sess.dept);
   const myRoleKey = sess.position?.match(/A\d{1,2}/)?.[0];
   const myTasks = (tasks.rows ?? []).filter((t) => !t.role_hint || t.role_hint === sess.role || (myRoleKey && t.role_hint === `worker:${myRoleKey}`) || (t.role_hint?.startsWith("worker:") && sess.role !== "worker") || ["tech_head","director","owner"].includes(sess.role));
   useEffect(() => { void act("generate_tasks", {}).then(() => tasks.reload()); /* sinh việc khi mở ca */ // eslint-disable-next-line react-hooks/exhaustive-deps
