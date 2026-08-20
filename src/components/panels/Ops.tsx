@@ -59,9 +59,64 @@ export function SopPanel({ code }: { code?: string }) {
   return (<div className="card p-0 overflow-auto"><div className="px-3 py-2 font-bold bg-stone-100 rounded-t-2xl">Thư viện SOP (chuẩn 10+1 trường) — không SOP ký = không giao việc</div><table className="tbl"><thead><tr><th className="pl-3">Mã</th><th>Tên</th><th>Bộ phận</th><th>Chuỗi/L2</th><th>Phiên bản</th><th>Rà hạn</th><th>Trạng thái</th></tr></thead><tbody>{(sops.rows ?? []).map((s) => <tr key={String(s.code)}><td className="pl-3 font-mono"><Link className="underline" href={`/sop/${s.code}`}>{String(s.code)}</Link></td><td>{String(s.title)}</td><td>{String(s.dept)}</td><td className="text-sm">{String(s.l2_group ?? "")}</td><td>{s.version ? `v${s.version}` : "—"}</td><td className={s.review_due && new Date(String(s.review_due)) < new Date(Date.now() + 30 * 86400e3) ? "text-amber-700" : ""}>{fmt.d(s.review_due)}</td><td><span className={s.status === "BAN_HANH" ? "b-grn" : "b-yel"}>{String(s.status)}</span></td></tr>)}</tbody></table></div>);
 }
 
+/** BÁN VẬT HƠI (xuất chuồng) — truy xuất từng cá thể ⇄ đơn (xuất khẩu EPCIS 2.0); chặn con ngưng thuốc/chưa cân */
+function LivestockSalePanel({ sess }: { sess: Sess }) {
+  const animals = useData("animals"); const partners = useData("partners");
+  const SKU: Record<string, string> = { BO: "SKU-BO-HOI", DE: "SKU-DE-HOI", HUOU: "SKU-HUOU-HOI", GA: "SKU-GA-THIT" };
+  const [sp, setSp] = useState<string>("BO");
+  const [sel, setSel] = useState<Record<string, boolean>>({});
+  const [buyer, setBuyer] = useState(""); const [price, setPrice] = useState(""); const [photo, setPhoto] = useState("");
+  const [busy, setBusy] = useState(false); const [done, setDone] = useState<{ id: string; n: number; kg: number } | null>(null);
+  const can = ["team_lead", "tech_head", "director", "owner"].includes(sess.role);
+  const today = new Date().toISOString().slice(0, 10);
+  const EXITED = ["XUAT", "CHET", "LOAI", "DA_BAN"];
+  const list = (animals.rows ?? []).filter((a) => String(a.species) === sp);
+  const blockOf = (a: Record<string, unknown>): string | null => {
+    if (EXITED.includes(String(a.status))) return "đã " + String(a.status).toLowerCase();
+    if (a.withdrawal_until && String(a.withdrawal_until).slice(0, 10) > today) return "ngưng thuốc → " + String(a.withdrawal_until).slice(0, 10);
+    if (Number(a.last_weight_kg ?? 0) <= 0) return "chưa có cân";
+    return null;
+  };
+  const chosen = list.filter((a) => sel[String(a.id)] && !blockOf(a));
+  const totKg = chosen.reduce((s, a) => s + Number(a.last_weight_kg ?? 0), 0);
+  const amount = totKg * Number(price || 0);
+  const submit = async () => {
+    if (!chosen.length || Number(price || 0) <= 0) return;
+    setBusy(true);
+    const j = await act("sell_livestock", { animal_ids: chosen.map((a) => String(a.id)), buyer: buyer || null, price_per_kg: Number(price), sku: SKU[sp], photo_url: photo || null });
+    setBusy(false);
+    if (j.error) { toast.err(String(j.error)); return; }
+    setDone({ id: String(j.sale_id), n: chosen.length, kg: totKg });
+    setSel({}); setPrice(""); setBuyer(""); setPhoto(""); animals.reload();
+  };
+  if (!can) return <div className="card text-sm text-stone-500">Chỉ tổ trưởng / kỹ thuật trưởng / GĐ được lập phiếu xuất bán vật hơi.</div>;
+  return (
+    <div className="space-y-3">
+      <div className="card text-sm"><b>Xuất bán vật hơi — chỉ bán con sống, truy xuất từng cá thể ⇄ đơn</b>
+        <div className="text-xs text-stone-500 mt-1"><b>Vì sao:</b> xuất khẩu bắt buộc truy được con nào bán cho ai (EPCIS 2.0). Chọn con → hệ thống tự sinh sự kiện XUẤT từng con, giảm đầu đàn, nối đơn⇄con; <b>tự chặn con còn ngưng thuốc / chưa có cân</b>. Chụp ảnh phiếu cân giấy đính kèm = 2 bộ hồ sơ (giấy + số), lưu BM06.</div></div>
+      <div className="card flex flex-wrap gap-3 items-end">
+        <label className="text-sm">Loài<select className="input !w-28 block" value={sp} onChange={(e) => { setSp(e.target.value); setSel({}); }}>{Object.keys(SKU).map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
+        <label className="text-sm">Khách mua<select className="input !w-56 block" value={buyer} onChange={(e) => setBuyer(e.target.value)}><option value="">— chọn khách —</option>{(partners.rows ?? []).filter((p) => String(p.kind).includes("KH")).map((p) => <option key={String(p.id)} value={String(p.id)}>{String(p.name)}</option>)}</select></label>
+        <label className="text-sm">Giá/kg<input className="input !w-32 block" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="đ/kg" /></label>
+        <label className="btn-secondary !py-1 !text-xs cursor-pointer self-center whitespace-nowrap">{photo ? "✓ ảnh phiếu cân" : "📷 Ảnh phiếu cân"}<input type="file" accept="image/*" capture="environment" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); try { const rr = await fetch("/api/upload", { method: "POST", body: fd }); const jj = await rr.json(); if (jj.url) setPhoto(String(jj.url)); } catch { /* noop */ } }} /></label>
+      </div>
+      <div className="card p-0 overflow-auto max-h-[420px]"><table className="tbl text-sm"><thead><tr><th className="pl-3"></th><th>Mã con</th><th>Giống</th><th className="text-right">Cân (kg)</th><th>Trạng thái</th></tr></thead><tbody>
+        {list.map((a) => { const bl = blockOf(a); return <tr key={String(a.id)} className={bl ? "opacity-40" : sel[String(a.id)] ? "bg-green-50" : ""}>
+          <td className="pl-3"><input type="checkbox" aria-label={`chọn ${String(a.id)}`} disabled={!!bl} checked={!!sel[String(a.id)]} onChange={(e) => setSel({ ...sel, [String(a.id)]: e.target.checked })} /></td>
+          <td className="font-mono text-xs">{String(a.id)}</td><td className="text-xs">{String(a.breed ?? "")}</td>
+          <td className="text-right">{fmt.n(a.last_weight_kg ?? 0)}</td>
+          <td className="text-xs">{bl ? <span className="b-red">{bl}</span> : <span className="b-grn">bán được</span>}</td></tr>; })}
+        {!list.length && <tr><td colSpan={5} className="p-3 text-stone-500">Không có {sp} nào trong đàn.</td></tr>}
+      </tbody></table></div>
+      <div className="card flex flex-wrap items-center gap-4"><div className="text-sm">Đã chọn <b>{chosen.length}</b> con · tổng <b>{fmt.n(totKg)}</b> kg · thành tiền <b>{fmt.vnd(amount)}</b></div>
+        <button className="btn-primary !py-2 ml-auto" disabled={!chosen.length || Number(price || 0) <= 0 || busy} onClick={submit}>{busy ? "Đang ghi…" : "Xuất bán + nối truy xuất"}</button></div>
+      {done && <div className="card bg-green-50 text-sm"><b>Đã lập đơn {done.id}</b> — {done.n} con chuyển XUẤT, đầu đàn tự giảm, đơn⇄con đã nối. Xem <Link className="underline" href="/truy-xuat">Truy xuất</Link>{photo ? " · ảnh phiếu đã lưu BM06" : ""}.</div>}
+    </div>);
+}
+
 export function BanHangPanel({ sess }: { sess: Sess }) {
   const sales = useData("sales_recent"); const recv = useData("receivables"); const price = useData("price_list"); const orders = useData("orders"); const contracts = useData("contracts"); const cov = useData("contract_coverage"); const custody = useData("custody"); const aging = useData("receivable_aging");
-  const [tab, setTab] = useUrlTab(["ban", "don", "hd", "nn", "crm", "pos", "kenh", "tra", "gia", "bg", "ct", "diem", "no", "lich", "margin"] as const, "ban", { "nhan-nuoi": "nn" }); const [of, setOf] = useState<Record<string, string>>({});
+  const [tab, setTab] = useUrlTab(["ban", "banhoi", "don", "hd", "nn", "crm", "pos", "kenh", "tra", "gia", "bg", "ct", "diem", "no", "lich", "margin"] as const, "ban", { "nhan-nuoi": "nn" }); const [of, setOf] = useState<Record<string, string>>({});
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"), plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null, [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
   const forms = ref ? buildForms(ref, sess.farmId) : null;
@@ -72,8 +127,9 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">{[1, 2, 3, 4, 5].map((c) => <KpiTile key={c} l={`Kênh ${c}`} v={tot ? `${Math.round((100 * (byChannel[String(c)] ?? 0)) / tot)}%` : "—"} sub={fmt.vnd(byChannel[String(c)] ?? 0)} warn={tot && (byChannel[String(c)] ?? 0) / tot > 0.4 ? "yel" : null} />)}</div>
       <div className="text-xs text-stone-500">Luật: không kênh nào &gt;40% doanh thu một SKU · ≥70% sản lượng có hợp đồng trước · công nợ ≤15 ngày, &gt;30 ngày ngừng giao · giá sàn (bảng giá SAN) — bán dưới sàn cần GĐ duyệt.</div>
-      <Tabs items={[["ban", "Bán hàng · Bán / giao"], ["don", `Bán hàng · Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Bán hàng · Trả hàng"], ["bg", "Bán hàng · Báo giá"], ["gia", "Giá · Giá theo khách, bậc CK"], ["hd", "Hợp đồng · Bao tiêu"], ["lich", "Hợp đồng · Lịch giao"], ["nn", "Hợp đồng · Nhận nuôi / chăm sóc hộ"], ["crm", "Khách · CRM tiềm năng"], ["diem", "Khách · Điểm thưởng"], ["no", "Khách · Công nợ hạn, nhắc nợ"], ["margin", "💰 Lãi gộp theo đơn"], ["pos", "Kênh · POS cửa hàng"], ["kenh", "Kênh · Online, khuyến mãi"], ["ct", "NVKD · Chỉ tiêu, hoa hồng"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
+      <Tabs items={[["ban", "Bán hàng · Bán / giao"], ["banhoi", "🐄 Bán vật hơi (truy xuất cá thể)"], ["don", `Bán hàng · Đơn hàng (${(orders.rows ?? []).filter((o) => !["HOAN_TAT","HUY"].includes(String(o.status))).length})`], ["tra", "Bán hàng · Trả hàng"], ["bg", "Bán hàng · Báo giá"], ["gia", "Giá · Giá theo khách, bậc CK"], ["hd", "Hợp đồng · Bao tiêu"], ["lich", "Hợp đồng · Lịch giao"], ["nn", "Hợp đồng · Nhận nuôi / chăm sóc hộ"], ["crm", "Khách · CRM tiềm năng"], ["diem", "Khách · Điểm thưởng"], ["no", "Khách · Công nợ hạn, nhắc nợ"], ["margin", "💰 Lãi gộp theo đơn"], ["pos", "Kênh · POS cửa hàng"], ["kenh", "Kênh · Online, khuyến mãi"], ["ct", "NVKD · Chỉ tiêu, hoa hồng"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       {tab === "margin" && <OrderMarginPanel sess={sess} />}
+      {tab === "banhoi" && <LivestockSalePanel sess={sess} />}
       {tab === "nn" && <KhachMessages />}
       {tab === "tra" && <ReturnsPanel sess={sess} />}
       {tab === "gia" && <GiaPanel sess={sess} />}{tab === "bg" && <BaoGiaPanel sess={sess} />}{tab === "ct" && <ChiTieuPanel />}{tab === "diem" && <DiemPanel />}{tab === "no" && <CongNoPanel sess={sess} />}{tab === "lich" && <LichHDPanel />}
