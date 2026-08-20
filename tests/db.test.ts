@@ -98,3 +98,16 @@ describe("Đọc số máy · khâu ghi chép · độ phủ (0100–0110)", () 
     expect(r.rows[0].c).toBeGreaterThan(0);
   });
 });
+describe("Đăng nhập · phiên", () => {
+  // Regression 0142: 0127 siết FK hàng loạt theo tên cột từng gán sessions.device_id → devices(id),
+  // khiến MỌI đăng nhập qua trình duyệt vỡ (login() insert 'dev-xxxx' chưa có trong devices → 423).
+  // device_id là VÂN TAY THIẾT BỊ ĐĂNG NHẬP (sinh tại máy), KHÔNG phải nông cụ. Không được có FK này.
+  it("sessions.device_id KHÔNG bị khoá ngoại chặn (vân tay máy đăng nhập tự sinh)", async () => {
+    expect(Number((await admin.query("select count(*) from pg_constraint where conname='fk_sessions_device_id'")).rows[0].count)).toBe(0);
+    const st = (await admin.query("select id, farm_id from staff where farm_id is not null limit 1")).rows[0];
+    await expect(admin.query(
+      "insert into sessions(staff_id, farm_id, device_id, expires_at) values ($1,$2,$3, now()+interval '1 day')",
+      [st.id, st.farm_id, "dev-regression-" + Date.now()]
+    )).resolves.toBeTruthy();
+  });
+});
