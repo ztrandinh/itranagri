@@ -1,0 +1,11 @@
+-- 0144 · Gỡ KHOÁ NGOẠI SAI NGỮ NGHĨA: supervision_criteria.sop_code → sops.code (cùng họ lỗi 0142).
+--
+-- Cột supervision_criteria.sop_code là ĐA HÌNH: chứa CẢ mã SOP thật (SOP-*) LẪN mã QUY TRÌNH
+-- (P-*) do sync_process_criteria() sinh (0090/0093 — tiêu chí giám sát từ quy trình phòng ban).
+-- Mã P-* KHÔNG nằm trong sops → không thể ép 1 khoá ngoại trỏ sops cho cột này.
+--
+-- 0127_missing_fks quét khoá ngoại theo TÊN CỘT ('sop_code' → sops) đã gán nhầm FK này (NOT VALID
+-- nên 59 dòng P-* cũ lọt qua). Hậu quả: gọi lại sync_process_criteria (action route.ts, hoặc khi
+-- thêm quy trình phòng mới) sẽ INSERT mã P-* → vi phạm FK → 500. Gỡ FK (cột đa hình không FK được).
+-- Forward-only: 0127 thêm, 0144 gỡ → rebuild sạch vẫn đúng.
+alter table supervision_criteria drop constraint if exists fk_supervision_criteria_sop_code;
