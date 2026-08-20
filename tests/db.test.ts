@@ -222,5 +222,9 @@ describe("Nhập kho tổng quát — quy cách khai báo biến (0153)", () => 
     // SKU chưa khai danh mục → chặn (không fix cứng, kiểm theo config)
     await expect(admin.query("select record_intake($1,'SKU-KHONG-CO',1,'system',null,null,$2)",
       [flock.farm_id, "t-in-bad-" + Date.now()])).rejects.toThrow(/ERR_SKU_UNKNOWN/);
+    // SP mới khai (0154) chạy được qua CÙNG hàm generic — vd phân bò
+    expect(Number((await admin.query("select count(*) from products where sku in ('SKU-NHUNG-HUOU','SKU-LUON-THIT','SKU-PHAN-BO','SKU-PHAN-DE','SKU-PHAN-GA')")).rows[0].count)).toBe(5);
+    const jm = (await admin.query("select record_intake($1,'SKU-PHAN-BO',$2,'system',null,null,$3) as j", [flock.farm_id, 500, "t-in-manure-" + Date.now()])).rows[0].j;
+    expect(jm.lot).toBeTruthy();
   });
 });
