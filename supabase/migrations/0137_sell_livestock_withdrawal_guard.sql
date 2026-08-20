@@ -37,11 +37,12 @@ begin
           'livestock-'||v_sale::text);
 
   -- từng con: sự kiện XUAT (trigger đổi animals.status='XUAT') + nối sale_animals
-  for a in select id, coalesce(last_weight_kg,0) as kg
+  -- Phải mang group_id để itran_group_count_after GIẢM đầu đàn (nếu null sẽ thoát sớm → đàn không giảm)
+  for a in select id, coalesce(last_weight_kg,0) as kg, group_id
              from animals where id = any(p_animal_ids) and farm_id = p_farm loop
-    insert into animal_events(farm_id, ts, created_by, source, status, animal_id, event_type,
+    insert into animal_events(farm_id, ts, created_by, source, status, animal_id, group_id, event_type,
                               value, unit, detail, client_ref)
-    values (p_farm, now(), p_by, 'APP', 'ACTIVE', a.id, 'XUAT', a.kg, 'kg',
+    values (p_farm, now(), p_by, 'APP', 'ACTIVE', a.id, a.group_id, 'XUAT', a.kg, 'kg',
             jsonb_build_object('note','xuất bán hơi','buyer',p_buyer,'sale_id',v_sale::text),
             'xuat-'||v_sale::text||'-'||a.id);
     insert into sale_animals(sale_id, animal_id, weight_kg) values (v_sale, a.id, a.kg);
