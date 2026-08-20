@@ -158,3 +158,12 @@ describe("Mortality watch (0146)", () => {
     await expect(admin.query("select gen_mortality_alerts('F01') as n")).resolves.toBeTruthy();
   });
 });
+describe("Ngưng thuốc — theo dõi auto (0147)", () => {
+  it("view chỉ con còn hạn ngưng thuốc · gen_withdrawal_reminders chạy sạch + tự đóng", async () => {
+    // mọi dòng trong view phải còn hạn (con_lai_ngay >= 0)
+    expect(Number((await admin.query("select count(*) from v_withdrawal_active where con_lai_ngay < 0")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_withdrawal_reminders('F01') as n")).resolves.toBeTruthy();
+    // không còn việc WITHDRAWAL mở cho con đã hết hạn (tự đóng)
+    expect(Number((await admin.query("select count(*) from tasks t where t.ref_table='withdrawal' and t.status<>'XONG' and not exists(select 1 from v_withdrawal_active d where d.animal_id=t.ref_id)")).rows[0].count)).toBe(0);
+  });
+});
