@@ -1,7 +1,35 @@
 /** Whitelist truy vấn đọc cho UI/AI (read-only, đã qua RLS). $1 = farm_id luôn. */
 export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: boolean; ttl?: number }> = {
   cache_status: { sql: "select farm_id, refreshed_at, (select dirty_at from cache_dirty d where d.farm_id=$1) as dirty_at from cache_kv where farm_id=$1 and key='warehouse_fill'" },
-  tasks_today: { sql: "select t.*, s.full_name as assignee_name from tasks t left join staff s on s.id=t.assignee_id where t.farm_id=$1 and t.status in ('MO','DANG_LAM','TREO') and t.due_at <= now() + interval '2 days' and (t.assignee_id = app_staff() or t.role_hint is null or t.role_hint = app_role() or t.role_hint = 'worker:' || coalesce((select substring(s2.position from 'A[0-9]{1,2}') from staff s2 where s2.id = app_staff()), '~') or (t.role_hint like 'worker:%' and app_role() <> 'worker') or app_role() in ('tech_head','director','owner')) order by case t.priority when 'KHAN' then 0 when 'CAO' then 1 when 'BINH_THUONG' then 2 else 3 end, t.due_at limit 300" },
+  // GOM việc lặp. Sinh việc đang tạo mỗi con một dòng ("Cân định kỳ 30 ngày — F01-BO-H015"),
+  // nên một ghế ôm 120 dòng giống hệt nhau chỉ khác mã con vật. Công nhân cuộn không hết rồi
+  // bỏ qua cả danh sách. Gom theo (luật sinh + phần đầu tiêu đề + người nhận + ngày đến hạn),
+  // trả về `group_ids` để bấm ✓ Xong đóng trọn nhóm chỉ bằng MỘT lượt gọi.
+  // Mã nghề lấy từ job_accounts (chỗ ngồi) chứ không dò regex trên chức danh tự do nữa.
+  tasks_today: { sql: `with q as (
+      select t.*, s.full_name as assignee_name,
+             coalesce(t.rule_code,'') || '|' || split_part(t.title, ' — ', 1) || '|' || coalesce(t.assignee_id,'') || '|' || t.due_at::date as gk
+        from tasks t left join staff s on s.id = t.assignee_id
+       where t.farm_id = $1 and t.status in ('MO','DANG_LAM','TREO')
+         and t.due_at <= now() + interval '2 days'
+         and (t.assignee_id = app_staff()
+              or t.role_hint is null
+              or t.role_hint = app_role()
+              or t.role_hint = 'worker:' || coalesce((select a.position_code from job_accounts a join account_holders h on h.account_code = a.code and h.to_date is null where h.staff_id = app_staff() limit 1), '~')
+              or (t.role_hint like 'worker:%' and app_role() <> 'worker')
+              or app_role() in ('tech_head','director','owner')))
+    select (array_agg(id order by due_at, id))[1] as id,
+           array_agg(id order by due_at, id) as group_ids,
+           count(*)::int as group_n,
+           case when count(*) > 1 then split_part(min(title), ' — ', 1) || ' — ' || count(*) || ' việc'
+                else min(title) end as title,
+           min(kind) as kind, min(due_at) as due_at, max(priority) as priority, min(status) as status,
+           min(role_hint) as role_hint, min(sop_code) as sop_code, min(target_type) as target_type,
+           case when count(*) > 1 then null else min(target_id) end as target_id,
+           min(handover_note) as handover_note, min(assignee_id) as assignee_id, min(assignee_name) as assignee_name
+      from q group by gk
+     order by case max(priority) when 'KHAN' then 0 when 'CAO' then 1 when 'BINH_THUONG' then 2 else 3 end, min(due_at)
+     limit 300` },
   tasks_all: { sql: "select * from tasks where farm_id=$1 order by status, due_at desc limit 500" },
   shift_notes: { sql: "select n.*, s.full_name as by_name from shift_notes n left join staff s on s.id=n.created_by where n.farm_id=$1 and n.ts >= now()-interval '3 days' order by n.ts desc" },
   purchase_orders: { sql: "select po.*, p.name as supplier_name from purchase_orders po left join partners p on p.id=po.supplier_id where po.farm_id=$1 order by po.ts desc limit 100" },

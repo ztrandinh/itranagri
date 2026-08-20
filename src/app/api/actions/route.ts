@@ -44,9 +44,14 @@ export async function POST(req: Request) {
           return { ok: true, id: r.rows[0].id };
         }
         case "task_status": {
-          await c.query("update tasks set status=$2, done_by=case when $2='XONG' then $3 else done_by end, done_at=case when $2='XONG' then now() else done_at end, done_event_id=coalesce($4::uuid,done_event_id), handover_note=coalesce($5,handover_note), assignee_id=coalesce($6,assignee_id) where id=$1 and farm_id=$7",
-            [b.id, b.status, s.staffId, b.done_event_id ?? null, b.handover_note ?? null, b.assignee_id ?? null, s.farmId]);
-          return { ok: true };
+          // Nhận CẢ MỘT NHÓM việc: màn Ca gom việc lặp (120 việc "Cân định kỳ — F01-BO-xxx"
+          // hiện thành một thẻ "… — 120 việc"), nên bấm ✓ Xong phải đóng trọn nhóm.
+          // Gọi từng id một thì 120 lượt gọi mạng — công nhân ngoài đồng đợi không nổi.
+          const ids = (Array.isArray(b.ids) ? (b.ids as string[]) : null) ?? (b.id ? [b.id as string] : []);
+          if (!ids.length) return { ok: false, error: "ERR_NO_TASK" };
+          const r = await c.query("update tasks set status=$2, done_by=case when $2='XONG' then $3 else done_by end, done_at=case when $2='XONG' then now() else done_at end, done_event_id=coalesce($4::uuid,done_event_id), handover_note=coalesce($5,handover_note), assignee_id=coalesce($6,assignee_id) where id = any($1::uuid[]) and farm_id=$7",
+            [ids, b.status, s.staffId, b.done_event_id ?? null, b.handover_note ?? null, b.assignee_id ?? null, s.farmId]);
+          return { ok: true, n: r.rowCount };
         }
         case "generate_tasks": { const r = await c.query("select itran_generate_tasks_v2($1) as n", [s.farmId]); return { ok: true, n: r.rows[0].n }; }
         case "shift_note": {
