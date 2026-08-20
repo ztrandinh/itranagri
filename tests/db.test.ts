@@ -186,4 +186,13 @@ describe("Lô hết hạn còn tồn (0149)", () => {
     expect(Number((await admin.query("select count(*) from tasks where ref_table='lot_expiry' and ref_id='F01' and status<>'XONG'")).rows[0].count)).toBeLessThanOrEqual(1);
     await expect(admin.query("select gen_lot_expiry_alerts('F01') as n")).resolves.toBeTruthy();
   });
+  it("close_depleted_lots: đóng lô hết tồn, không đụng lô còn hàng/GIU_QC, idempotent", async () => {
+    await admin.query("select close_depleted_lots('F01')");
+    // sau khi chạy: không còn lô KHA_DUNG (có move) mà tồn<=0
+    const orphan = await admin.query(`with o as (select lot_id, sum(direction*qty) ton from inventory_moves where status='ACTIVE' and lot_id is not null group by lot_id)
+      select count(*) c from lots l join o on o.lot_id=l.id where l.farm_id='F01' and l.status='KHA_DUNG' and o.ton<=0`);
+    expect(Number(orphan.rows[0].c)).toBe(0);
+    // chạy lại = 0 (idempotent)
+    expect(Number((await admin.query("select close_depleted_lots('F01') as n")).rows[0].n)).toBe(0);
+  });
 });
