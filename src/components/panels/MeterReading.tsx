@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { useData, act, fmt } from "@/lib/client";
+import { useData, fmt } from "@/lib/client";
+import { enqueue, flush, newClientRef } from "@/lib/offline";
 import type { Sess } from "@/components/Shell";
 type R = Record<string, unknown>;
 
@@ -11,12 +12,15 @@ export function MeterReadingPanel({ sess }: { sess: Sess }) {
   const [f, setF] = useState<R | null>(null); const [msg, setMsg] = useState("");
   const rows = latest.rows ?? []; const dueRows = (due.rows ?? []).filter((d) => d.due);
   const anomRows = anomalies.rows ?? []; const anom = anomRows.length;
+  // Offline-first (luật 5): ghi vào hàng đợi IndexedDB → flush khi có mạng. Bất thường do trigger DB tính, hiện ở bảng + sinh việc.
   const save = async () => {
     if (!f?.metric_id || f.value === "" || f.value == null) return;
-    const j = await act("record_reading", { metric_id: f.metric_id, value: Number(f.value), paper_serial: f.paper_serial || null, note: f.note || null });
-    if (j.error) { setMsg(String(j.error)); return; }
-    setMsg(j.anomaly ? `⚠ Đã ghi — BẤT THƯỜNG: ${j.reason}. Đã tạo việc cho kỹ thuật.` : `✓ Đã ghi số. Chênh kỳ trước: ${fmt.n(j.delta)}`);
-    setF(null); latest.reload(); due.reload();
+    try {
+      await enqueue("device_readings", { client_ref: newClientRef(), metric_id: String(f.metric_id), value: Number(f.value), paper_serial: f.paper_serial || null, note: f.note || null, source: "PAPER" });
+      const r = await flush();
+      setMsg(r.failed ? "✓ Đã lưu (offline) — tự đồng bộ khi có mạng; bất thường sẽ hiện ở bảng." : "✓ Đã ghi số & đồng bộ. Nếu bất thường sẽ hiện ở mục ⚠ bên dưới + sinh việc.");
+    } catch (e) { setMsg("Lỗi lưu: " + (e instanceof Error ? e.message : String(e))); return; }
+    setF(null); latest.reload(); due.reload(); anomalies.reload();
   };
   return <div className="space-y-3">
     <div className="card flex items-center gap-2 flex-wrap text-sm"><b>🔌 Sổ đọc số máy / công-tơ</b>

@@ -61,3 +61,31 @@ describe("RC engine", () => {
     }
   });
 });
+describe("Đọc số máy · khâu ghi chép · độ phủ (0100–0110)", () => {
+  it("device_readings RLS: worker F99 không thấy số đọc F01", async () => {
+    await ctx("F99", "worker", "NS-011");
+    expect(Number((await app.query("select count(*) from device_readings where farm_id='F01'")).rows[0].count)).toBe(0);
+  });
+  it("device_readings APPEND-ONLY: chặn UPDATE & DELETE (trigger, kể cả superuser)", async () => {
+    await expect(admin.query("update device_readings set note='x' where farm_id='F01'")).rejects.toThrow(/ERR_APPEND_ONLY/);
+    await expect(admin.query("delete from device_readings where farm_id='F01'")).rejects.toThrow(/ERR_APPEND_ONLY/);
+  });
+  it("trigger insert tự tính chênh + bắt bất thường + điền facility + sinh việc (mọi đường insert)", async () => {
+    const cref = "t-dr-" + Date.now();
+    // value=1 → công-tơ LÙI so mọi số trước (metric có sẵn 14 ngày số đọc) → luôn bất thường, không phụ thuộc trạng thái tích lũy (device_readings append-only)
+    const r = await admin.query("insert into device_readings(farm_id, created_by, metric_id, value, source, client_ref) values ('F01','system','RM-ELEC-F01', 1, 'PAPER', $1) returning id, is_anomaly, facility_id", [cref]);
+    expect(r.rows[0].is_anomaly).toBe(true);
+    expect(r.rows[0].facility_id).not.toBeNull();
+    expect(Number((await admin.query("select count(*) from tasks where farm_id='F01' and kind='DEVICE_ANOMALY' and ref_id=$1", [r.rows[0].id])).rows[0].count)).toBe(1);
+  });
+  it("v_recording_due phân loại hợp lệ + gen_recording_alerts chạy sạch", async () => {
+    const n = await admin.query("select gen_recording_alerts('F01') as n");
+    expect(Number.isInteger(Number(n.rows[0].n))).toBe(true);
+    const levels = (await admin.query("select distinct level from v_recording_due where farm_id='F01'")).rows.map((r) => r.level);
+    expect(levels.every((l) => ["OK", "DUE", "ESCALATE"].includes(l))).toBe(true);
+  });
+  it("control_coverage trả về SOP kèm cờ vùng mù", async () => {
+    const r = await admin.query("select count(*)::int c, count(*) filter (where blind)::int b from control_coverage('F01')");
+    expect(r.rows[0].c).toBeGreaterThan(0);
+  });
+});

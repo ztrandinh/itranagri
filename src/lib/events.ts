@@ -49,6 +49,7 @@ export const EVENT_SCHEMAS = {
   gate_logs: z.object({ ...base, plate: z.string(), direction: z.enum(["VAO","RA"]), weighed: z.boolean().default(false), anolyte_wash: z.boolean().default(false), purpose: z.string().nullable().optional(), driver: z.string().nullable().optional(), photo_urls: strArr }),
   sales: z.object({ ...base, partner_id: z.string(), sku: z.string(), lot_id: z.string().nullable().optional(), qty: num.positive(), unit: z.string().nullable().optional(), price: num, amount: num.optional(), channel: num.int().min(1).max(5), payment: z.string().default("CK"), paid: z.boolean().default(false), invoice_no: z.string().nullable().optional() , detail: z.record(z.string(), z.unknown()).nullable().optional(), sales_rep_id: z.string().nullable().optional()}),
   checklist_runs: z.object({ ...base, sop_code: z.string(), sop_version: num.nullable().optional(), shift: z.string(), results: z.array(z.record(z.string(), z.unknown())).default([]), all_green: z.boolean().default(false), note: z.string().nullable().optional() }),
+  device_readings: z.object({ ...base, metric_id: z.string(), value: num, note: z.string().nullable().optional() }),
   incidents: z.object({ ...base, kind: z.string(), severity: z.enum(["THAP","TRUNG","CAO","NGHIEM_TRONG","NEAR_MISS"]), description: z.string(), location_id: z.string().nullable().optional(), photo_urls: strArr }),
   stocktakes: z.object({ ...base, warehouse_id: z.string(), counted_by: z.string().nullable().optional(), lines: z.array(z.record(z.string(), z.unknown())).default([]), camera_count: num.nullable().optional(), note: z.string().nullable().optional() }),
   adjustments: z.object({ ...base, target_table: z.string(), target_id: z.string().uuid().nullable().optional(), warehouse_id: z.string().nullable().optional(), sku: z.string().nullable().optional(), lot_id: z.string().nullable().optional(), delta: num.nullable().optional(), reason: z.string().min(3) }),
@@ -84,4 +85,5 @@ export const WRITE_MATRIX: Record<EventTable, string[]> = {
   irrigation_logs: ["worker","team_lead","tech_head","director"], pest_scouting: ["worker","team_lead","tech_head","director"], crop_inputs: ["worker","team_lead","tech_head","director"], harvests: ["worker","team_lead","tech_head","director"], pos_receipts: ["worker","team_lead","director","accountant"], hosp_folio: ["worker","team_lead","director","accountant"],
   food_samples: ["worker","team_lead","tech_head","auditor"], cold_chain_logs: ["worker","team_lead","tech_head"], calibrations: ["worker","team_lead","tech_head","it_engineer"],
   attendance_logs: ["worker","team_lead","director"], maintenance_logs: ["worker","team_lead","tech_head","it_engineer"],
+  device_readings: ["worker","team_lead","tech_head","it_engineer","director"],
 };

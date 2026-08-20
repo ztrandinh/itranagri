@@ -68,7 +68,7 @@ do $$
 declare m record; dday int; val numeric; cref text; who text;
 begin
   who := coalesce((select id from staff where farm_id=:'farm' and dept='CNTB' and active limit 1), 'system');
-  delete from device_readings where farm_id=:'farm' and client_ref like 'seed-rd-%';
+  -- device_readings append-only (0110): KHÔNG xóa; record_reading idempotent theo client_ref nên re-seed tự bỏ qua dòng đã có
   for m in select * from (values
       ('RM-ELEC-'||:'farm', 52000::numeric, 180::numeric, 4::int),   -- điện: nhảy vọt 4 ngày trước
       ('RM-WATER-'||:'farm', 8400::numeric, 25::numeric, -1),
