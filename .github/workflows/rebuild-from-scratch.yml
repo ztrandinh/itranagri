@@ -12,6 +12,7 @@
 name: Dựng lại từ CSDL trắng
 
 on:
+  workflow_dispatch:   # bấm tay để verify rebuild==live bất kỳ lúc nào
   push:
     branches: [main]
     paths: ['supabase/migrations/**', 'scripts/**', 'src/lib/queries.ts']

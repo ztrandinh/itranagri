@@ -19,6 +19,9 @@ jobs:
       - name: Migrate
         env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm db:migrate
+      - name: Seed dữ liệu (test tích hợp cần dữ liệu thật — lô/đàn/device_readings…)
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
+        run: pnpm db:seed:history
       - name: Lint & types
         run: pnpm lint && pnpm exec tsc --noEmit
       - name: Tests
