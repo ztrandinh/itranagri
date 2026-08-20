@@ -79,8 +79,10 @@ describe("Đọc số máy · khâu ghi chép · độ phủ (0100–0110)", () 
   });
   it("trigger insert tự tính chênh + bắt bất thường + điền facility + sinh việc (mọi đường insert)", async () => {
     const cref = "t-dr-" + Date.now();
-    // value=1 → công-tơ LÙI so mọi số trước (metric có sẵn 14 ngày số đọc) → luôn bất thường, không phụ thuộc trạng thái tích lũy (device_readings append-only)
-    const r = await admin.query("insert into device_readings(farm_id, created_by, metric_id, value, source, client_ref) values ('F01','system','RM-ELEC-F01', 1, 'PAPER', $1) returning id, is_anomaly, facility_id", [cref]);
+    // Lấy đúng số đọc MỐC mà trigger sẽ dùng (gần nhất theo ts<=now) rồi chèn THẤP HƠN 1 → công-tơ LÙI chắc chắn.
+    // (device_readings append-only: mỗi lần chạy test lại thêm 1 dòng, nên KHÔNG được dùng hằng value=1 — sẽ bằng prev cũ → delta=0 → hết bất thường.)
+    const prev = Number((await admin.query("select value from device_readings where metric_id='RM-ELEC-F01' and ts <= now() order by ts desc limit 1")).rows[0]?.value ?? 100);
+    const r = await admin.query("insert into device_readings(farm_id, created_by, metric_id, value, source, client_ref) values ('F01','system','RM-ELEC-F01', $2, 'PAPER', $1) returning id, is_anomaly, facility_id", [cref, prev - 1]);
     expect(r.rows[0].is_anomaly).toBe(true);
     expect(r.rows[0].facility_id).not.toBeNull();
     expect(Number((await admin.query("select count(*) from tasks where farm_id='F01' and kind='DEVICE_ANOMALY' and ref_id=$1", [r.rows[0].id])).rows[0].count)).toBe(1);
