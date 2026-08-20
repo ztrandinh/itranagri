@@ -14,6 +14,12 @@ async function main() {
     console.log(p.rows[0].ket);
     const r = await c.query("select normalize_codes() as ket");
     console.log(r.rows[0].ket);
+    // Gán việc + dọn quá hạn cũng phải chạy SAU seed: migration 0124/0125 chạy lúc migrate khi
+    // `tasks` mới có ít việc; seed sinh hàng nghìn việc sau đó nên chúng chưa được gán. Chạy lại
+    // ở đây để bản dựng-lại-từ-trắng có việc gán đúng chỗ ngồi ngay, không phải chờ mở app.
+    for (const fn of ["assign_open_tasks()", "reassign_tasks_by_dept()", "assign_open_tasks()", "reschedule_overdue_tasks()"]) {
+      try { const x = await c.query(`select ${fn} as ket`); console.log(x.rows[0].ket); } catch (e) { console.warn(fn, (e as Error).message); }
+    }
   }
 
   const thieu = await c.query("select count(*)::int as n from v_staff_no_account");
