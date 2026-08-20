@@ -8,7 +8,10 @@ import type { Sess } from "@/components/Shell";
 import { usePrompt } from "@/components/ui/PromptDialog";
 import { useUrlTab } from "@/lib/useUrlTab";
 
-type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null; assignee_id: string | null };
+type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null; assignee_id: string | null;
+  /** Việc lặp đã được GOM ở truy vấn: `group_ids` là toàn bộ việc con trong nhóm.
+   *  Bấm ✓ Xong phải đóng trọn nhóm, nếu không công nhân bấm một cái mà 119 việc còn treo. */
+  group_ids?: string[]; group_n?: number };
 type Note = { id: string; ts: string; note: string; by_name: string; ack_by: string | null; dept: string | null };
 
 export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?: string[] }) {
@@ -72,15 +75,18 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
             <div key={t.id} className={`card flex items-start gap-3 ${t.priority === "KHAN" ? "border-red-300" : t.priority === "CAO" ? "border-amber-300" : ""}`}>
               <div className="flex-1">
                 <div className="font-semibold">{t.title}</div>
+                {/* Nói rõ bấm một cái là đóng bao nhiêu việc — đừng để công nhân bấm mà không
+                    biết mình vừa đóng 120 bản ghi. */}
+                {(t.group_n ?? 1) > 1 && <div className="text-xs text-amber-800">Gồm {t.group_n} việc giống nhau — bấm ✓ Xong là đóng cả nhóm</div>}
                 <div className="text-sm text-stone-500">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>} {t.sop_code && <a className="underline ml-1" href={`/sop/${t.sop_code}`}>{t.sop_code}</a>}{t.handover_note && <div className="text-amber-800">📝 {t.handover_note}</div>}</div>
               </div>
               <div className="flex flex-col gap-1">
-                <button className="btn-primary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { id: t.id, status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
+                <button className="btn-primary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
                 {t.kind === "CHECKLIST" && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("checklist"); setTab("ghi"); }}>Mở checklist</button>}
                 {["KHAM_THAI", "CACH_LY_RA"].includes(t.kind) && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("animal_event"); setTab("ghi"); }}>Ghi sự kiện</button>}
                 {t.kind === "SO_HOA_GIAY" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/giay">Nhập từ phiếu</a>}
                 {t.kind === "ALERT" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/canh-bao">Xem cảnh báo</a>}
-                <button className="text-xs underline text-stone-500" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { id: t.id, status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
+                <button className="text-xs underline text-stone-500" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { ids: t.group_ids ?? [t.id], status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
               </div>
             </div>))}
           {/* KHÔNG xoá việc chung — chỉ gấp lại để nó không nhấn chìm việc đích danh. */}
@@ -95,7 +101,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                       <div className="font-semibold">{t.title}</div>
                       <div className="text-sm text-stone-500">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>}</div>
                     </div>
-                    <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { id: t.id, status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
+                    <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
                   </div>))}
                 {viecChung.length > 30 && <div className="text-sm text-stone-500">…còn {viecChung.length - 30} việc nữa. Danh sách quá dài là do việc được sinh mà không giao người — cần tổ trưởng phân công.</div>}
               </div>
