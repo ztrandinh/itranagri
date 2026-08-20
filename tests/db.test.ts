@@ -195,4 +195,11 @@ describe("Lô hết hạn còn tồn (0149)", () => {
     // chạy lại = 0 (idempotent)
     expect(Number((await admin.query("select close_depleted_lots('F01') as n")).rows[0].n)).toBe(0);
   });
+  it("chặn BÁN lô hết hạn (source APP) — ERR_LOT_EXPIRED", async () => {
+    const lot = (await admin.query("select id, farm_id from lots where expiry_date < current_date and status='KHA_DUNG' limit 1")).rows[0];
+    // BEFORE trigger raise trước cả GL/NOT NULL → sạch, không tạo dòng
+    await expect(admin.query(
+      "insert into sales(farm_id,lot_id,source,ts,sku,qty,unit,price,amount,status,created_by,client_ref) values ($1,$2,'APP',now(),'NL-BAP-U',1,'kg',1,1,'ACTIVE','system',$3)",
+      [lot.farm_id, lot.id, "t-exp-" + Date.now()])).rejects.toThrow(/ERR_LOT_EXPIRED/);
+  });
 });
