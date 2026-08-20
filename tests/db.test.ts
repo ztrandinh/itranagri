@@ -167,3 +167,13 @@ describe("Ngưng thuốc — theo dõi auto (0147)", () => {
     expect(Number((await admin.query("select count(*) from tasks t where t.ref_table='withdrawal' and t.status<>'XONG' and not exists(select 1 from v_withdrawal_active d where d.animal_id=t.ref_id)")).rows[0].count)).toBe(0);
   });
 });
+describe("Độ phủ truy xuất (0148)", () => {
+  it("v_trace_coverage: có chiều, truy_duoc≤tong, pct trong [0,100]", async () => {
+    const r = await admin.query("select chieu, tong, truy_duoc, pct from v_trace_coverage where farm_id='F01'");
+    expect(r.rows.length).toBeGreaterThan(0);
+    for (const row of r.rows) {
+      expect(Number(row.truy_duoc)).toBeLessThanOrEqual(Number(row.tong));
+      if (row.pct !== null) { expect(Number(row.pct)).toBeGreaterThanOrEqual(0); expect(Number(row.pct)).toBeLessThanOrEqual(100); }
+    }
+  });
+});
