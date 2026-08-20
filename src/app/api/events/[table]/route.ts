@@ -43,6 +43,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ table: 
         }
         delete ev.lot_no;
         if (t === "sales" && ev.amount == null) ev.amount = Number(ev.qty) * Number(ev.price);
+        // TRUY XUẤT: SKU theo lô (products.lot_tracked) bắt buộc có lot_id khi bán — chặn tận server, không chỉ UI required
+        // (vật sống lot_tracked=false → đi sell_livestock, không vướng; dịch vụ/không-lô không bị chặn)
+        if (t === "sales" && !ev.lot_id && ev.sku) {
+          const lt = await c.query("select lot_tracked from products where sku=$1", [ev.sku]);
+          if (lt.rows[0]?.lot_tracked) return { status: "REJECTED", errors: ["ERR_LOT_REQUIRED: SKU " + String(ev.sku) + " theo lô — phải nhập mã lô để truy xuất/thu hồi"] };
+        }
         if (t === "batch_logs" && !ev.batch_code) { const bc = await c.query("select next_code($1,'ME',3) as code", [sess.farmId]); ev.batch_code = bc.rows[0].code.replace("-ME-", `-ME-${new Date().toISOString().slice(2,10).replace(/-/g,"")}-`); }
         if (t === "incidents") { const ic = await c.query("select next_code($1,'INC',4) as code", [sess.farmId]); ev.code = ic.rows[0].code; }
         const cols = Object.keys(ev).filter((k) => ev[k] !== undefined);
