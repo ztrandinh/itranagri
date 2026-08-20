@@ -1,12 +1,28 @@
 "use client";
 import { useState } from "react";
-import { useData, fmt } from "@/lib/client";
+import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import AnyChart from "@/components/AnyChart";
 import Tabs from "@/components/Tabs";
 type R = Record<string, unknown>;
 const LINES: [string, string, string][] = [["TRUN_NAP", "Trùn: nạp phân", "kg phân ủ sơ nạp luống"], ["TRUN_THU", "Trùn: thu phân trùn", "kg phân trùn / trùn tươi"], ["BSF", "BSF ấu trùng", "kg rác hữu cơ vào → ấu trùng + compost"], ["BIOGAS", "Biogas", "kg phân vào → kWh điện / m³ khí"], ["COMPOST", "Compost – biochar – giấm gỗ", "mẻ ủ hiếu khí, than sinh học"], ["IMO_EM", "Nhân men IMO/EM", "lít men vi sinh"], ["ANOLYTE", "Trạm anolyte", "lít nước điện hóa · ppm"]];
 /** SINH HỌC TUẦN HOÀN (khu D): mỗi dây chuyền có mẻ (batch_logs.line), đầu vào phân/rác → đầu ra phân trùn/BSF/điện/compost/men/anolyte; KPI 30 ngày; luống trùn; nối kho (K5 phân trùn) và CO2e */
+/** Mini-form ghi bản ghi dòng mở rộng (năng lượng/biochar/carbon/CEA/bèo) qua action. 2 bộ hồ sơ: giấy+ảnh+số. */
+function MiniLog({ action, title, why, fields }: { action: string; title: string; why: string; fields: { key: string; label: string; type?: string; options?: string[] }[] }) {
+  const [v, setV] = useState<Record<string, string>>({}); const [msg, setMsg] = useState("");
+  return <div className="card space-y-2">
+    <div className="font-bold text-sm">{title}</div>
+    <div className="text-xs text-slate-600">{why}</div>
+    <div className="grid sm:grid-cols-3 gap-2">{fields.map((f) => f.options
+      ? <select key={f.key} className="input" aria-label={f.label} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })}><option value="">{f.label}</option>{f.options.map((o) => <option key={o} value={o}>{o}</option>)}</select>
+      : <input key={f.key} className="input" placeholder={f.label} aria-label={f.label} type={f.type ?? "text"} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} />)}</div>
+    <div className="flex gap-2 items-center">
+      <button className="btn-primary !py-1" onClick={async () => { const body: Record<string, unknown> = {}; for (const f of fields) body[f.key] = f.type === "number" ? (v[f.key] ? Number(v[f.key]) : null) : (v[f.key] || null); const j = await act(action, body); setMsg(j.error ? "Lỗi: " + String(j.error) : "Đã ghi ✓"); if (!j.error) setV({}); }}>Ghi</button>
+      {msg && <span className="text-xs text-emerald-800">{msg}</span>}
+    </div>
+    <div className="text-[11px] text-slate-400">2 bộ hồ sơ: ghi phiếu giấy → chụp ảnh → đính hồ sơ.</div>
+  </div>;
+}
 export default function SinhHoc({ sess }: { sess: Sess }) {
   const [tab, setTab] = useState<string>("tong");
   const pb = useData("bio_batches"); const luong = useData("bio_beds");
@@ -15,10 +31,20 @@ export default function SinhHoc({ sess }: { sess: Sess }) {
   const canW = ["worker", "team_lead", "tech_head", "director", "owner"].includes(sess.role);
   return <div className="space-y-3">
     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">{LINES.map(([l, n]) => { const r = last30(l); return <div key={l} className="kpi !p-2"><div className="l">{n} · 30 ngày</div><div className="text-lg font-black">{fmt.n(sumOut(r) || sumIn(r))} <span className="text-xs font-normal">{sumOut(r) ? "ra" : "vào"} kg</span></div><div className="text-[10px] text-slate-500">{r.length} mẻ · vào {fmt.n(sumIn(r))} kg</div></div>; })}</div>
-    <Tabs items={[["tong", "Tổng quan · vòng tuần hoàn"], ...LINES.map(([l, n]) => [l, n] as [string, string]), ["luong", `Luống trùn (${(luong.rows ?? []).length})`]]} value={tab} onChange={setTab} right={canW ? <a className="btn-primary !py-1.5 !px-3 text-sm" href="/ca">＋ Ghi mẻ (Ca của tôi › Mẻ khu D)</a> : undefined} />
+    <Tabs items={[["tong", "Tổng quan · vòng tuần hoàn"], ...LINES.map(([l, n]) => [l, n] as [string, string]), ["luong", `Luống trùn (${(luong.rows ?? []).length})`], ["morong", "Dòng mở rộng"]]} value={tab} onChange={setTab} right={canW ? <a className="btn-primary !py-1.5 !px-3 text-sm" href="/ca">＋ Ghi mẻ (Ca của tôi › Mẻ khu D)</a> : undefined} />
     {tab === "tong" && <div className="space-y-3"><div className="card text-sm"><b>Vòng tuần hoàn khu D</b>: phân chuồng/RAS + rác bếp/BSF → <b>trùn</b> (phân trùn K5 · trùn tươi cho gà/lươn) · <b>BSF</b> (ấu trùng đạm · compost) · <b>biogas</b> (điện, đuốc dư khí) · <b>compost/biochar/giấm gỗ</b> (ruộng) · <b>IMO/EM</b> (men) · <b>anolyte</b> (khử trùng chuồng/trứng). Đầu ra ghi vào kho (K5 phân trùn, TH-ANOLYTE, NL-MEN-VS) qua mẻ; phát thải xem <a className="underline" href="/co2e">CO2e</a>; SOP-SH-01…06.</div>
       <div className="grid md:grid-cols-2 gap-3"><div className="card"><AnyChart title="Số mẻ khu D theo dây chuyền (tuần)" table="batch_logs" col="id" agg="count" dim="line" bucket="week" filters={{ location_id: `${sess.farmId}-KHU-D` }} height={240} /></div><div className="card"><AnyChart title="Nhiệt độ luống/mẻ (°C) theo dây chuyền" table="batch_logs" col="temp_c" agg="avg" dim="line" bucket="week" height={240} /></div><div className="card"><AnyChart title="Phân trùn nhập kho K5 (bao)" table="inventory_moves" col="qty" dim="reason" bucket="month" filters={{ sku: "SKU-PTR-25", direction: "1" }} height={240} /></div><div className="card"><AnyChart title="Anolyte sản xuất (lít)" table="batch_logs" col="id" agg="count" bucket="week" filters={{ line: "ANOLYTE" }} height={240} /></div></div></div>}
     {LINES.some(([l]) => l === tab) && <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-slate-100 rounded-t-xl font-bold">{LINES.find(([l]) => l === tab)?.[1]} — {LINES.find(([l]) => l === tab)?.[2]}</div><table className="tbl text-sm"><thead><tr><th className="pl-3">Lúc</th><th>Mã mẻ</th><th>Vị trí</th><th>Đầu vào</th><th>Đầu ra</th><th className="text-right">°C</th><th className="text-right">Ẩm %</th><th>QC/CCP</th><th>Người</th></tr></thead><tbody>{B.filter((b) => b.line === tab).slice(0, 120).map((b) => <tr key={String(b.id)}><td className="pl-3 text-xs">{fmt.dt(String(b.ts))}</td><td className="font-mono text-xs">{String(b.batch_code)}</td><td className="text-xs">{String(b.location_id ?? "")}</td><td className="text-xs">{((b.inputs as R[]) ?? []).map((i) => `${i.sku} ${fmt.n(Number(i.kg))}`).join(", ")}</td><td className="text-xs">{((b.outputs as R[]) ?? []).map((o) => `${o.sku} ${fmt.n(Number(o.kg))}`).join(", ")}</td><td className="text-right">{String(b.temp_c ?? "")}</td><td className="text-right">{String(b.moisture_pct ?? "")}</td><td className="text-xs">{JSON.stringify(b.qc ?? {}).slice(0, 50)}</td><td className="text-xs">{String(b.created_by ?? "")}</td></tr>)}</tbody></table>{!B.filter((b) => b.line === tab).length && <div className="p-3 text-sm text-slate-500">Chưa có mẻ.</div>}</div>}
     {tab === "luong" && <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-slate-100 rounded-t-xl font-bold">Luống trùn / ô khu D — lần nạp, lần thu gần nhất, nhiệt độ</div><table className="tbl text-sm"><thead><tr><th className="pl-3">Luống</th><th>Nạp gần nhất</th><th>Thu gần nhất</th><th className="text-right">°C gần nhất</th><th className="text-right">Mẻ 30 ngày</th></tr></thead><tbody>{(luong.rows ?? []).map((l) => <tr key={String(l.id)}><td className="pl-3">{String(l.name)}</td><td className="text-xs">{l.last_nap ? fmt.dt(String(l.last_nap)) : "—"}</td><td className="text-xs">{l.last_thu ? fmt.dt(String(l.last_thu)) : "—"}</td><td className={`text-right ${Number(l.temp_c) > 35 ? "text-red-700 font-bold" : ""}`}>{String(l.temp_c ?? "")}</td><td className="text-right">{String(l.n30)}</td></tr>)}</tbody></table></div>}
+    {tab === "morong" && <div className="space-y-3">
+      <div className="card text-sm">Bản ghi <b>dòng mở rộng tuần hoàn</b> — thu hồi năng lượng · biochar/tín chỉ carbon · nhà kính CEA · bèo tấm. Ghi để tính carbon NET + KPI + tín chỉ. {!canW && <span className="text-slate-500">(Chỉ KTV/KTT ghi được.)</span>}</div>
+      {canW && <div className="grid md:grid-cols-2 gap-3">
+        <MiniLog action="record_energy" title="Thu hồi năng lượng biogas" why="Điện/nhiệt/CO₂/solar thu hồi → tính carbon NET (v_ghg_net), chứng minh zero-discharge." fields={[{ key: "stream", label: "Dòng", options: ["DIEN_BIOGAS", "NHIET_THAI", "CO2_THU_HOI", "SOLAR"] }, { key: "value", label: "Số lượng", type: "number" }, { key: "unit", label: "Đơn vị (kWh/kg)" }]} />
+        <MiniLog action="record_biochar" title="Mẻ biochar" why="Khối lượng biochar → CO₂e lưu giữ (tín chỉ carbon CDR)." fields={[{ key: "feedstock", label: "Nguyên liệu" }, { key: "input_kg", label: "Đầu vào kg", type: "number" }, { key: "biochar_kg", label: "Biochar kg", type: "number" }]} />
+        <MiniLog action="record_carbon_credit" title="Sổ tín chỉ carbon" why="ISSUE (từ mẻ đã thẩm định) / SELL (bán). Bán vượt lượng khả dụng bị CHẶN tự động." fields={[{ key: "entry_type", label: "Loại", options: ["ISSUE", "SELL"] }, { key: "co2e_tonnes", label: "Tấn CO₂e", type: "number" }, { key: "mrv_standard", label: "Chuẩn (PURO/VERRA)" }, { key: "buyer", label: "Người mua (nếu SELL)" }]} />
+        <MiniLog action="record_cea" title="Lô nhà kính CEA" why="Rau/thảo mộc nội khu, tưới digestate. KPI kg/m²." fields={[{ key: "house_id", label: "Nhà kính" }, { key: "crop", label: "Cây" }, { key: "area_m2", label: "Diện tích m²", type: "number" }]} />
+        <MiniLog action="record_duckweed" title="Lô bèo tấm" why="Bèo ăn nước thải → đạm feed, thu hồi N-P." fields={[{ key: "pond_id", label: "Ao" }, { key: "area_m2", label: "Diện tích m²", type: "number" }]} />
+      </div>}
+    </div>}
   </div>;
 }
