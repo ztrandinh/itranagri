@@ -35,6 +35,8 @@ jobs:
           --health-timeout 5s --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:itranagri@localhost:5432/itranagri
+      # migrate.ts + seed dùng DATABASE_ADMIN_URL (không phải DATABASE_URL) — thiếu nó thì rơi về cổng dev 54499 → ECONNREFUSED
+      DATABASE_ADMIN_URL: postgres://postgres:itranagri@localhost:5432/itranagri
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
