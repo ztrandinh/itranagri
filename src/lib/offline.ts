@@ -1,7 +1,10 @@
 "use client";
 import { get, set, del, keys } from "idb-keyval";
 
-export type Queued = { key: string; table: string; event: Record<string, unknown>; created_at: number; tries: number; last_error?: string };
+/** `last_error` = máy chủ TỪ CHỐI vì dữ liệu (phải sửa mới gửi được).
+ *  `net_error` = LỖI MẠNG (fetch ném / máy chủ không trả lời) — chỉ cần chờ có mạng, KHÔNG phải sửa.
+ *  Trước đây gộp cả hai vào last_error nên mất mạng lại báo "máy chủ từ chối" — công nhân tưởng ghi sai. */
+export type Queued = { key: string; table: string; event: Record<string, unknown>; created_at: number; tries: number; last_error?: string; net_error?: boolean };
 const PREFIX = "q:";
 const listeners = new Set<() => void>();
 export function onQueueChange(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; }
@@ -55,12 +58,13 @@ async function doFlush(): Promise<{ sent: number; failed: number }> {
           const r = results.find((x) => x.client_ref === it.event.client_ref);
           if (r && (r.status === "CREATED" || r.status === "DUPLICATE")) { await del(it.key); sent++; }
           else if (r && r.status === "REJECTED") {
-            // Bị từ chối do dữ liệu (không phải mạng): giữ lại để người dùng sửa, đánh dấu lỗi
-            await set(it.key, { ...it, tries: it.tries + 1, last_error: r.errors?.join("; ") }); failed++;
-          } else { await set(it.key, { ...it, tries: it.tries + 1, last_error: "no-result" }); failed++; }
+            // Máy chủ từ chối vì DỮ LIỆU (không phải mạng): giữ lại để người dùng sửa.
+            await set(it.key, { ...it, tries: it.tries + 1, last_error: r.errors?.join("; "), net_error: false }); failed++;
+          } else { await set(it.key, { ...it, tries: it.tries + 1, last_error: "no-result", net_error: false }); failed++; }
         }
       } catch (e) {
-        for (const it of list) await set(it.key, { ...it, tries: it.tries + 1, last_error: (e as Error).message });
+        // fetch NÉM = lỗi MẠNG, không phải máy chủ chối. Đánh dấu net_error để chờ có mạng gửi lại.
+        for (const it of list) await set(it.key, { ...it, tries: it.tries + 1, net_error: true, last_error: undefined });
         failed += list.length;
       }
     }

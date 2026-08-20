@@ -67,6 +67,10 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   const buocSop = (target?.meta?.steps as Step[] | undefined) ?? [];
   const missing = spec.fields.filter((f) => {
     if (!f.required) return false;
+    // Ô ẢNH: ảnh lưu ở state `photoUrls` RIÊNG (không phải trong `vals`). Trước đây kiểm
+    // vals[f.key] nên ảnh bắt buộc KHÔNG BAO GIỜ thoả — mọi form bắt buộc ảnh (nộp phiếu giấy…)
+    // không thể hoàn thành dù công nhân đã chụp và ảnh đã lên máy chủ. Kiểm đúng nguồn photoUrls.
+    if (f.type === "photo") return photoUrls.length === 0;
     // Ô "steps": phải trả lời ĐỦ mọi bước, không được để sót bước nào.
     if (f.type === "steps") { const ds = (vals[f.key] as Step[] | undefined) ?? []; return buocSop.length > 0 && ds.filter((x) => x.ok != null).length < buocSop.length; }
     return vals[f.key] == null || vals[f.key] === "";
@@ -87,15 +91,13 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
       // vẫn hiện "Đã ghi …" — công nhân tưởng xong, thực tế mất trắng. Nay đợi gửi rồi mới kết luận.
       await flush().catch(() => {});
       const conNam = (await pending()).find((p) => p.key === q.key);
-      const coMang = typeof navigator === "undefined" || navigator.onLine;
 
-      if (conNam && coMang) {
-        // Có mạng mà vẫn kẹt = máy chủ từ chối vì dữ liệu. Giữ nguyên bước 3 để công nhân sửa.
-        uxFormError(`ghi_${spec.table}`, (conNam.last_error ?? "pending").slice(0, 40));
+      // Còn kẹt trong hàng đợi VÀ máy chủ đã TỪ CHỐI vì dữ liệu (không phải lỗi mạng):
+      // giữ nguyên bước 3, báo ĐỎ để công nhân sửa. Lỗi mạng thì rơi xuống nhánh "đã lưu, sẽ gửi".
+      if (conNam && conNam.last_error && !conNam.net_error) {
+        uxFormError(`ghi_${spec.table}`, conNam.last_error.slice(0, 40));
         setMsgErr(true);
-        setMsg(conNam.last_error
-          ? `CHƯA GHI ĐƯỢC — máy chủ từ chối: ${conNam.last_error}. Bản ghi đang giữ trong máy, sửa lại rồi gửi tiếp; báo tổ trưởng nếu lặp lại.`
-          : "CHƯA GHI ĐƯỢC — máy chủ chưa nhận. Bản ghi đang giữ trong máy và sẽ tự gửi lại; đừng nhập lại kẻo trùng.");
+        setMsg(`CHƯA GHI ĐƯỢC — máy chủ từ chối: ${conNam.last_error}. Bản ghi đang giữ trong máy, sửa lại rồi gửi tiếp; báo tổ trưởng nếu lặp lại.`);
         return;
       }
 
