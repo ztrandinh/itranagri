@@ -36,6 +36,8 @@ export const ANY_TABLES: AnyTable[] = [
   { table: "agg_daily", label: "Chỉ số ngày (đã tổng hợp)", ts: "day" },
   { table: "stock_daily", label: "Tồn kho theo ngày (snapshot)", ts: "day" },
   { table: "herd_daily", label: "Đàn theo ngày (snapshot)", ts: "day" },
+  { table: "v_animal_feed_daily", label: "Thức ăn nạp/cá thể (phân bổ từ đàn ÷ đầu con)", ts: "ts" },
+  { table: "v_animal_growth_month", label: "Tăng trưởng cá thể/tháng (cân · tăng trọng · FCR · ADG)", ts: "ts" },
 ];
 const NUM = new Set(["integer", "bigint", "numeric", "double precision", "real", "smallint"]);
 const TXT = new Set(["text", "character varying", "boolean", "date", "uuid", "integer", "smallint"]);
