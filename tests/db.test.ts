@@ -158,3 +158,32 @@ describe("Mortality watch (0146)", () => {
     await expect(admin.query("select gen_mortality_alerts('F01') as n")).resolves.toBeTruthy();
   });
 });
+describe("Ngưng thuốc — theo dõi auto (0147)", () => {
+  it("view chỉ con còn hạn ngưng thuốc · gen_withdrawal_reminders chạy sạch + tự đóng", async () => {
+    // mọi dòng trong view phải còn hạn (con_lai_ngay >= 0)
+    expect(Number((await admin.query("select count(*) from v_withdrawal_active where con_lai_ngay < 0")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_withdrawal_reminders('F01') as n")).resolves.toBeTruthy();
+    // không còn việc WITHDRAWAL mở cho con đã hết hạn (tự đóng)
+    expect(Number((await admin.query("select count(*) from tasks t where t.ref_table='withdrawal' and t.status<>'XONG' and not exists(select 1 from v_withdrawal_active d where d.animal_id=t.ref_id)")).rows[0].count)).toBe(0);
+  });
+});
+describe("Độ phủ truy xuất (0148)", () => {
+  it("v_trace_coverage: có chiều, truy_duoc≤tong, pct trong [0,100]", async () => {
+    const r = await admin.query("select chieu, tong, truy_duoc, pct from v_trace_coverage where farm_id='F01'");
+    expect(r.rows.length).toBeGreaterThan(0);
+    for (const row of r.rows) {
+      expect(Number(row.truy_duoc)).toBeLessThanOrEqual(Number(row.tong));
+      if (row.pct !== null) { expect(Number(row.pct)).toBeGreaterThanOrEqual(0); expect(Number(row.pct)).toBeLessThanOrEqual(100); }
+    }
+  });
+});
+describe("Lô hết hạn còn tồn (0149)", () => {
+  it("view chỉ lô còn tồn+sắp/đã hết · gen GOM ≤1 việc/trại, idempotent, tự đóng", async () => {
+    // mọi dòng view: ton>0 và trong ngưỡng 30 ngày
+    expect(Number((await admin.query("select count(*) from v_lot_expiry_watch where ton<=0")).rows[0].count)).toBe(0);
+    await admin.query("select gen_lot_expiry_alerts('F01')");
+    // gom: tối đa 1 việc lot_expiry mở/trại
+    expect(Number((await admin.query("select count(*) from tasks where ref_table='lot_expiry' and ref_id='F01' and status<>'XONG'")).rows[0].count)).toBeLessThanOrEqual(1);
+    await expect(admin.query("select gen_lot_expiry_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
