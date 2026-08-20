@@ -20,6 +20,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ table: 
     const parsed = EVENT_SCHEMAS[t].safeParse(raw);
     if (!parsed.success) { results.push({ client_ref: (raw as { client_ref?: string })?.client_ref, status: "REJECTED", errors: parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`) }); continue; }
     const ev = parsed.data as Record<string, unknown>;
+    // BẢO MẬT: client KHÔNG được tự nhận provenance seed/import để lách các guard skip IMPORT/backfill
+    // (CCP hold HACCP, trừ kho, oversell carbon...). Import thật đi /api/import/csv; seed đi SQL trực tiếp.
+    if (ev.source === "IMPORT" || ev.source === "BACKFILL") ev.source = "APP";
+    // is_backfill=true chỉ hợp lệ ở luồng số hoá phiếu GIẤY (ThreeTap: source=PAPER + có seri); còn lại ép false
+    if (ev.is_backfill === true && !(ev.source === "PAPER" && ev.paper_serial)) ev.is_backfill = false;
     // luật supersede 72h (worker); after → cần adjustment
     try {
       const r = await withCtx(sess, async (c) => {
