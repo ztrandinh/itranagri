@@ -9,18 +9,19 @@ const LINES: [string, string, string][] = [["TRUN_NAP", "Trùn: nạp phân", "k
 /** SINH HỌC TUẦN HOÀN (khu D): mỗi dây chuyền có mẻ (batch_logs.line), đầu vào phân/rác → đầu ra phân trùn/BSF/điện/compost/men/anolyte; KPI 30 ngày; luống trùn; nối kho (K5 phân trùn) và CO2e */
 /** Mini-form ghi bản ghi dòng mở rộng (năng lượng/biochar/carbon/CEA/bèo) qua action. 2 bộ hồ sơ: giấy+ảnh+số. */
 function MiniLog({ action, title, why, fields }: { action: string; title: string; why: string; fields: { key: string; label: string; type?: string; options?: string[] }[] }) {
-  const [v, setV] = useState<Record<string, string>>({}); const [msg, setMsg] = useState("");
+  const [v, setV] = useState<Record<string, string>>({}); const [photos, setPhotos] = useState<string[]>([]); const [msg, setMsg] = useState("");
+  async function up(file: File) { const fd = new FormData(); fd.append("file", file); try { const r = await fetch("/api/upload", { method: "POST", body: fd }); const j = await r.json(); if (j.url) setPhotos((p) => [...p, String(j.url)]); } catch { /* noop */ } }
   return <div className="card space-y-2">
     <div className="font-bold text-sm">{title}</div>
     <div className="text-xs text-slate-600">{why}</div>
     <div className="grid sm:grid-cols-3 gap-2">{fields.map((f) => f.options
       ? <select key={f.key} className="input" aria-label={f.label} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })}><option value="">{f.label}</option>{f.options.map((o) => <option key={o} value={o}>{o}</option>)}</select>
       : <input key={f.key} className="input" placeholder={f.label} aria-label={f.label} type={f.type ?? "text"} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} />)}</div>
+    <div className="flex items-center gap-2 flex-wrap"><label className="btn-secondary !py-1 !px-2 !text-xs cursor-pointer">📷 Ảnh phiếu giấy<input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => e.target.files?.[0] && up(e.target.files[0])} /></label>{photos.map((u) => <img key={u} src={u} alt="" className="h-10 w-10 object-cover rounded" />)}<span className="text-[11px] text-slate-400 ml-auto">2 bộ hồ sơ: ghi phiếu giấy → chụp ảnh.</span></div>
     <div className="flex gap-2 items-center">
-      <button className="btn-primary !py-1" onClick={async () => { const body: Record<string, unknown> = {}; for (const f of fields) body[f.key] = f.type === "number" ? (v[f.key] ? Number(v[f.key]) : null) : (v[f.key] || null); const j = await act(action, body); setMsg(j.error ? "Lỗi: " + String(j.error) : "Đã ghi ✓"); if (!j.error) setV({}); }}>Ghi</button>
+      <button className="btn-primary !py-1" onClick={async () => { const body: Record<string, unknown> = { photo_urls: photos }; for (const f of fields) body[f.key] = f.type === "number" ? (v[f.key] ? Number(v[f.key]) : null) : (v[f.key] || null); const j = await act(action, body); setMsg(j.error ? "Lỗi: " + String(j.error) : "Đã ghi ✓"); if (!j.error) { setV({}); setPhotos([]); } }}>Ghi</button>
       {msg && <span className="text-xs text-emerald-800">{msg}</span>}
     </div>
-    <div className="text-[11px] text-slate-400">2 bộ hồ sơ: ghi phiếu giấy → chụp ảnh → đính hồ sơ.</div>
   </div>;
 }
 export default function SinhHoc({ sess }: { sess: Sess }) {

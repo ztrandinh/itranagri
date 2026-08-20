@@ -54,6 +54,11 @@ export const RECORD_MAP: Record<string, { code: string; name: string; std: strin
   checklist_runs: { code: "HS-ATTP", name: "Checklist ca theo SOP", std: "ATTP · HACCP" },
   incidents: { code: "HS-ATTP", name: "Sự cố / near-miss", std: "ATTP · môi trường" },
   paper_scans: { code: "HS-PHAP-LY", name: "Số hóa phiếu giấy BM01–BM10", std: "Lưu trữ · đối chiếu seri" },
+  energy_logs: { code: "HS-NANG-LUONG", name: "Sổ thu hồi năng lượng (điện/nhiệt/CO2/solar)", std: "ISO 14064 · carbon net" },
+  biochar_batches: { code: "HS-BIOCHAR", name: "Sổ mẻ biochar", std: "CDR · Puro.earth/Verra" },
+  carbon_credits: { code: "HS-TIN-CHI", name: "Sổ tín chỉ carbon (ISSUE/SELL)", std: "MRV độc lập · chống bán vượt" },
+  cea_batches: { code: "HS-NHA-KINH", name: "Sổ lô nhà kính CEA", std: "VietGAP · hữu cơ (nội khu)" },
+  duckweed_batches: { code: "HS-BEO-TAM", name: "Sổ lô bèo tấm (thu hồi N-P)", std: "Tuần hoàn · feed" },
 };
 export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec> {
   const nowIso = () => new Date().toISOString();
