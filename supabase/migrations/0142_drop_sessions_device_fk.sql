@@ -1,0 +1,15 @@
+-- 0142 · Gỡ KHOÁ NGOẠI SAI NGỮ NGHĨA: sessions.device_id → devices(id).
+--
+-- `sessions.device_id` là VÂN TAY THIẾT BỊ ĐĂNG NHẬP — trình duyệt/điện thoại công nhân tự sinh
+-- chuỗi 'dev-xxxx' lưu localStorage (xem src/app/login/page.tsx), KHÔNG phải nông cụ/IoT trong
+-- bảng `devices` (brand/model/serial/mqtt_topic/machine_hours...). Hai khái niệm khác hẳn, chỉ
+-- trùng tên cột.
+--
+-- 0127_missing_fks siết khoá ngoại HÀNG LOẠT theo TÊN CỘT ('device_id' → devices) nên vô tình
+-- gán FK này lên sessions. Hậu quả: MỌI đăng nhập qua trình duyệt vỡ — login() insert
+-- sessions.device_id='dev-xxxx' (chưa có trong devices) → vi phạm FK → API trả 423. (curl không
+-- gửi device_id => null qua được, nên chỉ vỡ trên trình duyệt thật.)
+--
+-- Cùng nhóm loại trừ với cold_chain_logs.vehicle_id trong 0127 (giá trị gõ/sinh tại chỗ, không ép
+-- danh mục). Forward-only: 0127 THÊM, 0142 GỠ → dựng lại từ Postgres trắng vẫn đúng.
+alter table sessions drop constraint if exists fk_sessions_device_id;
