@@ -232,7 +232,7 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
         { key: "price", label: "Đơn giá", type: "number", unit: "đ", min: 0, step: 1000, required: true },
         { key: "channel", label: "Kênh", type: "choice", options: [{ id: "1", label: "1 B2B/HĐ" }, { id: "2", label: "2 Quầy/NH" }, { id: "3", label: "3 Online/nhận nuôi" }, { id: "4", label: "4 Resort" }, { id: "5", label: "5 Giống/đào tạo" }], required: true },
         { key: "payment", label: "Thanh toán", type: "choice", options: [{ id: "CK", label: "Chuyển khoản" }, { id: "VIETQR", label: "VietQR" }, { id: "POS", label: "POS" }, { id: "CONG_NO", label: "Ghi nợ" }], required: true },
-        { key: "lot_id", label: "Lô (truy xuất)", type: "text", placeholder: "F01-LOT-…" },
+        { key: "lot_id", label: "Lô (truy xuất — bắt buộc để thu hồi/xuất khẩu)", type: "text", placeholder: "F01-LOT-…", required: true },
       ],
       build: (t, v) => ({ ...v, channel: Number(v.channel), paid: v.payment !== "CONG_NO", unit: s(r.products.find((p) => s(p.sku) === v.sku)?.unit) }),
     },
