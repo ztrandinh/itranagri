@@ -10,6 +10,9 @@ export async function resolveRecipients(farmId: string, recipients: string[]): P
     if (r === "all") staff.forEach((s) => out.add(s.id));
     else if (r.startsWith("NS-")) out.add(r);
     else if (r.startsWith("worker:")) { const pos = r.split(":")[1]; staff.filter((s) => s.role === "worker" && String(s.position ?? "").startsWith(pos)).forEach((s) => out.add(s.id)); }
+    // GĐ TRẠI-LOCAL: sự kiện vận hành của trại chỉ ping GĐ trại đó, KHÔNG ping GĐ chức năng công ty
+    // (XNK/Marketing/HCNS/Nhân rộng — farm_id null). Fallback: trại chưa có GĐ riêng → mọi GĐ.
+    else if (r === "director:farm") { const local = staff.filter((s) => s.role === "director" && s.farm_id === farmId); (local.length ? local : staff.filter((s) => s.role === "director")).forEach((s) => out.add(s.id)); }
     else staff.filter((s) => s.role === r).forEach((s) => out.add(s.id));
   }
   return [...out];
@@ -32,7 +35,7 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       recips = await resolveRecipients(farm!, (rule?.recipients ?? (pl.sent_to as string[]) ?? ["tech_head", "director"]) as string[]);
       // Leo thang: ĐỎ luôn +director. KHÔNG +owner đại trà (gây nhiễu owner khi đa trại);
       // owner chỉ nhận ĐỎ ở các luật đã CẤU HÌNH owner trong recipients (an toàn/dịch tễ/tồn/kiểm kê…).
-      if (pl.level === "DO") recips = [...new Set([...recips, ...(await resolveRecipients(farm!, ["director"]))])];
+      if (pl.level === "DO") recips = [...new Set([...recips, ...(await resolveRecipients(farm!, ["director:farm"]))])];
       level = String(pl.level); title = `${pl.level} · ${rule?.name ?? pl.rule}`; body = String(pl.subject ?? ""); link = "/canh-bao"; sourceId = String(pl.alert_id);
       await p.query("update alert_rules set last_fired_at=now(), fire_count=coalesce(fire_count,0)+1 where code=$1", [pl.rule]);
     } else if (e.topic === "task.created") {
@@ -40,7 +43,7 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       if (pl.dept && !pl.assignee) { const inDept = (await p.query("select id from staff where active and dept=$1 and role=$2 and (farm_id=$3 or farm_id is null or $3 = any(farm_ids))", [pl.dept, pl.role_hint ?? "worker", farm])).rows.map((x) => String(x.id)); if (inDept.length) recips = inDept; }
       level = pl.priority === "KHAN" ? "DO" : "VANG"; title = `Việc ${pl.priority}: ${pl.title}`; body = `Hạn ${new Date(String(pl.due)).toLocaleString("vi-VN")}${pl.dept ? ` · bộ phận ${pl.dept}` : ""}`; link = pl.run_id ? "/to-chuc?tab=chay" : "/ca"; sourceId = String(pl.task_id);
     } else if (e.topic === "incident.created") {
-      recips = await resolveRecipients(farm!, ["tech_head", "director", ...(["CAO", "NGHIEM_TRONG"].includes(String(pl.severity)) ? ["owner"] : [])]);
+      recips = await resolveRecipients(farm!, ["tech_head", "director:farm", ...(["CAO", "NGHIEM_TRONG"].includes(String(pl.severity)) ? ["owner"] : [])]);
       level = ["CAO", "NGHIEM_TRONG"].includes(String(pl.severity)) ? "DO" : "VANG"; title = `Sự cố ${pl.code} · ${pl.kind}/${pl.severity}`; body = String(pl.description ?? ""); link = "/gd"; sourceId = String(pl.incident_id);
     } else if (e.topic === "expense.approved.big") {
       recips = await resolveRecipients(farm!, ["owner"]); level = "VANG"; title = `Chi > 50 triệu đã duyệt: ${Number(pl.amount).toLocaleString("vi-VN")} đ`; body = String(pl.purpose ?? ""); link = "/ke-toan"; sourceId = String(pl.id);
@@ -56,7 +59,7 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       level = isDel ? "VANG" : "INFO"; title = `Danh mục ${pl.table}: ${pl.action} ${pl.pk}`; body = `Bởi ${pl.by}${Array.isArray(pl.cols) ? " · cột: " + (pl.cols as string[]).join(", ") : ""}`; link = `/quan-tri?t=${pl.table}&pk=${encodeURIComponent(String(pl.pk))}`; sourceId = `${e.id}`;
     }
     else if (e.topic === "import.done") { recips = await resolveRecipients(farm ?? "F01", ["owner", "it_engineer", "director"]); level = Number(pl.err) > 0 ? "VANG" : "INFO"; title = `Nhập CSV ${pl.table}: ${pl.ok} dòng OK, ${pl.err} lỗi`; body = `Bởi ${pl.by} · ${pl.file ?? ""}`; link = `/quan-tri?t=${pl.table}&tab=nhap`; sourceId = String(pl.batch); }
-    else if (e.topic === "order.created") { if (!pl.total) { const o = (await p.query("select o.total, o.attrs, pt.name from orders o left join partners pt on pt.id=o.partner_id where o.id=$1", [String(pl.id)])).rows[0]; if (o) { pl.total = o.total; pl.source = (o.attrs as Record<string, unknown>)?.source ?? pl.source; pl.partner = o.name ?? pl.partner; pl.unmapped = (o.attrs as Record<string, unknown>)?.unmapped ?? 0; } } recips = await resolveRecipients(farm ?? "F01", ["worker:A9", "worker:A8", "director", "accountant"]); level = Number(pl.unmapped ?? 0) > 0 ? "VANG" : "INFO"; title = `Đơn mới ${pl.id} (${pl.source ?? "nội bộ"}) · ${Number(pl.total ?? 0).toLocaleString("vi-VN")} đ`; body = `${pl.partner ?? ""}${Number(pl.unmapped ?? 0) > 0 ? ` · ${pl.unmapped} dòng chưa ánh xạ SKU — Kinh doanh xử lý` : ""} · Kho soạn hàng FEFO · Kế toán theo dõi thu`; link = "/ban-hang?tab=don"; sourceId = String(pl.id); }
+    else if (e.topic === "order.created") { if (!pl.total) { const o = (await p.query("select o.total, o.attrs, pt.name from orders o left join partners pt on pt.id=o.partner_id where o.id=$1", [String(pl.id)])).rows[0]; if (o) { pl.total = o.total; pl.source = (o.attrs as Record<string, unknown>)?.source ?? pl.source; pl.partner = o.name ?? pl.partner; pl.unmapped = (o.attrs as Record<string, unknown>)?.unmapped ?? 0; } } recips = await resolveRecipients(farm ?? "F01", ["worker:A9", "worker:A8", "director:farm", "accountant"]); level = Number(pl.unmapped ?? 0) > 0 ? "VANG" : "INFO"; title = `Đơn mới ${pl.id} (${pl.source ?? "nội bộ"}) · ${Number(pl.total ?? 0).toLocaleString("vi-VN")} đ`; body = `${pl.partner ?? ""}${Number(pl.unmapped ?? 0) > 0 ? ` · ${pl.unmapped} dòng chưa ánh xạ SKU — Kinh doanh xử lý` : ""} · Kho soạn hàng FEFO · Kế toán theo dõi thu`; link = "/ban-hang?tab=don"; sourceId = String(pl.id); }
     else if (e.topic === "process.published") { const depts = (pl.depts as string[]) ?? []; const roles = (pl.roles as string[]) ?? []; const st = (await p.query("select id from staff where active and (dept = any($1) or role = any($2)) and ($3::text is null or farm_id=$3 or farm_id is null or $3 = any(farm_ids))", [depts, roles, farm])).rows; recips = [...new Set([...st.map((x) => String(x.id)), ...(await resolveRecipients(farm ?? "F01", ["director"]))])]; level = "VANG"; title = `Quy trình mới / cập nhật: ${pl.name}`; body = `${pl.code} · ${pl.steps} bước · phòng: ${depts.join(", ")} · bởi ${pl.by}. Bạn được đưa vào quy trình này.`; link = `/to-chuc?tab=quytrinh&p=${pl.code}`; sourceId = `${pl.code}:${e.id}`; }
     else if (e.topic === "process.finished") { recips = await resolveRecipients(farm ?? "F01", ["director", "tech_head"]); title = `Hoàn tất quy trình ${pl.code}: ${pl.title}`; link = "/to-chuc?tab=chay"; sourceId = String(pl.run_id); }
     else if (e.topic === "customer.message") { recips = await resolveRecipients(farm!, ["worker:A9", "director"]); level = "VANG"; title = `Tin nhắn khách nhận nuôi`; body = String(pl.body ?? ""); link = "/ban-hang"; }

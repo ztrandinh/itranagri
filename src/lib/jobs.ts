@@ -42,7 +42,10 @@ export async function runAlerts(farmId: string) {
     };
     const ds = (await c.query("select * from v_days_silage where farm_id=$1", [farmId])).rows[0];
     if (ds?.days_silage != null) { const d = Number(ds.days_silage); if (d < await set("silage.days_red", 30)) await fire("AL-SIL-30", "DO", `Ngày-tồn ủ chua ${d} < 30`, ds); else if (d < await set("silage.days_yellow", 45)) await fire("AL-SIL-45", "VANG", `Ngày-tồn ủ chua ${d} < 45`, ds); }
-    for (const r of (await c.query("select * from v_fefo_red where farm_id=$1", [farmId])).rows) await fire("AL-FEFO", "VANG", `Lô ${r.lot_id} còn ${r.pct_left}% hạn (${r.qty} ${r.unit})`, r, 1440);
+    // GIẢM NHIỄU: trước đây 1 cảnh báo/lô → ~1.400 ping/lần chạy (dedup theo subject nên cooldown vô dụng).
+    // Nay GOM 1 cảnh báo tổng/trại; thủ kho xem chi tiết ở trang kho (FEFO). ĐỎ nếu đã có lô quá hạn.
+    const fefo = (await c.query("select count(*)::int n, count(*) filter (where expiry_date < current_date)::int expired, coalesce(round(sum(qty)),0)::numeric qty, min(expiry_date) soonest from v_fefo_red where farm_id=$1", [farmId])).rows[0];
+    if (Number(fefo.n) > 0) await fire("AL-FEFO", Number(fefo.expired) > 0 ? "DO" : "VANG", `${fefo.n} lô cần xuất theo FEFO — ${fefo.expired} đã quá hạn, tổng ${fefo.qty}`, fefo, 1440);
     // thiếu FEED_LOG sau cữ + 60'
     const meals: string[] = (await c.query("select value from settings where key='feed.meal_times' and farm_id in ('GLOBAL',$1) order by (farm_id=$1) desc limit 1", [farmId])).rows[0]?.value ?? ["06:00", "15:00"];
     const now = new Date(); const hhmm = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" });
