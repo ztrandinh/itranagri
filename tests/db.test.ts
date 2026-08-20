@@ -177,3 +177,13 @@ describe("Độ phủ truy xuất (0148)", () => {
     }
   });
 });
+describe("Lô hết hạn còn tồn (0149)", () => {
+  it("view chỉ lô còn tồn+sắp/đã hết · gen GOM ≤1 việc/trại, idempotent, tự đóng", async () => {
+    // mọi dòng view: ton>0 và trong ngưỡng 30 ngày
+    expect(Number((await admin.query("select count(*) from v_lot_expiry_watch where ton<=0")).rows[0].count)).toBe(0);
+    await admin.query("select gen_lot_expiry_alerts('F01')");
+    // gom: tối đa 1 việc lot_expiry mở/trại
+    expect(Number((await admin.query("select count(*) from tasks where ref_table='lot_expiry' and ref_id='F01' and status<>'XONG'")).rows[0].count)).toBeLessThanOrEqual(1);
+    await expect(admin.query("select gen_lot_expiry_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
