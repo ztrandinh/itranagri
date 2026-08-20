@@ -158,20 +158,34 @@ export function BanHangPanel({ sess }: { sess: Sess }) {
     </div>);
 }
 
-export function TracePanel({ lot: initial }: { lot?: string }) {
+export function TracePanel({ lot: initial, sess }: { lot?: string; sess?: Sess }) {
   const [lot, setLot] = useState(initial ?? ""); const [q, setQ] = useState(initial ?? "");
   const tree = useData(q ? "trace_lot" : null, { lot: q }); const cust = useData(q ? "trace_customers" : null, { lot: q }); const l = useData(q ? "lot" : null, { lot: q });
   const [recall, setRecall] = useState<{ start: number; end?: number } | null>(null);
+  const [rc, setRc] = useState<{ reason: string; severity: string } | null>(null); const [rcMsg, setRcMsg] = useState("");
+  const canRecall = !!sess && ["owner", "director", "tech_head", "auditor"].includes(sess.role);
   const back = (tree.rows ?? []).filter((r) => r.dir === "BACK"), fwd = (tree.rows ?? []).filter((r) => r.dir === "FWD");
   return (
     <div className="space-y-3">
       <div className="card flex flex-wrap gap-2 items-center"><input className="input flex-1 !min-w-[260px]" placeholder="Mã lô / mã mẻ (F01-LOT-… hoặc F01-ME-…)" aria-label="Mã lô / mã mẻ (F01-LOT-… hoặc F01-ME-…)" value={lot} onChange={(e) => setLot(e.target.value)} /><button className="btn-primary !py-2" onClick={() => { setQ(lot.trim()); setRecall({ start: Date.now() }); }}>Truy xuất 2 chiều</button>{q && <a className="btn-secondary !py-2" href={`/api/exports/epcis?lot=${encodeURIComponent(q)}`} target="_blank">EPCIS 2.0 JSON-LD</a>}</div>
-      {q && (<div className="grid md:grid-cols-3 gap-3">
+      {q && (<><div className="grid md:grid-cols-3 gap-3">
         <div className="card"><h3 className="font-bold">Lô</h3>{l.rows?.[0] ? <div className="text-sm">{String(l.rows[0].product_name)}<br />lô {String(l.rows[0].lot_no)} · NCC {String(l.rows[0].supplier_id ?? "nội bộ")}<br />hạn {fmt.d(l.rows[0].expiry_date)} · <span className={l.rows[0].status === "KHA_DUNG" ? "b-grn" : "b-red"}>{String(l.rows[0].status)}</span></div> : <div className="text-stone-500 text-sm">Không thấy trong bảng lots (có thể là mã mẻ).</div>}</div>
         <div className="card"><h3 className="font-bold">← 1 bước lùi (nguyên liệu)</h3><ul className="text-sm">{back.map((r, i) => <li key={i}>{"—".repeat(Number(r.depth))} {String(r.input_lot)} <span className="text-stone-500">(mẻ {String(r.batch_code)})</span></li>)}{!back.length && <li className="text-stone-500">Không có mẻ dùng lô này làm đầu ra.</li>}</ul></div>
         <div className="card"><h3 className="font-bold">→ 1 bước tiến (sản phẩm · khách)</h3><ul className="text-sm">{fwd.map((r, i) => <li key={i}>{"—".repeat(Number(r.depth))} {String(r.output_lot)} <span className="text-stone-500">(mẻ {String(r.batch_code)})</span></li>)}</ul><h4 className="font-semibold mt-2">Khách đã nhận lô này</h4><ul className="text-sm">{(cust.rows ?? []).map((c, i) => <li key={i}>{fmt.dt(c.ts)} · <b>{String(c.name)}</b> {String(c.phone ?? "")} · {fmt.n(c.qty)} {String(c.unit ?? "")}</li>)}{cust.rows?.length === 0 && <li className="text-stone-500">Chưa bán lô này.</li>}</ul>
-          {recall && cust.rows && <div className="mt-2 text-xs text-stone-500">Mock recall: danh sách khách nhận trong {((Date.now() - recall.start) / 1000).toFixed(1)}s (chuẩn ≤ 4h).</div>}</div>
-      </div>)}
+          {recall && cust.rows && <div className="mt-2 text-xs text-stone-500">Thời gian dựng danh sách khách nhận: {((Date.now() - recall.start) / 1000).toFixed(1)}s (chuẩn ≤ 4h).</div>}</div>
+      </div>
+      {canRecall && <div className="card border-red-300">
+        <div className="flex items-center gap-2 flex-wrap"><b className="text-red-700">🚨 Thu hồi lô</b>
+          <span className="text-xs text-stone-500">Phát lệnh thu hồi: lô → THU_HOI (chặn xuất bán), tự sinh danh sách khách đã nhận + việc RECALL cho các bộ phận. Không hoàn tác.</span>
+          {!rc && <button className="btn-secondary !py-1 !text-xs ml-auto" onClick={() => { setRc({ reason: "", severity: "NANG" }); setRcMsg(""); }}>＋ Lập lệnh thu hồi</button>}</div>
+        {rc && <div className="mt-2 flex flex-wrap gap-2 items-end">
+          <input className="input flex-1 !min-w-[240px]" placeholder="Lý do thu hồi (nhiễm khuẩn / dư lượng vượt MRL / dị vật…)" aria-label="Lý do thu hồi" value={rc.reason} onChange={(e) => setRc({ ...rc, reason: e.target.value })} />
+          <select className="input !w-32" aria-label="Mức" value={rc.severity} onChange={(e) => setRc({ ...rc, severity: e.target.value })}>{["NHE", "TRUNG", "NANG"].map((x) => <option key={x}>{x}</option>)}</select>
+          <button className="btn-primary !py-2 !bg-red-700" disabled={!rc.reason.trim()} onClick={async () => { const j = await act("recall_lot", { lot_id: q, reason: rc.reason.trim(), severity: rc.severity }); setRcMsg(j.error ? `Lỗi: ${String(j.error)}` : `Đã phát lệnh thu hồi ${String(j.recall_id ?? "")} — lô chuyển THU_HOI, đã sinh việc RECALL cho các bộ phận`); if (!j.error) { setRc(null); l.reload(); } }}>Phát lệnh thu hồi</button>
+          <button className="btn-secondary !py-2" onClick={() => setRc(null)}>Hủy</button></div>}
+        {rcMsg && <div className="mt-2 text-sm text-emerald-800">{rcMsg}</div>}
+      </div>}
+      </>)}
     </div>);
 }
 
