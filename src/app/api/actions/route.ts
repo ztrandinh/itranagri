@@ -129,7 +129,14 @@ export async function POST(req: Request) {
           if (!["team_lead", "tech_head", "director", "owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           if (!Array.isArray(b.animal_ids) || !b.animal_ids.length) throw new Error("ERR_EMPTY");
           const r = await c.query("select sell_livestock($1,$2,$3::text[],$4,$5,$6) as sale_id", [s.farmId, s.staffId, b.animal_ids, b.buyer ?? null, Number(b.price_per_kg), b.sku ?? "SKU-BO-HOI"]);
-          return { ok: true, sale_id: r.rows[0].sale_id };
+          const saleId = r.rows[0].sale_id;
+          // 2-bộ-hồ-sơ: có ảnh phiếu cân/bán GIẤY → lưu paper_scans (BM06 SALE) nối vào đơn, không mất chứng cứ
+          if (b.photo_url) {
+            const sc = await c.query("select next_code($1,'BM06') as serial", [s.farmId]);
+            await c.query("insert into paper_scans(farm_id,created_by,source,form_code,serial,photo_url,uploaded_by,linked_ids) values($1,$2,'APP','BM06',$3,$4,$2,$5::jsonb)",
+              [s.farmId, s.staffId, sc.rows[0].serial, b.photo_url, JSON.stringify([saleId])]);
+          }
+          return { ok: true, sale_id: saleId };
         }
         case "assign_tag": {
           await c.query("update animal_tags set to_ts=now(), reason=$3 where animal_id=$1 and tag_type=$2 and to_ts is null", [b.animal_id, b.tag_type, b.reason ?? "thay tai"]);
