@@ -23,6 +23,13 @@ describe("RLS — farm A không thấy farm B", () => {
     await ctx("F01", "worker", "NS-011");
     await expect(app.query("insert into animal_events(farm_id,animal_id,event_type,created_by,client_ref) values ('F99','F01-BO-00001','GHI_CHU','NS-011','t-rls-1')")).rejects.toThrow();
   });
+  it("sale_animals (bảng nối, không farm_id) vẫn bật RLS + có policy theo trại đơn cha", async () => {
+    // bảng nối không có cột farm_id nên không lọt test tổng "mọi bảng có farm_id"; kiểm riêng.
+    const r = await admin.query("select relrowsecurity from pg_class where relname='sale_animals'");
+    expect(r.rows[0].relrowsecurity).toBe(true);
+    const p = await admin.query("select count(*)::int n from pg_policies where tablename='sale_animals'");
+    expect(p.rows[0].n).toBeGreaterThan(0);
+  });
 });
 describe("Append-only", () => {
   it("app_user không UPDATE được bảng sự kiện", async () => { await ctx("F01", "tech_head"); await expect(app.query("update animal_events set value=1 where farm_id='F01'")).rejects.toThrow(/permission denied/); });
