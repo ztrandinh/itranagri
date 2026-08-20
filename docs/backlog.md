@@ -2,6 +2,11 @@
 
 Ý mới phát sinh trong phiên → ghi ở đây, không mở rộng phạm vi giữa phiên (luật 10).
 
+## NỢ KỸ THUẬT — số migration trùng (ghi 2026-08-20, chưa gấp, rebuild vẫn XANH)
+- **`0170` bị TRÙNG**: `0170_mrp_material_demand.sql` (fix gen_feed_plans + v_material_demand) và `0170_animal_feed_cost.sql` (v_animal_cost_month). Do 2 phiên chạy song song cùng lấy 0170. `migrate.ts` sort theo TÊN file + track theo tên → **cả 2 vẫn chạy, rebuild==live đã XANH** (không vỡ), chỉ trái quy ước "số duy nhất".
+- **Cách xử AN TOÀN khi rảnh**: `git mv 0170_animal_feed_cost.sql <số-trống-mới>_animal_feed_cost.sql` (KHÔNG đổi `0170_mrp_material_demand` — migration 0171 v_stock_status + 0172 v_production_need PHỤ THUỘC `v_material_demand` của nó, đổi ra sau sẽ vỡ thứ tự). animal_feed_cost chỉ tạo view (không migration nào phụ thuộc) nên chuyển ra sau an toàn. Đổi xong: `pnpm db:migrate` + đẩy → CI rebuild-from-scratch tự xác nhận thứ tự.
+- Quy ước tránh tái diễn: trước khi commit migration, `git fetch` + lấy `max số +1` (nhiều phiên chạy song song).
+
 ## Rà soát phiên 2026-08-20 — lỗ hổng DỮ LIỆU/HOÀN THIỆN (không phải bug code; cần seed/flow/business quyết)
 
 Phát hiện khi rà bug + làm enforcement Nhóm 0/1 (feed guard·AMU·mortality·withdrawal·trace·lot-expiry). Đã fix 2 bug code thật (FK `device_id` 0142, FK `sop_code` 0144). Còn lại là **hoàn thiện dữ liệu/luồng**:
