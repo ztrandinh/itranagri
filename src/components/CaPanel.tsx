@@ -18,7 +18,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"),
     plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners"),
     // danh sách nhân sự: hành chính cần để chấm công cho người khác
-    nhanSu = useData("staff");
+    nhanSu = useData("staff"), xeCo = useData("vehicles");
   const tasks = useData<Task>("tasks_today"); const notes = useData<Note>("shift_notes"); const recent = useData("events_mine");
   const [form, setForm] = useState<string | null>(null);
   const [noteTxt, setNoteTxt] = useState("");
@@ -26,8 +26,8 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
   const [tab, setTab] = useUrlTab(["viec", "ghi", "giaoca", "gan_day"] as const, "viec");
   const { prompt, promptElement } = usePrompt();
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows
-    ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows, staff: nhanSu.rows ?? [] } : null,
-    [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows, nhanSu.rows]);
+    ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows, staff: nhanSu.rows ?? [], vehicles: xeCo.rows ?? [] } : null,
+    [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows, nhanSu.rows, xeCo.rows]);
   const forms = useMemo(() => (ref ? buildForms(ref, sess.farmId) : null), [ref, sess.farmId]);
   // Bộ form lấy theo MÃ NGHỀ từ danh mục (positions_catalog.forms). Trước đây phải dò chữ
   // trong chức danh tự do vì mã nghề sai hàng loạt; nay mã đã đúng nên tra thẳng.

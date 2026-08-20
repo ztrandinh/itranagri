@@ -5,6 +5,7 @@ export type Ref = {
   animals: Record<string, unknown>[]; groups: Record<string, unknown>[]; warehouses: Record<string, unknown>[]; products: Record<string, unknown>[]; bins?: Record<string, unknown>[];
   plots: Record<string, unknown>[]; recipes: Record<string, unknown>[]; locations: Record<string, unknown>[]; sops: Record<string, unknown>[]; devices: Record<string, unknown>[]; partners: Record<string, unknown>[];
   staff?: Record<string, unknown>[];   // để hành chính chấm công cho người khác
+  vehicles?: Record<string, unknown>[];  // xe cho tài xế ghi nhiệt độ chuỗi lạnh
 };
 const s = (v: unknown) => (v == null ? "" : String(v));
 const animalOpts = (r: Ref, filter?: (a: Record<string, unknown>) => boolean): Option[] =>
@@ -256,10 +257,9 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       // Nhãn dùng luôn trong câu trạng thái rỗng ("gõ <nhãn> vào ô trên") nên phải là một
       // danh từ đọc xuôi, không phải câu lệnh kiểu "Chọn xe".
       table: "cold_chain_logs", title: "Nhiệt độ xe lạnh", targetLabel: "Biển số xe", targetKey: "vehicle_id", allowScanInput: true,
-      // Lọc CHÍNH XÁC xe vận chuyển lạnh. Dùng /XE/ chung là sai: nó bắt luôn XE_TRON
-      // (xe trộn TMR) — đo được lúc thử, tài xế được mời ghi nhiệt độ cho xe trộn thức ăn.
+      // Xe nằm ở bảng `vehicles` (KHÔNG phải `devices`). Ưu tiên xe đông lạnh lên đầu.
       // Danh sách rỗng cũng không sao: form cho gõ tay biển số ở Bước 1.
-      targets: r.devices.filter((d) => /^(XE_LANH|XE_TAI|XE_DONG_LANH|REEFER|TRUCK)/i.test(s(d.kind))).map((d) => ({ id: s(d.id), label: s(d.name), sub: s(d.kind) })),
+      targets: (r.vehicles ?? []).slice().sort((a, b) => (b.refrigerated ? 1 : 0) - (a.refrigerated ? 1 : 0)).map((v) => ({ id: s(v.id), label: s(v.plate), sub: v.refrigerated ? "xe lạnh" : s(v.kind) })),
       fields: [
         { key: "leg", label: "Chặng", type: "choice", required: true, options: [{ id: "XEP_HANG", label: "Lúc xếp hàng" }, { id: "DOC_DUONG", label: "Dọc đường" }, { id: "GIAO_HANG", label: "Lúc giao hàng" }] },
         { key: "temp_c", label: "Nhiệt độ đo được", type: "number", unit: "°C", min: -30, max: 30, step: 1, required: true },
