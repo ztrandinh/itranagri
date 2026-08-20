@@ -203,3 +203,24 @@ describe("Lô hết hạn còn tồn (0149)", () => {
       [lot.farm_id, lot.id, "t-exp-" + Date.now()])).rejects.toThrow(/ERR_LOT_EXPIRED/);
   });
 });
+describe("Nhập kho tổng quát — quy cách khai báo biến (0153)", () => {
+  it("record_intake: lô CÓ hạn dùng (từ config) + move truy về nguồn; idempotent; SKU lạ bị chặn", async () => {
+    const flock = (await admin.query("select id, farm_id from animal_groups where species='GA' and head_count>0 limit 1")).rows[0];
+    const cref = "t-in-" + Date.now();
+    // ví dụ: NHẬP TRỨNG — nguồn = đàn gà đẻ (SKU là BIẾN, không fix cứng)
+    const j = (await admin.query("select record_intake($1,'SKU-TRUNG-10',$2,'system','animal_groups',$3,$4) as j",
+      [flock.farm_id, 100, flock.id, cref])).rows[0].j;
+    expect(j.lot).toBeTruthy();
+    const lot = (await admin.query("select mfg_date, expiry_date from lots where id=$1", [j.lot])).rows[0];
+    expect(lot.expiry_date).not.toBeNull();   // hạn dùng lấy từ products.shelf_life_days (config)
+    expect(lot.mfg_date).not.toBeNull();
+    const mv = (await admin.query("select ref_type, ref_id from inventory_moves where client_ref=$1", [cref])).rows[0];
+    expect(mv.ref_type).toBe("animal_groups"); expect(mv.ref_id).toBe(flock.id);  // truy xuất về nguồn
+    // idempotent
+    expect((await admin.query("select record_intake($1,'SKU-TRUNG-10',$2,'system','animal_groups',$3,$4) as j",
+      [flock.farm_id, 100, flock.id, cref])).rows[0].j.dup).toBe(true);
+    // SKU chưa khai danh mục → chặn (không fix cứng, kiểm theo config)
+    await expect(admin.query("select record_intake($1,'SKU-KHONG-CO',1,'system',null,null,$2)",
+      [flock.farm_id, "t-in-bad-" + Date.now()])).rejects.toThrow(/ERR_SKU_UNKNOWN/);
+  });
+});
