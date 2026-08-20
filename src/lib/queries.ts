@@ -28,7 +28,12 @@ export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: b
            case when count(*) > 1 then null else min(target_id) end as target_id,
            min(handover_note) as handover_note, min(assignee_id) as assignee_id, min(assignee_name) as assignee_name
       from q group by gk
-     order by case max(priority) when 'KHAN' then 0 when 'CAO' then 1 when 'BINH_THUONG' then 2 else 3 end, min(due_at)
+     -- VIỆC ĐÍCH DANH (giao đúng mình) LUÔN NỔI trước, không bao giờ bị việc chung của bộ phận
+     -- đẩy khỏi giới hạn 300. Đo được: a1 có 38 việc gán nhưng chỉ 9 lọt vì 291 việc chung
+     -- chen trước — cả chỉ thị giao ca của trưởng nhóm cũng bị chôn. Đích danh đi đầu, rồi mới
+     -- tới ưu tiên/hạn.
+     order by (bool_or(assignee_id = app_staff())) desc,
+              case max(priority) when 'KHAN' then 0 when 'CAO' then 1 when 'BINH_THUONG' then 2 else 3 end, min(due_at)
      limit 300` },
   tasks_all: { sql: "select * from tasks where farm_id=$1 order by status, due_at desc limit 500" },
   shift_notes: { sql: "select n.*, s.full_name as by_name from shift_notes n left join staff s on s.id=n.created_by where n.farm_id=$1 and n.ts >= now()-interval '3 days' order by n.ts desc" },
