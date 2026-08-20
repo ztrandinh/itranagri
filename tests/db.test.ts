@@ -111,3 +111,50 @@ describe("Đăng nhập · phiên", () => {
     )).resolves.toBeTruthy();
   });
 });
+describe("Feed species guard (0143)", () => {
+  // Cấm cho ăn SAI LOÀI: loài đàn (animal_groups.species) phải khớp loài khẩu phần (recipes.species_phase 'LOÀI/…').
+  it("khẩu phần loài KHÁC đàn → ERR_FEED_WRONG_SPECIES; khớp loài → qua", async () => {
+    const bo = (await admin.query("select id from animal_groups where species='BO' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    const boRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='BO' limit 1")).rows[0];
+    expect(bo && gaRec && boRec).toBeTruthy();
+    await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, gaRec.id])).rejects.toThrow(/ERR_FEED_WRONG_SPECIES/);
+    await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, boRec.id])).resolves.toBeTruthy();
+    // thiếu recipe hoặc thiếu đàn → không chặn (luồng ghi tối thiểu vẫn qua)
+    await expect(admin.query("select chk_feed_species($1,null)", [bo.id])).resolves.toBeTruthy();
+  });
+  it("trigger feed_logs chặn thật khi ghi khẩu phần sai loài", async () => {
+    const bo = (await admin.query("select id, farm_id from animal_groups where species='BO' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    await ctx(bo.farm_id, "worker", "NS-011");
+    await expect(app.query(
+      "insert into feed_logs(farm_id, dest_group_id, recipe_id, qty_kg, source, created_by, client_ref) values ($1,$2,$3,10,'APP','NS-011',$4)",
+      [bo.farm_id, bo.id, gaRec.id, "t-feedspec-" + Date.now()]
+    )).rejects.toThrow(/ERR_FEED_WRONG_SPECIES/);
+  });
+});
+describe("supervision_criteria.sop_code đa hình (0144)", () => {
+  // sop_code chứa CẢ SOP-* LẪN P-* (mã quy trình từ sync_process_criteria). FK 0127 → sops gán sai
+  // làm sync_process_criteria vỡ. Không được có FK; sync phải chạy lại được.
+  it("KHÔNG còn FK sop_code→sops + sync_process_criteria() chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from pg_constraint where conname='fk_supervision_criteria_sop_code'")).rows[0].count)).toBe(0);
+    await expect(admin.query("select sync_process_criteria() as n")).resolves.toBeTruthy();
+  });
+});
+describe("AMU giám sát kháng sinh (0145)", () => {
+  // Read-side: view cường độ điều trị + ngưỡng norm + sinh việc. Không hard-guard.
+  it("norm ngưỡng tồn tại · view phân loại đúng invariant · gen_amu_alerts chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from norms where kind='AMU_MAX_90D'")).rows[0].count)).toBeGreaterThan(0);
+    // invariant: muc='VUOT' ⇔ lượt > ngưỡng (đúng với MỌI dữ liệu, không phụ thuộc seed)
+    expect(Number((await admin.query("select count(*) from v_amu_over where (lan_dieu_tri_90d > nguong) <> (muc='VUOT')")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_amu_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
+describe("Mortality watch (0146)", () => {
+  // Read-side: tỷ lệ chết 30 ngày/đàn vs norm → sinh việc. Không hard-guard.
+  it("norm tồn tại · invariant VUOT⇔vượt ngưỡng · gen_mortality_alerts chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from norms where kind='MORTALITY_MAX_30D'")).rows[0].count)).toBeGreaterThan(0);
+    expect(Number((await admin.query("select count(*) from v_mortality_watch where (ty_le_pct > nguong) <> (muc='VUOT')")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_mortality_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
