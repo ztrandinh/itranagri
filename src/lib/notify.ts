@@ -21,6 +21,10 @@ export async function dispatchEvents(limit = 500): Promise<number> {
   const evs = (await p.query("select * from event_bus where processed_at is null order by id limit $1", [limit])).rows;
   let n = 0;
   for (const e of evs) {
+   // CÔ LẬP LỖI TỪNG SỰ KIỆN: trước đây một sự kiện hỏng (vd người nhận không còn tồn tại)
+   // làm VĂNG cả lượt dispatch, khiến TOÀN BỘ hàng đợi kẹt vĩnh viễn — mọi thông báo/việc
+   // đứng lại. Nay bọc try/catch: sự kiện hỏng bị đánh dấu lỗi và BỎ QUA, hàng đợi chảy tiếp.
+   try {
     const farm = e.farm_id as string | null; const pl = e.payload as Record<string, unknown>;
     let recips: string[] = [], title = e.topic as string, body = "", level = "INFO", link = "/", sourceId = ""; const source = e.topic as string;
     if (e.topic === "alert.raised") {
@@ -56,6 +60,13 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     else if (e.topic === "process.published") { const depts = (pl.depts as string[]) ?? []; const roles = (pl.roles as string[]) ?? []; const st = (await p.query("select id from staff where active and (dept = any($1) or role = any($2)) and ($3::text is null or farm_id=$3 or farm_id is null or $3 = any(farm_ids))", [depts, roles, farm])).rows; recips = [...new Set([...st.map((x) => String(x.id)), ...(await resolveRecipients(farm ?? "F01", ["director"]))])]; level = "VANG"; title = `Quy trình mới / cập nhật: ${pl.name}`; body = `${pl.code} · ${pl.steps} bước · phòng: ${depts.join(", ")} · bởi ${pl.by}. Bạn được đưa vào quy trình này.`; link = `/to-chuc?tab=quytrinh&p=${pl.code}`; sourceId = `${pl.code}:${e.id}`; }
     else if (e.topic === "process.finished") { recips = await resolveRecipients(farm ?? "F01", ["director", "tech_head"]); title = `Hoàn tất quy trình ${pl.code}: ${pl.title}`; link = "/to-chuc?tab=chay"; sourceId = String(pl.run_id); }
     else if (e.topic === "customer.message") { recips = await resolveRecipients(farm!, ["worker:A9", "director"]); level = "VANG"; title = `Tin nhắn khách nhận nuôi`; body = String(pl.body ?? ""); link = "/ban-hang"; }
+    // Chỉ gửi cho người CÒN TỒN TẠI. Payload sự kiện cũ có thể mang mã nhân sự đã đổi/nghỉ
+    // (vd sau chuẩn hoá mã: NS-110 -> ITRAN-NS-00110); chèn thẳng thì vướng khoá ngoại và
+    // KẸT CẢ HÀNG ĐỢI. Lọc trước cho chắc — người không còn thì bỏ, không phải lỗi hệ thống.
+    if (recips.length) {
+      const alive = new Set((await p.query("select id from staff where id = any($1::text[])", [recips])).rows.map((r) => String(r.id)));
+      recips = recips.filter((sid) => alive.has(sid));
+    }
     for (const sid of recips) {
       const pref = (await p.query("select * from notification_prefs where staff_id=$1 and rule_code in ('*',$2) order by (rule_code='*') limit 1", [sid, String(pl.rule ?? e.topic)])).rows[0];
       if (pref?.muted) continue; if (pref && LV[level] < LV[String(pref.level_min)]) continue;
@@ -70,6 +81,11 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     // Tự chạy quy trình theo sự kiện (processes.auto_start.topic)
     if (farm) { const autos = (await p.query("select code from processes where status='BAN_HANH' and auto_start->>'topic'=$1 and (farm_id is null or farm_id=$2)", [e.topic, farm])).rows; for (const a of autos) { try { await p.query("select start_process_run($1,$2,'SYSTEM',$3,$4,$5,$6)", [farm, a.code, String(pl.table ?? e.topic), String(pl.id ?? pl.alert_id ?? e.id), `${e.topic} ${pl.id ?? ""}`, JSON.stringify(pl)]); } catch (err) { console.error("auto_start", a.code, (err as Error).message); } } }
     await p.query("update event_bus set processed_at=now() where id=$1", [e.id]);
+   } catch (err) {
+     // Đánh dấu ĐÃ XỬ + ghi lỗi để không lặp lại mãi; hàng đợi chảy tiếp.
+     console.error("dispatch event", e.id, e.topic, (err as Error).message);
+     await p.query("update event_bus set processed_at=now(), error=$2 where id=$1", [e.id, (err as Error).message.slice(0, 200)]).catch(() => {});
+   }
   }
   return n;
 }
