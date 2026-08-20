@@ -48,6 +48,7 @@ export const ANY_TABLES: AnyTable[] = [
   { table: "v_device_fuel_daily", label: "Thiết bị — giờ máy · nhiên liệu ước tính (L)", ts: "ts" },
   { table: "v_sale_margin", label: "Lãi gộp theo dòng bán (doanh thu · giá vốn · lãi gộp)", ts: "ts" },
   { table: "v_order_margin", label: "Lãi gộp theo ĐƠN bán (biên lãi %)", ts: "ts" },
+  { table: "v_animal_cost_month", label: "Chi phí thức ăn + lãi/cá thể/tháng (đ · đ/kg tăng · ước lãi nếu bán)", ts: "ts" },
 ];
 const NUM = new Set(["integer", "bigint", "numeric", "double precision", "real", "smallint"]);
 const TXT = new Set(["text", "character varying", "boolean", "date", "uuid", "integer", "smallint"]);
