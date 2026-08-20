@@ -141,3 +141,12 @@ describe("supervision_criteria.sop_code đa hình (0144)", () => {
     await expect(admin.query("select sync_process_criteria() as n")).resolves.toBeTruthy();
   });
 });
+describe("AMU giám sát kháng sinh (0145)", () => {
+  // Read-side: view cường độ điều trị + ngưỡng norm + sinh việc. Không hard-guard.
+  it("norm ngưỡng tồn tại · view phân loại đúng invariant · gen_amu_alerts chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from norms where kind='AMU_MAX_90D'")).rows[0].count)).toBeGreaterThan(0);
+    // invariant: muc='VUOT' ⇔ lượt > ngưỡng (đúng với MỌI dữ liệu, không phụ thuộc seed)
+    expect(Number((await admin.query("select count(*) from v_amu_over where (lan_dieu_tri_90d > nguong) <> (muc='VUOT')")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_amu_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
