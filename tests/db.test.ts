@@ -150,3 +150,11 @@ describe("AMU giám sát kháng sinh (0145)", () => {
     await expect(admin.query("select gen_amu_alerts('F01') as n")).resolves.toBeTruthy();
   });
 });
+describe("Mortality watch (0146)", () => {
+  // Read-side: tỷ lệ chết 30 ngày/đàn vs norm → sinh việc. Không hard-guard.
+  it("norm tồn tại · invariant VUOT⇔vượt ngưỡng · gen_mortality_alerts chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from norms where kind='MORTALITY_MAX_30D'")).rows[0].count)).toBeGreaterThan(0);
+    expect(Number((await admin.query("select count(*) from v_mortality_watch where (ty_le_pct > nguong) <> (muc='VUOT')")).rows[0].count)).toBe(0);
+    await expect(admin.query("select gen_mortality_alerts('F01') as n")).resolves.toBeTruthy();
+  });
+});
