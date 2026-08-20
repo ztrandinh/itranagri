@@ -2,6 +2,17 @@
 
 Ý mới phát sinh trong phiên → ghi ở đây, không mở rộng phạm vi giữa phiên (luật 10).
 
+## Rà soát phiên 2026-08-20 — lỗ hổng DỮ LIỆU/HOÀN THIỆN (không phải bug code; cần seed/flow/business quyết)
+
+Phát hiện khi rà bug + làm enforcement Nhóm 0/1 (feed guard·AMU·mortality·withdrawal·trace·lot-expiry). Đã fix 2 bug code thật (FK `device_id` 0142, FK `sop_code` 0144). Còn lại là **hoàn thiện dữ liệu/luồng**:
+
+- **`sale_animals` RỖNG (0 dòng)** → đơn bán CON SỐNG (SKU-BO-HOI/DE-HOI/GA-THIT, 42 đơn) **chưa truy xuất về cá thể**. Cần: luồng bán con sống (`sell_livestock` 0137) populate `sale_animals`, + backfill seed. Đây là mắt xích truy xuất ATTP quan trọng.
+- **Trứng/rau bán KHÔNG gắn lô** (SKU-TRUNG-10: 2060/3924 · SKU-RAU: 2060/2318) → sản phẩm thực phẩm thiếu truy xuất về lô. Cần: thu hoạch trứng/rau tạo lô + đơn bán gắn `lot_id`.
+- **Lô hết hạn KHÔNG tự đóng**: 1362 lô F01 `KHA_DUNG` quá hạn mà còn tồn (seed để lô mở). 0149 đã CẢNH BÁO; cần job/hàm tự chuyển `status→HET` khi hết hạn & hết tồn (cẩn thận bulk-update trên DB chung).
+- **Độ phủ ref `inventory_moves` NHAP_SX 33%** (OS-3 dừng đúng ở trứng — gà đẻ thu trực tiếp, không có sự kiện mẻ để nối; honest).
+- **567/767 vật nuôi chưa cân bao giờ** (`last_weight_at` null) — seed thưa; nếu là data thật thì là lỗ hổng theo dõi tăng trưởng/FCR.
+- **`animals.status` không có giá trị 'CHET'** dù trigger CHET set status='CHET' — chết cá thể (bò/dê) hầu như không xảy ra trong seed; chết chủ yếu theo ĐÀN (event SO_LUONG trên gà/lươn). Ghi chú mô hình, không phải lỗi.
+
 ## Năng suất người vận hành máy — lộ trình (rà soát 2026-08-19)
 
 Bối cảnh đã chốt với chủ đầu tư:
