@@ -240,6 +240,7 @@ export const QUERIES: Record<string, { sql: string; params?: string[]; cache?: b
   bonus_eval: { sql: "select * from bonus_eval($1, coalesce(nullif($2,''), to_char(current_date,'YYYY-MM')))", params: ["period"] },
   bonus_ledger: { sql: "select b.*, s.full_name from bonus_ledger b join staff s on s.id=b.staff_id where b.farm_id=$1 order by b.period desc, b.staff_id" },
   stock_dashboard: { sql: "select * from cache_stock_dashboard where farm_id=$1 order by block, case flag when 'HET' then 0 when 'THIEU_SOM' then 1 when 'CHAM_ROP' then 2 when 'AM_30_NGAY' then 3 else 9 end, days_left nulls last" },
+  production_need: { sql: "select sku, ten_nl, crop_code, source, cau_thang, nang_suat_kg_ha, ha_can_trong_thang, lead_days, ghi_chu from v_production_need where farm_id=$1 order by ha_can_trong_thang desc nulls last, cau_thang desc" },
   warehouse_fill: { sql: "select x.* from cache_kv k, jsonb_to_recordset(k.payload) as x(farm_id text, warehouse_id text, code text, name text, block text, area text, unit_kind text, capacity numeric, qty numeric, pct_full numeric, skus int, bins int) where k.farm_id=$1 and k.key='warehouse_fill' order by block, code", cache: true },
   tool_stock: { sql: "select * from v_tool_stock where farm_id=$1 order by warehouse_code, tool_group, name" },
   tool_issued: { sql: "select * from v_tool_issued where farm_id=$1 order by overdue desc, issued_at desc" },
