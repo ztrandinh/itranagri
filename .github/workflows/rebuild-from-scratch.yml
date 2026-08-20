@@ -35,7 +35,8 @@ jobs:
           --health-cmd pg_isready --health-interval 10s
           --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:itranagri@localhost:5432/itranagri
+      # DATABASE_URL = app_user (KHÔNG phải superuser) — test RLS/quyền cần app_user; superuser bypass RLS → test RLS sai
+      DATABASE_URL: postgres://app_user:app_user_pw@localhost:5432/itranagri
       # migrate.ts + seed dùng DATABASE_ADMIN_URL (không phải DATABASE_URL) — thiếu nó thì rơi về cổng dev 54499 → ECONNREFUSED
       DATABASE_ADMIN_URL: postgres://postgres:itranagri@localhost:5432/itranagri
     steps:
