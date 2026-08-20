@@ -22,6 +22,11 @@ create table if not exists recalls(
 );
 create index if not exists ix_recalls_lot on recalls(lot_id);
 
+-- RLS (luật 1): bảng nghiệp vụ có farm_id phải bật RLS + policy theo trại.
+alter table recalls enable row level security; drop policy if exists p_all on recalls;
+create policy p_all on recalls for all using (can_see_farm(farm_id)) with check (true);
+grant select, insert, update on recalls to app_user;  -- update: status DANG_XU_LY→HOAN_TAT (không append-only)
+
 -- Khách đã nhận lô (truy downstream để liên hệ thu hồi)
 create or replace view v_lot_recall_customers as
 select s.farm_id, s.lot_id, s.partner_id, pt.name as customer, count(*) as n_sale,

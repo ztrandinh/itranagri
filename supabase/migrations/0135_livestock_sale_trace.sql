@@ -16,6 +16,12 @@ create table if not exists sale_animals(
 );
 create index if not exists ix_sale_animals_animal on sale_animals(animal_id);
 
+-- RLS (luật 1): bảng nối không có farm_id → policy theo trại của đơn bán cha.
+alter table sale_animals enable row level security; drop policy if exists p_all on sale_animals;
+create policy p_all on sale_animals for all
+  using (exists (select 1 from sales s where s.id = sale_id and can_see_farm(s.farm_id))) with check (true);
+grant select, insert on sale_animals to app_user;
+
 comment on table sale_animals is 'Nối đơn bán vật hơi ⇄ từng con vật (truy xuất 2 chiều: đơn→con, con→đơn)';
 
 create or replace function sell_livestock(
