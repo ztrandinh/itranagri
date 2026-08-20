@@ -39,6 +39,7 @@ export const ANY_TABLES: AnyTable[] = [
   { table: "v_animal_feed_daily", label: "Thức ăn nạp/cá thể (phân bổ từ đàn ÷ đầu con)", ts: "ts" },
   { table: "v_animal_growth_month", label: "Tăng trưởng cá thể/tháng (cân · tăng trọng · FCR · ADG)", ts: "ts" },
   { table: "v_plot_yield", label: "Năng suất cây trồng (kg/ha theo ô · cây · mùa)", ts: "ts" },
+  { table: "v_group_feed_daily", label: "Thức ăn theo ĐÀN (tổng · /đầu con · theo khẩu phần)", ts: "ts" },
 ];
 const NUM = new Set(["integer", "bigint", "numeric", "double precision", "real", "smallint"]);
 const TXT = new Set(["text", "character varying", "boolean", "date", "uuid", "integer", "smallint"]);
