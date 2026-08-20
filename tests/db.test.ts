@@ -133,3 +133,11 @@ describe("Feed species guard (0143)", () => {
     )).rejects.toThrow(/ERR_FEED_WRONG_SPECIES/);
   });
 });
+describe("supervision_criteria.sop_code đa hình (0144)", () => {
+  // sop_code chứa CẢ SOP-* LẪN P-* (mã quy trình từ sync_process_criteria). FK 0127 → sops gán sai
+  // làm sync_process_criteria vỡ. Không được có FK; sync phải chạy lại được.
+  it("KHÔNG còn FK sop_code→sops + sync_process_criteria() chạy sạch", async () => {
+    expect(Number((await admin.query("select count(*) from pg_constraint where conname='fk_supervision_criteria_sop_code'")).rows[0].count)).toBe(0);
+    await expect(admin.query("select sync_process_criteria() as n")).resolves.toBeTruthy();
+  });
+});
