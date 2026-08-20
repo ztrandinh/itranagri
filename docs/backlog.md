@@ -6,8 +6,8 @@
 
 Phát hiện khi rà bug + làm enforcement Nhóm 0/1 (feed guard·AMU·mortality·withdrawal·trace·lot-expiry). Đã fix 2 bug code thật (FK `device_id` 0142, FK `sop_code` 0144). Còn lại là **hoàn thiện dữ liệu/luồng**:
 
-- **`sale_animals` RỖNG (0 dòng)** → đơn bán CON SỐNG (SKU-BO-HOI/DE-HOI/GA-THIT, 42 đơn) **chưa truy xuất về cá thể**. Cần: luồng bán con sống (`sell_livestock` 0137) populate `sale_animals`, + backfill seed. Đây là mắt xích truy xuất ATTP quan trọng.
-- **Trứng/rau bán KHÔNG gắn lô** (SKU-TRUNG-10: 2060/3924 · SKU-RAU: 2060/2318) → sản phẩm thực phẩm thiếu truy xuất về lô. Cần: thu hoạch trứng/rau tạo lô + đơn bán gắn `lot_id`.
+- **`sale_animals` RỖNG (0 dòng)** → đơn bán CON SỐNG (SKU-BO-HOI/DE-HOI/GA-THIT, 42 đơn) chưa truy xuất về cá thể. **CHẨN ĐOÁN (2026-08-20): luồng ĐÚNG** — `sell_livestock` (0137) đã `insert into sale_animals`; đơn MỚI qua hàm sẽ có link. Gap chỉ ở **sales lịch sử seed** (chèn thẳng, không qua hàm) và **KHÔNG backfill được** (seed không ghi con nào bán — như điểm dừng honest OS-3). → cần **seed ghi qua `sell_livestock`** nếu muốn có data mẫu; không phải bug code.
+- **Trứng/rau bán KHÔNG gắn lô** (SKU-TRUNG-10: 2060/3924 · SKU-RAU: 2060/2318). **CHẨN ĐOÁN: rau — luồng ĐÚNG** (`trg_harvest_stockin` gọi `ensure_lot` tạo lô khi thu hoạch); gap ở sales seed không nối lô đã tạo. **Trứng — quyết định MÔ HÌNH**: gà đẻ thu trực tiếp, seed không tạo lô trứng. → cần: (a) seed nối sale→lot cho rau; (b) chủ quyết có mô hình LÔ TRỨNG theo ngày/chuồng không (truy xuất ATTP vs chi phí ghi chép).
 - **Lô hết hạn KHÔNG tự đóng**: 1362 lô F01 `KHA_DUNG` quá hạn mà còn tồn (seed để lô mở). 0149 đã CẢNH BÁO; cần job/hàm tự chuyển `status→HET` khi hết hạn & hết tồn (cẩn thận bulk-update trên DB chung).
 - **Độ phủ ref `inventory_moves` NHAP_SX 33%** (OS-3 dừng đúng ở trứng — gà đẻ thu trực tiếp, không có sự kiện mẻ để nối; honest).
 - **567/767 vật nuôi chưa cân bao giờ** (`last_weight_at` null) — seed thưa; nếu là data thật thì là lỗ hổng theo dõi tăng trưởng/FCR.
