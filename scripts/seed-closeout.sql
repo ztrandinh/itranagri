@@ -52,11 +52,17 @@ on conflict (id) do nothing;
 
 -- ===== (C5) ĐỌC SỐ MÁY/CÔNG-TƠ: cấu hình chỉ số cho máy thật + 14 ngày số đọc (1 ngày điện nhảy vọt = bất thường) =====
 -- tra facility theo CODE (ổn định — normalize_codes 0106 chỉ đổi id, không đổi code) để bền qua chuẩn hóa mã
-insert into reading_metrics(id, farm_id, facility_id, code, name, unit, kind, freq, lo, hi, role_hint) values
- ('RM-ELEC-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='TRAM-DIEN'), 'DIEN_KWH', 'Điện tiêu thụ (công-tơ tổng)', 'kWh', 'METER', 'NGAY', null, 400, 'it_engineer'),
- ('RM-WATER-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='GIENG'), 'NUOC_M3', 'Nước bơm (công-tơ giếng)', 'm³', 'METER', 'NGAY', null, 60, 'it_engineer'),
- ('RM-BIOGAS-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='BIOGAS'), 'BIOGAS_M3', 'Biogas sinh ra', 'm³', 'METER', 'NGAY', null, 90, 'tech_head'),
- ('RM-D5OUT-'||:'farm', :'farm', (select id from facilities where farm_id=:'farm' and code='D5'), 'SANLUONG_KG', 'Sản lượng viên D5', 'kg', 'METER', 'NGAY', null, 3000, 'team_lead')
+-- BỎ QUA dòng nào cơ sở không tồn tại (vd F99 chưa có TRAM-DIEN/GIENG…): facility_id NOT NULL
+-- nên phải lọc, đúng ý dòng 2 "rỗng dữ liệu (vd F99) → không chèn gì".
+insert into reading_metrics(id, farm_id, facility_id, code, name, unit, kind, freq, lo, hi, role_hint)
+select v.id, :'farm', v.fid, v.code, v.name, v.unit, 'METER', 'NGAY', null, v.hi, v.role
+from (values
+ ('RM-ELEC-'||:'farm',   (select id from facilities where farm_id=:'farm' and code='TRAM-DIEN'), 'DIEN_KWH',    'Điện tiêu thụ (công-tơ tổng)', 'kWh', 400::numeric, 'it_engineer'),
+ ('RM-WATER-'||:'farm',  (select id from facilities where farm_id=:'farm' and code='GIENG'),     'NUOC_M3',     'Nước bơm (công-tơ giếng)',    'm³',  60::numeric,  'it_engineer'),
+ ('RM-BIOGAS-'||:'farm', (select id from facilities where farm_id=:'farm' and code='BIOGAS'),    'BIOGAS_M3',   'Biogas sinh ra',              'm³',  90::numeric,  'tech_head'),
+ ('RM-D5OUT-'||:'farm',  (select id from facilities where farm_id=:'farm' and code='D5'),        'SANLUONG_KG', 'Sản lượng viên D5',           'kg',  3000::numeric,'team_lead')
+) as v(id, fid, code, name, unit, hi, role)
+where v.fid is not null
 on conflict (id) do nothing;
 do $$
 declare m record; dday int; val numeric; cref text; who text;
@@ -68,7 +74,8 @@ begin
       ('RM-WATER-'||:'farm', 8400::numeric, 25::numeric, -1),
       ('RM-BIOGAS-'||:'farm', 12500::numeric, 40::numeric, -1),
       ('RM-D5OUT-'||:'farm', 0::numeric, 1200::numeric, -1)
-    ) as t(mid, base, step, spikeday) loop
+    ) as t(mid, base, step, spikeday)
+    where exists (select 1 from reading_metrics rm where rm.id = t.mid) loop  -- F99 không có công-tơ thì bỏ qua
     val := m.base;
     for dday in reverse 13..0 loop
       val := val + (case when dday = m.spikeday then m.step*4 else m.step*(0.9 + (dday % 3)*0.05) end);

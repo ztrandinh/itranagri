@@ -21,6 +21,14 @@ do $$ declare F text := :'farm'; k int; r record; wk date; sc numeric; ex text; 
       continue when exists (select 1 from training_sessions t where t.trainee_id=r.id and t.week_start=wk);
       ex := coalesce((select m.manager_id from staff m where m.id=r.manager_id), qa);
       select * into tsel from next_training_topic(r.id);
+      -- next_training_topic() có thể trả về mã SOP CHƯA có trong danh mục (SOP-TY-01, SOP-KH-01…).
+      -- Trước đây lọt vì training_tests.sop_code không khai khoá ngoại; nay đã khai (0128) nên phải
+      -- bảo đảm SOP tồn tại trước khi tạo bài kiểm tra, nếu không seed đứt giữa chừng.
+      if tsel.sop_code is not null and tsel.sop_code ~ '^SOP-' then
+        insert into sops(code, org_id, title, status, version)
+        values (tsel.sop_code, 'ITRAN', coalesce(tsel.sop_title, 'Ôn tập quy trình vị trí'), 'BAN_HANH', 1)
+        on conflict (code) do nothing;
+      end if;
       insert into training_sessions(id, farm_id, week_start, trainer_id, trainee_id, topic_kind, topic_code, topic_title, planned_hours, held_at, actual_hours, method, status, trainee_ack)
       values (F||'-DT-'||to_char(wk,'YYMMDD')||'-'||r.id, F, wk, r.manager_id, r.id, 'SOP', tsel.sop_code, coalesce(tsel.sop_title,'Ôn tập quy trình vị trí'), 2.5, wk + 3 + time '15:00', case when (k+length(r.id))%10=0 then null else 2 + ((k*7)%3)*0.5 end, 'KEM_CAP', case when (k+length(r.id))%10=0 then 'BO_LO' else 'XONG' end, (k+length(r.id))%10<>0) on conflict do nothing;
       if (k+length(r.id))%10<>0 then
