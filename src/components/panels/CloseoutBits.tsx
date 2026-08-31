@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { usePrompt } from "@/components/ui/PromptDialog";
+import { DataBoundary } from "@/components/ui/DataBoundary";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 type R = Record<string, unknown>;
 
@@ -47,7 +48,7 @@ export function SopSignoffPanel({ sess }: { sess: Sess }) {
   const ack = async (code: string) => { const j = await act("ack_sop", { sop_code: code, kind: "DOC_HIEU" }); setMsg(j.error ? String(j.error) : "Đã ký đọc–hiểu SOP " + code); todo.reload(); so.reload(); };
   return <div className="space-y-3">
     <div className="card"><div className="font-bold text-sm mb-1">SOP tôi cần đọc & ký ({(todo.rows ?? []).length})</div>
-      {(todo.rows ?? []).length === 0 ? <div className="text-sm text-emerald-700">✓ Đã ký hết SOP phòng mình.</div> : <table className="tbl text-sm"><tbody>{(todo.rows ?? []).map((r) => <tr key={String(r.code)}><td className="pl-3">{String(r.code)}</td><td>{String(r.title)}</td><td>{r.video_url ? <a className="underline text-xs" href={String(r.video_url)} target="_blank" rel="noreferrer">▶ video</a> : ""}</td><td><a className="underline text-xs mr-2" href={`/to-chuc?tab=sop&q=${r.code}`}>đọc</a><button className="btn-primary !py-0.5 !px-2 !text-xs" onClick={() => ack(String(r.code))}>Tôi đã đọc & hiểu</button></td></tr>)}</tbody></table>}
+      <DataBoundary loading={todo.loading} error={todo.error} empty={!todo.rows?.length} onRetry={todo.reload} emptyText="✓ Đã ký hết SOP phòng mình."><table className="tbl text-sm"><tbody>{(todo.rows ?? []).map((r) => <tr key={String(r.code)}><td className="pl-3">{String(r.code)}</td><td>{String(r.title)}</td><td>{r.video_url ? <a className="underline text-xs" href={String(r.video_url)} target="_blank" rel="noreferrer">▶ video</a> : ""}</td><td><a className="underline text-xs mr-2" href={`/to-chuc?tab=sop&q=${r.code}`}>đọc</a><button className="btn-primary !py-0.5 !px-2 !text-xs" onClick={() => ack(String(r.code))}>Tôi đã đọc & hiểu</button></td></tr>)}</tbody></table></DataBoundary>
       {msg && <div className="text-xs text-emerald-800 mt-1">{msg}</div>}</div>
     <div className="card p-0 overflow-auto"><div className="px-3 py-2 bg-slate-100 rounded-t-xl font-bold">Tỷ lệ ký SOP theo phòng ({(so.rows ?? []).length} SOP ban hành)</div><table className="tbl text-sm"><thead><tr><th className="pl-3">SOP</th><th>Tên</th><th>Phòng</th><th>v</th><th>Video</th><th className="text-right">Đã ký / cần</th></tr></thead><tbody>
       {(so.rows ?? []).map((r) => { const pct = Number(r.need) ? Math.round(100 * Number(r.signed) / Number(r.need)) : 0; return <tr key={String(r.code)} className={pct < 80 ? "bg-amber-50" : ""}><td className="pl-3 text-xs">{String(r.code)}</td><td className="text-xs">{String(r.title)}</td><td className="text-xs">{String(r.dept ?? "")}</td><td className="text-xs">{String(r.version)}</td><td>{r.video_url ? <a className="underline text-xs" href={String(r.video_url)} target="_blank" rel="noreferrer">▶</a> : "—"}</td><td className="text-right text-xs">{String(r.signed)}/{String(r.need)} ({pct}%)</td></tr>; })}</tbody></table></div>

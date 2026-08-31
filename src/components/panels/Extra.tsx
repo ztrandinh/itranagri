@@ -5,6 +5,7 @@ import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { KpiTile } from "./Dashboards";
 import { usePrompt } from "@/components/ui/PromptDialog";
+import { DataBoundary } from "@/components/ui/DataBoundary";
 
 /** P&L phân hệ theo tháng + chi phí cố định + import sao kê */
 export function PlPanel({ sess }: { sess: Sess }) {
@@ -72,8 +73,9 @@ export function SoDoPanel({ sess }: { sess: Sess }) {
 export function KhachMessages() {
   const m = useData("customer_messages"); const [reply, setReply] = useState<Record<string, string>>({});
   return (<div className="card"><h3 className="font-bold">Tin nhắn khách chăm sóc hộ (SLA trả lời ≤ 24h)</h3>
+    <DataBoundary loading={m.loading} error={m.error} empty={!(m.rows ?? []).some((x) => x.from_customer)} onRetry={m.reload} emptyText="Chưa có tin nhắn.">
     {(m.rows ?? []).filter((x) => x.from_customer).slice(0, 30).map((x) => <div key={String(x.id)} className="border-b py-2 text-sm"><div><b>{String(x.partner_name ?? x.contract_id)}</b> · {fmt.dt(x.ts)} {x.animal_id ? `· ${x.animal_id}` : ""}{x.replied_at ? <span className="b-grn ml-1">đã trả lời</span> : <span className="b-yel ml-1">chờ</span>}</div><div>{String(x.body)}</div>{!x.replied_at && <div className="flex gap-2 mt-1"><input className="input !py-1" placeholder="Trả lời…" aria-label="Trả lời…" value={reply[String(x.id)] ?? ""} onChange={(e) => setReply({ ...reply, [String(x.id)]: e.target.value })} /><button className="btn-primary !py-1 !px-3 !text-sm" onClick={async () => { await act("reply_customer", { reply_to: x.id, contract_id: x.contract_id, animal_id: x.animal_id, body: reply[String(x.id)] }); m.reload(); }}>Gửi</button></div>}</div>)}
-    {!(m.rows ?? []).some((x) => x.from_customer) && <div className="text-stone-500 text-sm">Chưa có tin nhắn.</div>}</div>);
+    </DataBoundary></div>);
 }
 
 /** Bộ lọc lưu (localStorage) dùng chung */

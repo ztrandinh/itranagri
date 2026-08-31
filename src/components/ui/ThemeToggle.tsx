@@ -32,7 +32,7 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
           style={{
             padding: compact ? "2px 8px" : "4px 10px", borderRadius: "var(--r-full)",
             background: mode === m ? "var(--brand)" : "transparent",
-            color: mode === m ? "#fff" : "var(--muted)",
+            color: mode === m ? "var(--bg)" : "var(--muted)",
             transition: `background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)`,
           }}
         >

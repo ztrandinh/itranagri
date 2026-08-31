@@ -33,14 +33,14 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
 
   const btn = (k: string, l: string) => (
     <button key={k} type="button" aria-current={value === k ? "page" : undefined}
-      className={`px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap border ${value === k ? "bg-emerald-700 text-white border-emerald-700" : "bg-white text-slate-700 border-slate-200 hover:bg-emerald-50"}`}
+      className={value === k ? "tab-btn-active" : "tab-btn"}
       style={{ transition: "background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)" }}
       onClick={() => onChange(k)}>{l}</button>
   );
 
   return (
     <div className="flex items-start gap-2">
-      <button type="button" className="px-2 py-1.5 rounded-lg border bg-white text-slate-600 hover:bg-emerald-50 shrink-0" title="Tab trước" onClick={() => go(-1)}>‹</button>
+      <button type="button" className="tab-btn shrink-0 !px-2" title="Tab trước" onClick={() => go(-1)}>‹</button>
       <select className="input sm:hidden flex-1 font-semibold" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Chọn mục">
         {[...groups.entries()].map(([g, arr]) => g ? <optgroup key={g} label={g}>{arr.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</optgroup> : arr.map(([k, l]) => <option key={k} value={k}>{l}</option>))}
       </select>
@@ -49,21 +49,22 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
         {rest.length > 0 && (
           <div className="relative" ref={box}>
             <button type="button" aria-expanded={open} aria-haspopup="menu"
-              className="px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap border bg-white text-slate-700 border-slate-200 hover:bg-emerald-50"
+              className="tab-btn"
               onClick={() => setOpen(!open)}>Thêm ▾ <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
             {open && (
               <div role="menu" className="ui-pop-in absolute right-0 mt-1 p-1 max-h-72 overflow-auto"
                 style={{ zIndex: "var(--z-sheet)", minWidth: 240, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", boxShadow: "var(--sh-2)" }}>
                 {rest.map(([k, l]) => (
                   <button key={k} role="menuitem" type="button" onClick={() => { onChange(k); setOpen(false); }}
-                    className="block w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-emerald-50" style={{ color: "var(--ink)" }}>{l}</button>
+                    className="block w-full text-left px-3 py-2 rounded-lg text-sm" style={{ color: "var(--ink)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-soft)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{l}</button>
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
-      <button type="button" className="px-2 py-1.5 rounded-lg border bg-white text-slate-600 hover:bg-emerald-50 shrink-0" title="Tab tiếp" onClick={() => go(1)}>›</button>
+      <button type="button" className="tab-btn shrink-0 !px-2" title="Tab tiếp" onClick={() => go(1)}>›</button>
       {right && <div className="shrink-0">{right}</div>}
     </div>
   );
