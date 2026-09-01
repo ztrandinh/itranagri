@@ -1,0 +1,4 @@
+# Script chạy trong container Linux — checkout trên Windows với core.autocrlf=true sẽ đổi LF
+# thành CRLF, hỏng shebang (#!/bin/sh) và làm container không khởi động được.
+*.sh text eol=lf
+Dockerfile text eol=lf

@@ -244,7 +244,10 @@ export async function POST(req: Request) {
         case "create_staff": {
           if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const id = (await c.query("select next_code($1,'NS',3) as c", [s.orgId])).rows[0].c.replace(s.orgId + "-", "");
-          await c.query("insert into staff(id,org_id,farm_id,full_name,role,dept,position,phone,login,pin_hash,farm_ids) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,crypt($10,gen_salt('bf')),$11)", [id, s.orgId, b.farm_id ?? s.farmId, b.full_name, b.role ?? "worker", b.dept ?? null, b.position ?? null, b.phone ?? null, b.login, String(b.pin ?? "1234"), [b.farm_id ?? s.farmId]]);
+          // Không đặt PIN mặc định "1234" mà không ép đổi (như reset_pin đã làm đúng) — tài khoản mới
+          // dùng PIN mặc định công khai sẽ bị đánh dấu phải đổi ngay khi đăng nhập lần đầu.
+          const usedDefault = b.pin == null;
+          await c.query("insert into staff(id,org_id,farm_id,full_name,role,dept,position,phone,login,pin_hash,farm_ids,must_change_pin) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,crypt($10,gen_salt('bf')),$11,$12)", [id, s.orgId, b.farm_id ?? s.farmId, b.full_name, b.role ?? "worker", b.dept ?? null, b.position ?? null, b.phone ?? null, b.login, String(b.pin ?? "1234"), [b.farm_id ?? s.farmId], usedDefault]);
           return { ok: true, id };
         }
         case "save_process": {
@@ -312,7 +315,11 @@ export async function POST(req: Request) {
         case "add_reserve_item": { if (!["owner","director","tech_head","it_engineer","team_lead"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const g = (await c.query("select * from stock_groups where code=$1", [b.group])).rows[0]; if (!g) throw new Error("ERR_GROUP"); const sku = String(b.sku ?? ("SKU-" + String(b.name).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 24))); await c.query("insert into products(sku, org_id, name, kind, unit, stock_group, reserve, active, shelf_life_days) values ($1,'ITRAN',$2,$3,$4,$5,true,true,$6) on conflict (sku) do update set reserve=true, stock_group=excluded.stock_group", [sku, b.name, g.kind_default ?? "NGUYEN_LIEU", b.unit ?? g.unit_default ?? "kg", b.group, b.shelf_life_days ?? null]); return { ok: true, sku }; }
         case "tool_issue": { const r = await c.query("insert into tool_issues(farm_id, warehouse_id, sku, qty, staff_id, dept, purpose, due_back) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id", [s.farmId, b.warehouse_id, b.sku, Number(b.qty ?? 1), b.staff_id ?? null, b.dept ?? null, b.purpose ?? null, b.due_back ?? null]); return { ok: true, id: r.rows[0].id }; }
         case "tool_return": { const t = (await c.query("select * from tool_issues where id=$1 and farm_id=$2", [b.id, s.farmId])).rows[0]; if (!t) throw new Error("ERR_NOT_FOUND"); const cond = String(b.condition ?? "TOT"); const rq = Number(b.returned_qty ?? t.qty); await c.query("update tool_issues set returned_at=now(), returned_qty=$2, condition=$3, note=coalesce(note,'')||$4 where id=$1", [b.id, rq, cond, b.note ? " · " + b.note : ""]); if ((cond === "HONG" || cond === "MAT") && Number(t.qty) - rq > 0) { await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, ref_type, ref_id, client_ref) values ($1,$2,$3,$4,-1,$5,(select unit from products where sku=$4),$6,$7,'tool_issue',$8,$9)", [s.farmId, s.staffId, t.warehouse_id, t.sku, Number(t.qty) - rq, cond, "Cấp phát #" + b.id, String(b.id), "tool-" + b.id + "-" + cond]); } return { ok: true }; }
-        case "tool_move": { const q = Number(b.qty); if (!(q > 0)) throw new Error("ERR_QTY"); const u = (await c.query("select unit from products where sku=$1", [b.sku])).rows[0]?.unit; const ref = "toolmove-" + Date.now(); await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref) values ($1,$2,$3,$4,-1,$5,$6,'CHUYEN',$7,$8)", [s.farmId, s.staffId, b.from_wh, b.sku, q, u, "→ " + b.to_wh, ref + "-out"]); await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref) values ($1,$2,$3,$4,1,$5,$6,'CHUYEN',$7,$8)", [s.farmId, s.staffId, b.to_wh, b.sku, q, u, "← " + b.from_wh, ref + "-in"]); return { ok: true }; }
+        case "tool_move": { const q = Number(b.qty); if (!(q > 0)) throw new Error("ERR_QTY"); const u = (await c.query("select unit from products where sku=$1", [b.sku])).rows[0]?.unit; const ref = "toolmove-" + Date.now();
+          // ref_type/ref_id trước đây bỏ trống — đứt truy xuất (2 dòng move cùng 1 lần chuyển không nối được nhau qua báo cáo). Gắn ref_type='TOOL_MOVE', ref_id=ref chung cho cả 2 dòng.
+          await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref, ref_type, ref_id) values ($1,$2,$3,$4,-1,$5,$6,'CHUYEN',$7,$8,'TOOL_MOVE',$9)", [s.farmId, s.staffId, b.from_wh, b.sku, q, u, "→ " + b.to_wh, ref + "-out", ref]);
+          await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref, ref_type, ref_id) values ($1,$2,$3,$4,1,$5,$6,'CHUYEN',$7,$8,'TOOL_MOVE',$9)", [s.farmId, s.staffId, b.to_wh, b.sku, q, u, "← " + b.from_wh, ref + "-in", ref]);
+          return { ok: true }; }
         case "run_grade_review": { if (!["owner","director","accountant","it_engineer"].includes(s.role) && s.dept !== "HCNS") throw new Error("ERR_FORBIDDEN_ROLE"); const r = await c.query("select run_grade_review($1,$2) as n", [s.farmId, b.quarter]); return { ok: true, n: r.rows[0].n }; }
         case "sign_grade": { const r = await c.query("select sign_grade_review($1::uuid,$2,$3) as j", [b.id, s.staffId, b.slot]); return { ok: true, ...r.rows[0].j }; }
         case "reject_grade": { if (!["owner","director","tech_head","team_lead","accountant"].includes(s.role) && s.dept !== "HCNS") throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update grade_reviews set status='TU_CHOI', note=$3, decided_at=now() where id=$1 and farm_id=$2 and staff_id<>$4", [b.id, s.farmId, b.note ?? null, s.staffId]); return { ok: true }; }
@@ -411,6 +418,11 @@ export async function POST(req: Request) {
     return NextResponse.json(out);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg.match(/ERR_[A-Z_]+/)?.[0] ?? "ERR", detail: msg }, { status: 400 });
+    const code = msg.match(/ERR_[A-Z_]+/)?.[0];
+    // Có mã ERR_* = lỗi nghiệp vụ do chính app ném ra, message vốn viết cho người dùng đọc — giữ nguyên.
+    // KHÔNG có mã = exception thô (thường từ driver Postgres: lộ tên bảng/cột/constraint nội bộ) —
+    // không trả nguyên văn ra client (mọi role kể cả worker gọi được endpoint này), chỉ log ở server.
+    if (!code) console.error("[actions]", b?.action, msg);
+    return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }
