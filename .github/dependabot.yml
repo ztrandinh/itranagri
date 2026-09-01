@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # pnpm/npm — kiểm tra dependency có bản vá bảo mật hằng tuần, tự mở PR (không tự merge).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+  # GitHub Actions — pin action version cũng là bề mặt tấn công (supply chain), ít ai nhớ cập nhật.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

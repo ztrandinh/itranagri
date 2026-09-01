@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Quét dependency có lỗ hổng đã biết (high/critical) — không quét low/moderate để tránh gián đoạn vì lỗi chưa khai thác được
+        run: pnpm audit --audit-level=high
       - name: Migrate
         env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm db:migrate
