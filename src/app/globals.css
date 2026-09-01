@@ -62,19 +62,27 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
 @layer components {
   .btn { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
   .btn-primary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
-  .btn-secondary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50 bg-white text-slate-800 border border-slate-300 hover:bg-slate-50; }
+  /* NÂNG CẤP (2026-09-01): mọi màu ở đây trước là Tailwind cứng qua @apply (bg-white, text-slate-N, border-slate-N)
+     — biên dịch thẳng vào CSS của .btn-secondary, .card, ... nên KHÔNG class JSX nào chứa lại chuỗi màu gốc,
+     khiến toàn bộ lớp bù dạng attribute-wildcard phía dưới không bao giờ bắt được (xem ghi chú dòng khoảng 190).
+     Trước đây một vài chỗ (table.tbl hover) hoàn toàn không có lớp bù nào bắt kịp — bug "chữ chìm nền" tái diễn
+     thật vì lý do này. Sửa tận gốc: bỏ hẳn class màu Tailwind khỏi @apply, viết thẳng token — đúng ở MỌI theme
+     ngay tại định nghĩa, không phụ thuộc rule ghi đè ở xa còn tồn tại hay không. Rule ghi đè cũ (dòng khoảng
+     152, 224-228) GIỮ NGUYÊN làm lớp bảo vệ kép, không xóa — phòng khi có class Tailwind cứng khác lọt vào sau. */
+  .btn-secondary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50 border; background: var(--surface); color: var(--ink); border-color: var(--line); }
+  .btn-secondary:hover { background: var(--surface-2); }
   .btn-danger { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] bg-red-600 text-white; }
-  .card { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4; }
-  .tile { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4 flex flex-col gap-1 min-h-[96px] justify-center cursor-pointer text-left; }
-  .input { @apply w-full rounded-lg border border-slate-300 px-3 py-2.5 text-base bg-white min-h-[44px] focus:outline-none focus:ring-2; }
+  .card { @apply rounded-xl shadow-sm border p-4; background: var(--surface); border-color: var(--line); }
+  .tile { @apply rounded-xl shadow-sm border p-4 flex flex-col gap-1 min-h-[96px] justify-center cursor-pointer text-left; background: var(--surface); border-color: var(--line); }
+  .input { @apply w-full rounded-lg border px-3 py-2.5 text-base min-h-[44px] focus:outline-none focus:ring-2; background: var(--surface); color: var(--ink); border-color: var(--line); }
   .badge { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
   .b-red { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
   .b-yel { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
   .b-grn { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; }
-  .b-gray { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold bg-slate-200 text-slate-700; }
-  .kpi { @apply rounded-xl bg-white shadow-sm border border-slate-200 p-4; }
-  .kpi .v { @apply text-3xl font-bold text-slate-800; } .kpi .l { @apply text-xs uppercase tracking-wide text-slate-500; }
-  table.tbl { @apply w-full text-[15px]; } table.tbl th { @apply text-left text-xs uppercase tracking-wide text-slate-500 font-semibold py-2 border-b border-slate-200 bg-slate-50; } table.tbl td { @apply py-2 border-b border-slate-100 align-top; } table.tbl tbody tr:hover td { background: var(--surface-2); }
+  .b-gray { @apply inline-block rounded-full px-2.5 py-0.5 text-sm font-semibold; background: var(--surface-2); color: var(--muted); }
+  .kpi { @apply rounded-xl shadow-sm border p-4; background: var(--surface); border-color: var(--line); }
+  .kpi .v { @apply text-3xl font-bold; color: var(--ink); } .kpi .l { @apply text-xs uppercase tracking-wide; color: var(--muted); }
+  table.tbl { @apply w-full text-[15px]; } table.tbl th { @apply text-left text-xs uppercase tracking-wide font-semibold py-2 border-b; background: var(--surface-2); color: var(--muted); border-color: var(--line); } table.tbl td { @apply py-2 border-b align-top; border-color: var(--line); } table.tbl tbody tr:hover td { background: var(--surface-2); }
   /* nút chuyển tab dùng chung (segmented control) — thay chỗ tự vẽ rounded-lg + bg-emerald-700 rời rạc,
      tránh lặp lại đúng lớp bug "class Tailwind cứng không tự đổi theo dark mode" đã vá ở Tabs.tsx. */
   .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border; }
