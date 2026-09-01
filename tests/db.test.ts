@@ -53,6 +53,29 @@ describe("Append-only", () => {
     await app.query("insert into harvests(farm_id,plot_id,crop,qty_kg,unit,created_by,client_ref,supersedes_id) values ('F01',$1,'TEST',105,'kg','NS-003',$2,$3)", [plot, "t-hv2-" + Date.now(), a.rows[0].id]);
     expect((await app.query("select status from harvests where id=$1", [a.rows[0].id])).rows[0].status).toBe("SUPERSEDED");
   });
+  it("0193: adjustments/paper_scans (bỏ sót ở 0189) nay bị chặn sửa cột nghiệp vụ, chỉ cột duyệt/trạng thái còn sửa được", async () => {
+    await ctx("F01", "team_lead");
+    const adj = await app.query("insert into adjustments(farm_id,target_table,target_id,delta,reason,requested_by,client_ref) values ('F01','inventory_moves',gen_random_uuid(),10,'ban đầu','NS-003',$1) returning id", ["t-adj-" + Date.now()]);
+    await expect(app.query("update adjustments set delta=999999, reason='HACKED' where id=$1", [adj.rows[0].id])).rejects.toThrow(/permission denied/);
+    await expect(app.query("update adjustments set adj_status='DUYET' where id=$1", [adj.rows[0].id])).resolves.toBeTruthy();
+    // serial dùng đuôi số ngắn (không phải Date.now() 13 chữ số): RC11b cast đuôi số của serial sang ::int
+    // để dò seri nhảy quãng, timestamp đầy đủ sẽ tràn phạm vi integer và làm hỏng rule đó cho farm F01.
+    const scan = await app.query("insert into paper_scans(farm_id,form_code,serial,created_by,client_ref) values ('F01','BM01',$1,'NS-003',$2) returning id", ["SR-" + String(Date.now()).slice(-6), "t-ps-" + Date.now()]);
+    await expect(app.query("update paper_scans set form_code='HACKED' where id=$1", [scan.rows[0].id])).rejects.toThrow(/permission denied/);
+    await expect(app.query("update paper_scans set digitized=true where id=$1", [scan.rows[0].id])).resolves.toBeTruthy();
+  });
+});
+describe("0194 — dedupe DB thật (sensor ingest / webhook đơn hàng)", () => {
+  it("sensor_reads: cùng (farm_id, device_id, metric, ts) bị chặn ở DB, không chỉ dựa vào app không insert trùng", async () => {
+    const ts = new Date().toISOString();
+    await admin.query("insert into sensor_reads(ts,farm_id,device_id,metric,value) values ($1,'F01','TEST-DEV','temp',25)", [ts]);
+    await expect(admin.query("insert into sensor_reads(ts,farm_id,device_id,metric,value) values ($1,'F01','TEST-DEV','temp',26)", [ts])).rejects.toThrow(/duplicate key/);
+  });
+  it("orders: cùng (farm_id, attrs.source, attrs.external_id) từ webhook bị chặn ở DB — backstop cho race giữa 2 lần sàn TMĐT gọi lại", async () => {
+    const ext = "TEST-EXT-" + Date.now();
+    await admin.query("insert into orders(id,farm_id,channel,attrs) values ($1,'F01',3,$2)", ["t-ord-1-" + Date.now(), JSON.stringify({ source: "SHOPEE", external_id: ext })]);
+    await expect(admin.query("insert into orders(id,farm_id,channel,attrs) values ($1,'F01',3,$2)", ["t-ord-2-" + Date.now(), JSON.stringify({ source: "SHOPEE", external_id: ext })])).rejects.toThrow(/duplicate key/);
+  });
 });
 describe("RLS đa trại (farm_ids)", () => {
   it("0188: director có farm_ids nhiều trại phải thấy đủ các trại đó, không chỉ trại hiện tại", async () => {

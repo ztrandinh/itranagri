@@ -55,16 +55,25 @@ export async function deliverChannels(limit = 200): Promise<{ queued: number; se
   await deliverWebhooks(); await deliverPush();
   return { queued, sent, failed, skipped };
 }
-/** WEBHOOK: mọi event_bus đã xử lý → POST tới webhooks có topics khớp (hoặc '*'), ký HMAC-SHA256 header x-itran-signature; ghi webhook_deliveries; thử lại ≤5 lần, tắt sau 20 lỗi liên tiếp */
+/** WEBHOOK: mọi event_bus đã xử lý → POST tới webhooks có topics khớp (hoặc '*'), ký HMAC-SHA256 header x-itran-signature; ghi webhook_deliveries; thử lại ≤5 lần, tắt sau 20 lỗi liên tiếp
+ *  Cursor riêng theo TỪNG webhook (`webhooks.last_event_id`, 0194) — trước đây dùng chung 1 cursor toàn cục
+ *  (max(event_id) trong webhook_deliveries của MỌI hook cộng lại), nên thêm 1 webhook mới sau này sẽ mất
+ *  backfill vĩnh viễn mọi sự kiện đã publish trước đó. Cursor mới advance cho MỌI sự kiện đã xem qua (kể cả
+ *  không khớp topic của hook đó) để không bị treo mãi ở batch sự kiện cũ không liên quan. */
 export async function deliverWebhooks(limit = 200): Promise<number> {
   const p = adminPool(); let n = 0;
   const hooks = (await p.query("select * from webhooks where active and fail_count < 20")).rows; if (!hooks.length) return 0;
-  const evs = (await p.query("select * from event_bus where processed_at is not null and ts > now() - interval '1 day' and id > coalesce((select max(event_id) from webhook_deliveries),0) order by id limit $1", [limit])).rows;
-  for (const e of evs) for (const h of hooks) {
-    const topics: string[] = h.topics ?? []; if (!(topics.includes("*") || topics.includes(e.topic))) continue; if (h.farm_id && e.farm_id && h.farm_id !== e.farm_id) continue;
-    const body = JSON.stringify({ id: e.id, topic: e.topic, farm_id: e.farm_id, ts: e.ts, payload: e.payload }); const sig = h.secret ? createHmac("sha256", String(h.secret)).update(body).digest("hex") : "";
-    try { const r = await fetch(String(h.url), { method: "POST", headers: { "content-type": "application/json", "x-itran-topic": String(e.topic), "x-itran-signature": sig }, body, signal: AbortSignal.timeout(8000) }); await p.query("insert into webhook_deliveries(webhook_id,event_id,status,response) values ($1,$2,$3,$4)", [h.id, e.id, r.status, (await r.text()).slice(0, 500)]); await p.query("update webhooks set last_status=$2, last_at=now(), fail_count=case when $2 between 200 and 299 then 0 else fail_count+1 end where id=$1", [h.id, r.status]); n++; }
-    catch (err) { await p.query("insert into webhook_deliveries(webhook_id,event_id,status,response) values ($1,$2,0,$3)", [h.id, e.id, (err as Error).message.slice(0, 300)]); await p.query("update webhooks set last_status=0, last_at=now(), fail_count=fail_count+1 where id=$1", [h.id]); }
+  for (const h of hooks) {
+    const evs = (await p.query("select * from event_bus where processed_at is not null and ts > now() - interval '1 day' and id > $1 order by id limit $2", [h.last_event_id ?? 0, limit])).rows;
+    let maxSeen = Number(h.last_event_id ?? 0);
+    for (const e of evs) {
+      maxSeen = e.id;
+      const topics: string[] = h.topics ?? []; if (!(topics.includes("*") || topics.includes(e.topic))) continue; if (h.farm_id && e.farm_id && h.farm_id !== e.farm_id) continue;
+      const body = JSON.stringify({ id: e.id, topic: e.topic, farm_id: e.farm_id, ts: e.ts, payload: e.payload }); const sig = h.secret ? createHmac("sha256", String(h.secret)).update(body).digest("hex") : "";
+      try { const r = await fetch(String(h.url), { method: "POST", headers: { "content-type": "application/json", "x-itran-topic": String(e.topic), "x-itran-signature": sig }, body, signal: AbortSignal.timeout(8000) }); await p.query("insert into webhook_deliveries(webhook_id,event_id,status,response) values ($1,$2,$3,$4)", [h.id, e.id, r.status, (await r.text()).slice(0, 500)]); await p.query("update webhooks set last_status=$2, last_at=now(), fail_count=case when $2 between 200 and 299 then 0 else fail_count+1 end where id=$1", [h.id, r.status]); n++; }
+      catch (err) { await p.query("insert into webhook_deliveries(webhook_id,event_id,status,response) values ($1,$2,0,$3)", [h.id, e.id, (err as Error).message.slice(0, 300)]); await p.query("update webhooks set last_status=0, last_at=now(), fail_count=fail_count+1 where id=$1", [h.id]); }
+    }
+    if (maxSeen > Number(h.last_event_id ?? 0)) await p.query("update webhooks set last_event_id=$2 where id=$1", [h.id, maxSeen]);
   }
   return n;
 }

@@ -21,7 +21,18 @@ export async function resolveRecipients(farmId: string, recipients: string[]): P
 /** Xử lý event_bus chưa xử lý → notifications (fan-out theo luật + sở thích người dùng). Gọi mỗi lần job/alert hoặc theo lịch 1'. */
 export async function dispatchEvents(limit = 500): Promise<number> {
   const p = adminPool();
-  const evs = (await p.query("select * from event_bus where processed_at is null order by id limit $1", [limit])).rows;
+  // Claim atomic bằng 1 câu UPDATE...FOR UPDATE SKIP LOCKED thay vì SELECT rồi xử lý: nếu cron mỗi phút
+  // và action run_rules_now (chạy tay) trùng thời điểm, trước đây 2 tiến trình có thể cùng SELECT được
+  // cùng 1 event_bus id (chưa ai đánh dấu processed_at) rồi cùng gửi thông báo → nhân đôi (tốn phí SMS/Zalo
+  // thật). Đặt processed_at=now() ngay khi claim: nhất quán với thiết kế hiện có (processed_at vốn đã
+  // là marker "đã xử lý xong hay lỗi", không phải riêng "thành công") — lỗi xử lý phía dưới chỉ còn cần
+  // ghi cột error, không cần set lại processed_at.
+  const evs = (await p.query(
+    `update event_bus set processed_at = now()
+     where id in (select id from event_bus where processed_at is null order by id limit $1 for update skip locked)
+     returning *`,
+    [limit]
+  )).rows;
   let n = 0;
   for (const e of evs) {
    // CÔ LẬP LỖI TỪNG SỰ KIỆN: trước đây một sự kiện hỏng (vd người nhận không còn tồn tại)
@@ -49,12 +60,12 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       recips = await resolveRecipients(farm!, ["owner"]); level = "VANG"; title = `Chi > 50 triệu đã duyệt: ${Number(pl.amount).toLocaleString("vi-VN")} đ`; body = String(pl.purpose ?? ""); link = "/ke-toan"; sourceId = String(pl.id);
     } else if (e.topic === "farm.created") { recips = await resolveRecipients(farm!, ["owner"]); title = `Trại mới ${pl.farm} — ${pl.name}`; link = "/hq"; }
     else if (e.topic === "master.changed") {
-      if (String(pl.by ?? "") === "SYSTEM" || !pl.by) { await p.query("update event_bus set processed_at=now() where id=$1", [e.id]); continue; }
+      if (String(pl.by ?? "") === "SYSTEM" || !pl.by) continue;
       // GIẢM NHIỄU (master.changed đẻ ~95% thông báo): chỉ báo khi XÓA/xóa-mềm, hoặc sửa BẢNG CẤU HÌNH nhạy cảm.
       // Thêm/sửa danh mục thường vẫn được ghi audit_log ở nơi khác — không cần phiền owner từng dòng.
       const CFG = ["norms", "price_list", "rc_rules", "alert_rules", "approval_matrix", "settings", "kpi_defs", "legal_entities", "grade_scales", "roles", "positions"];
       const isDel = pl.action === "SOFT_DELETE" || pl.action === "DELETE"; const sensitive = CFG.includes(String(pl.table));
-      if (!isDel && !sensitive) { await p.query("update event_bus set processed_at=now() where id=$1", [e.id]); continue; }
+      if (!isDel && !sensitive) continue;
       recips = await resolveRecipients(farm ?? "F01", isDel ? ["owner", "it_engineer"] : ["it_engineer"]);
       level = isDel ? "VANG" : "INFO"; title = `Danh mục ${pl.table}: ${pl.action} ${pl.pk}`; body = `Bởi ${pl.by}${Array.isArray(pl.cols) ? " · cột: " + (pl.cols as string[]).join(", ") : ""}`; link = `/quan-tri?t=${pl.table}&pk=${encodeURIComponent(String(pl.pk))}`; sourceId = `${e.id}`;
     }
@@ -83,11 +94,10 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     }
     // Tự chạy quy trình theo sự kiện (processes.auto_start.topic)
     if (farm) { const autos = (await p.query("select code from processes where status='BAN_HANH' and auto_start->>'topic'=$1 and (farm_id is null or farm_id=$2)", [e.topic, farm])).rows; for (const a of autos) { try { await p.query("select start_process_run($1,$2,'SYSTEM',$3,$4,$5,$6)", [farm, a.code, String(pl.table ?? e.topic), String(pl.id ?? pl.alert_id ?? e.id), `${e.topic} ${pl.id ?? ""}`, JSON.stringify(pl)]); } catch (err) { console.error("auto_start", a.code, (err as Error).message); } } }
-    await p.query("update event_bus set processed_at=now() where id=$1", [e.id]);
    } catch (err) {
-     // Đánh dấu ĐÃ XỬ + ghi lỗi để không lặp lại mãi; hàng đợi chảy tiếp.
+     // processed_at đã được set atomic lúc claim (đầu hàm) — ở đây chỉ cần ghi lỗi để không lặp lại mãi; hàng đợi chảy tiếp.
      console.error("dispatch event", e.id, e.topic, (err as Error).message);
-     await p.query("update event_bus set processed_at=now(), error=$2 where id=$1", [e.id, (err as Error).message.slice(0, 200)]).catch(() => {});
+     await p.query("update event_bus set error=$2 where id=$1", [e.id, (err as Error).message.slice(0, 200)]).catch(() => {});
    }
   }
   return n;

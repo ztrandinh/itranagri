@@ -29,17 +29,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
       const zip = new JSZip(); const tables = (await adminPool().query("select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name not like 'sensor_reads_2%'")).rows.map((r) => r.table_name as string);
       const manifest: Record<string, string> = {};
       for (const t of tables) { const hasFarm = (await adminPool().query("select 1 from information_schema.columns where table_name=$1 and column_name='farm_id'", [t])).rows.length > 0; const rows = (await adminPool().query(hasFarm ? `select * from ${t} where farm_id=$1` : `select * from ${t}`, hasFarm ? [f] : [])).rows as Record<string, unknown>[]; if (!rows.length) continue; const cols = Object.keys(rows[0]); const esc = (v: unknown) => { const x = v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v); return /[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; }; const csv = "\uFEFF" + cols.join(",") + "\n" + rows.map((r) => cols.map((c) => esc(r[c])).join(",")).join("\n"); zip.file(`${t}.csv`, csv); manifest[t] = createHash("sha256").update(csv).digest("hex"); }
+      // Ảnh phiếu giấy/bằng chứng ATTP (UPLOAD_DIR) trước đây KHÔNG được backup — DB chỉ giữ URL, mất đĩa
+      // uploads là mất bằng chứng vĩnh viễn dù DB còn nguyên. Gộp vào cùng zip dưới thư mục uploads/.
+      let uploadFiles = 0;
+      try {
+        const { readdir: rd, readFile: rf } = await import("node:fs/promises");
+        const uploadRoot = join(process.env.UPLOAD_DIR ?? join(process.cwd(), "public", "uploads"), f);
+        const walk = async (dir: string, rel: string): Promise<void> => {
+          let entries: import("node:fs").Dirent[]; try { entries = await rd(dir, { withFileTypes: true }); } catch { return; }
+          for (const ent of entries) {
+            const full = join(dir, ent.name); const relPath = rel ? `${rel}/${ent.name}` : ent.name;
+            if (ent.isDirectory()) await walk(full, relPath);
+            else { const buf = await rf(full); zip.file(`uploads/${relPath}`, buf); manifest[`uploads/${relPath}`] = createHash("sha256").update(buf).digest("hex"); uploadFiles++; }
+          }
+        };
+        await walk(uploadRoot, "");
+      } catch (e) { out[`backup_uploads_err:${f}`] = (e as Error).message.slice(0, 120); }
       zip.file("MANIFEST.sha256.json", JSON.stringify({ farm: f, at: new Date().toISOString(), tables: manifest }, null, 2));
       const buf = await zip.generateAsync({ type: "nodebuffer" }); const dir = join(process.cwd(), "backups", f); await mkdir(dir, { recursive: true }); const name = `${f}-${new Date().toISOString().slice(0, 10)}.zip`; await writeFile(join(dir, name), buf);
-      out[`backup:${f}`] = { file: `backups/${f}/${name}`, bytes: buf.length, tables: Object.keys(manifest).length };
+      out[`backup:${f}`] = { file: `backups/${f}/${name}`, bytes: buf.length, tables: Object.keys(manifest).length, upload_files: uploadFiles };
       // OFF-SITE: sao chép sang BACKUP_DIR (ổ khác/NAS/mount cloud) + pg_dump toàn DB (docker exec hoặc pg_dump cục bộ) + xóa bản >30 ngày
       const off = process.env.BACKUP_DIR; if (off) { try { await mkdir(join(off, f), { recursive: true }); await writeFile(join(off, f, name), buf); out[`backup_offsite:${f}`] = join(off, f, name); } catch (e) { out[`backup_offsite:${f}`] = `ERR ${(e as Error).message}`; } }
+      // Trước đây lỗi pg_dump (cả 2 đường: cục bộ lẫn docker exec) bị nuốt trong try/catch riêng, chỉ ghi
+      // chuỗi "ERR ..." vào out["pg_dump"] mà KHÔNG throw — job_runs.ok vẫn ghi true dù pg_dump thật sự
+      // fail, tạo cảm giác an toàn giả trong nhật ký backup. Nay: rethrow để catch ngoài (dòng ~76) ghi
+      // job_runs.ok=false — CSV zip (đã ghi xong ở trên) vẫn giữ nguyên, chỉ báo đúng là pg_dump thất bại.
       try { const { execFile } = await import("node:child_process"); const { promisify } = await import("node:util"); const run = promisify(execFile); const dumpDir = off ?? join(process.cwd(), "backups"); const dumpName = join(dumpDir, `itranagri-${new Date().toISOString().slice(0, 10)}.dump`);
         const url = process.env.DATABASE_ADMIN_URL ?? ""; const m = url.match(/^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:/]+):?(\d+)?\/(.+)$/);
         try { await run("pg_dump", ["-Fc", "-f", dumpName, url], { timeout: 600e3 }); out["pg_dump"] = dumpName; }
-        catch { if (m) { const cont = process.env.PG_CONTAINER ?? "itranagri_db"; const { stdout } = await run("docker", ["exec", cont, "pg_dump", "-U", m[1], "-Fc", m[5]], { maxBuffer: 2e9, encoding: "buffer", timeout: 600e3 }); await writeFile(dumpName, stdout as unknown as Buffer); out["pg_dump"] = `${dumpName} (via docker exec ${cont})`; } }
+        catch (localErr) {
+          if (!m) throw localErr;
+          const cont = process.env.PG_CONTAINER ?? "itranagri_db"; const { stdout } = await run("docker", ["exec", cont, "pg_dump", "-U", m[1], "-Fc", m[5]], { maxBuffer: 2e9, encoding: "buffer", timeout: 600e3 }); await writeFile(dumpName, stdout as unknown as Buffer); out["pg_dump"] = `${dumpName} (via docker exec ${cont})`;
+        }
         const { readdir, stat, unlink } = await import("node:fs/promises"); const keepDays = Number(process.env.BACKUP_KEEP_DAYS ?? 30); for (const d of [dumpDir, join(dumpDir, f)]) { try { for (const fn of await readdir(d)) { const p = join(d, fn); const st = await stat(p); if (st.isFile() && Date.now() - st.mtimeMs > keepDays * 86400e3) await unlink(p); } } catch { /* */ } }
-      } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; }
+      } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; throw new Error(`ERR_PG_DUMP: ${(e as Error).message.slice(0, 200)}`); }
     }
     if (job === "all") { try { out[`depreciation:${f}`] = (await adminPool().query("select run_depreciation($1, date_trunc('month', now())::date) as n", [f])).rows[0].n; } catch (e) { out[`depreciation:${f}`] = `skip ${(e as Error).message.slice(0, 40)}`; } }
     if (job === "reports" || job === "all") { // báo cáo định kỳ theo report_schedules → notifications (app + email/zalo qua channels)
