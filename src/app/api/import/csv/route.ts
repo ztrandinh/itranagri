@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
 import { findAdmin, IMPORT_EVENT_TABLES, parseCsv, toCsv } from "@/lib/admin";
@@ -33,7 +34,23 @@ export async function POST(req: Request) {
     return await withCtx(s, async (c) => {
       const errors: { row: number; error: string }[] = []; let ok = 0; const preview: Record<string, unknown>[] = [];
       const batchId = crypto.randomUUID();
-      if (mode === "commit") await c.query("insert into import_batches(id,farm_id,table_name,file_name,rows_total,mode,by_staff) values ($1,$2,$3,$4,$5,$6,$7)", [batchId, s.farmId, table, fileName, rows.length, upsert ? "UPSERT" : "INSERT", s.staffId]);
+      // Dedupe theo NỘI DUNG file (0195): batchId trước đây luôn là UUID mới mỗi lần POST nên double-click/
+      // double-submit đúng file CSV lần 2 không bị chặn, khác hẳn /api/events (idempotent theo client_ref).
+      // content_hash + unique index là backstop DB thật; bắt unique_violation để trả lại kết quả batch cũ.
+      const contentHash = createHash("sha256").update(`${table}|${text}`).digest("hex");
+      if (mode === "commit") {
+        await c.query("savepoint import_batch_sp");
+        try {
+          await c.query("insert into import_batches(id,farm_id,table_name,file_name,rows_total,mode,by_staff,content_hash) values ($1,$2,$3,$4,$5,$6,$7,$8)", [batchId, s.farmId, table, fileName, rows.length, upsert ? "UPSERT" : "INSERT", s.staffId, contentHash]);
+        } catch (e) {
+          await c.query("rollback to savepoint import_batch_sp");
+          if ((e as { code?: string }).code === "23505") {
+            const prev = (await c.query("select id, rows_ok, rows_err, errors from import_batches where farm_id=$1 and table_name=$2 and content_hash=$3 and reverted_at is null order by ts desc limit 1", [s.farmId, table, contentHash])).rows[0];
+            if (prev) return NextResponse.json({ mode, table, batch: prev.id, rows_total: rows.length, rows_ok: prev.rows_ok, rows_err: prev.rows_err, errors: prev.errors ?? [], preview: [], duplicate: true });
+          }
+          throw e;
+        }
+      }
       if (t) {
         const cols = await tableCols(c, t.table); const names = new Set(cols.map((x) => x.name)); const unknown = Object.keys(rows[0]).filter((k) => !names.has(k) && k !== "pin");
         if (unknown.length) errors.push({ row: 0, error: `Cột không tồn tại: ${unknown.join(", ")}` });
