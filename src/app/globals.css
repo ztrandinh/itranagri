@@ -227,8 +227,18 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
 :root[data-theme="dark"] .input, :root:not([data-theme="light"]) .input { background: var(--surface-2) !important; color: var(--ink) !important; border-color: var(--line) !important; }
 :root[data-theme="dark"] .btn-secondary, :root:not([data-theme="light"]) .btn-secondary { background: var(--surface-2) !important; color: var(--ink) !important; border-color: var(--line) !important; }
 /* Trạng thái hover/focus/active của các class Tailwind cứng — CSS thuần không hỗ trợ ":hover" trong [class*=] nên phải bind riêng
-   qua pseudo-class thật ở cuối selector; nếu chỉ dùng [class*="hover:bg-x"] KHÔNG có :hover thì màu áp dụng SAI — luôn bật, không chỉ lúc rê chuột. */
-[class*="hover:bg-slate-"]:hover, [class*="hover:bg-stone-"]:hover, [class*="hover:bg-gray-"]:hover { background-color: var(--surface-2) !important; }
+   qua pseudo-class thật ở cuối selector; nếu chỉ dùng [class*="hover:bg-x"] KHÔNG có :hover thì màu áp dụng SAI — luôn bật, không chỉ lúc rê chuột.
+   BUG THẬT đã gặp: rule này trước đây khớp CẢ shade đậm (vd hover:bg-slate-800 ở sidebar tối cố định — Shell.tsx)
+   và áp dụng Ở MỌI CHẾ ĐỘ MÀU (không chỉ dark mode) — rê chuột vào sidebar ở light mode bị ép nền sáng
+   trong khi chữ vẫn text-slate-200/300 (xám rất nhạt, thiết kế cho nền tối) → chữ gần như vô hình.
+   Sửa: chỉ khớp shade NHẠT (50/100/200 — hover flash ở nội dung chính, giống quy ước bg-slate-* không-hover
+   phía trên) và chỉ áp trong dark mode — sidebar tối cố định (mọi shade đậm hơn) không bị đụng vào ở chế độ nào. */
+:root[data-theme="dark"] [class*="hover:bg-slate-5"]:hover, :root[data-theme="dark"] [class*="hover:bg-slate-100"]:hover, :root[data-theme="dark"] [class*="hover:bg-slate-200"]:hover,
+:root[data-theme="dark"] [class*="hover:bg-stone-5"]:hover, :root[data-theme="dark"] [class*="hover:bg-stone-100"]:hover, :root[data-theme="dark"] [class*="hover:bg-stone-200"]:hover,
+:root[data-theme="dark"] [class*="hover:bg-gray-5"]:hover, :root[data-theme="dark"] [class*="hover:bg-gray-100"]:hover, :root[data-theme="dark"] [class*="hover:bg-gray-200"]:hover,
+:root:not([data-theme="light"]) [class*="hover:bg-slate-5"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-slate-100"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-slate-200"]:hover,
+:root:not([data-theme="light"]) [class*="hover:bg-stone-5"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-stone-100"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-stone-200"]:hover,
+:root:not([data-theme="light"]) [class*="hover:bg-gray-5"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-gray-100"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-gray-200"]:hover { background-color: var(--surface-2) !important; }
 :root[data-theme="dark"] [class*="hover:bg-emerald-"]:hover, :root:not([data-theme="light"]) [class*="hover:bg-emerald-"]:hover,
 [class*="hover:bg-emerald-"]:hover { background-color: var(--brand-soft) !important; }
 /* Chữ trạng thái đỏ/vàng/cam/xanh lá/xanh dương (text-*-600..900) dùng rải rác rất nhiều file cho số cần chú ý
