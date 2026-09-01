@@ -47,3 +47,10 @@ Bối cảnh đã chốt với chủ đầu tư:
 
 ### Nguyên tắc chốt để không lạc
 Một công nghệ chỉ đưa vào khi thỏa CẢ 4: (a) bỏ ≥1 lần gõ/chép tay HOẶC bắt sớm 1 sự cố, (b) chạy offline, (c) ≤3 chạm ≤20s, chữ ≥16pt, (d) ROI đo được — và đo trước–sau bằng chính hệ (thời gian/bản ghi, tỷ lệ đúng hạn, việc quá hạn).
+
+## Bug có sẵn phát hiện khi verify audit mobile/touch-target (phiên 2026-09-01, KHÔNG do đợt sửa này gây ra)
+
+Phát hiện khi agent verify độc lập đăng nhập `owner`/`gd` đi qua 27 trang đã sửa touch-target — xác nhận đợt sửa không gây hồi quy, nhưng lộ 2 lỗi console có sẵn từ trước, ngoài phạm vi frontend-only của phiên này:
+
+- **`/to-chuc` — console error**: `<svg> attribute height: Expected length, "-Infinity"`. Sơ đồ tổ chức/quy trình (khả năng `ProcessFlow.tsx`/`DeptGraph`) tính chiều cao SVG trước khi container có kích thước thật (race condition đo layout). Hình vẫn hiển thị đúng (không vỡ UI), chỉ là warning console — ưu tiên thấp.
+- **`/du-tru` — 2 vấn đề**: (a) React cảnh báo "duplicate key" cho nhiều mã SKU (TH-OXY, NL-DAU, NL-BAP-U...) — dữ liệu dự phóng tồn kho có vẻ bị fetch/render trùng cho cùng SKU; (b) `GET /api/data/staff_list` trả về **404** — endpoint thiếu hoặc sai tên bảng. Cái (b) là lỗi backend/API thật, nên bên phụ trách backend xử lý.
