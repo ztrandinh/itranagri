@@ -110,7 +110,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
       {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN AGRI<button className="ml-auto text-muted" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-line flex items-center gap-3 px-3">
-          <button className="md:hidden text-2xl" onClick={() => setSide(true)} aria-label="Menu">☰</button>
+          <button className="md:hidden text-2xl min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -ml-2" onClick={() => setSide(true)} aria-label="Menu">☰</button>
           <span className="md:hidden font-black text-brand">ITRAN AGRI</span>
           {sess.farmIds.length > 1 ? (
             <select className="rounded-lg border border-line bg-surface text-sm px-2 py-1 font-semibold" value={sess.farmId}

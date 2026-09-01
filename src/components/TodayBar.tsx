@@ -16,10 +16,10 @@ export default function TodayBar() {
   const items = (list.rows ?? []).filter((r) => !filter || r.kind === filter).slice(0, 40);
   return <div className="rounded-xl border bg-surface px-3 py-2 mb-3 text-sm shadow-sm">
     <div className="flex items-center gap-2 flex-wrap">
-      <button className="font-black" onClick={toggle}>{open ? "▾" : "▸"} Hôm nay của tôi <span className="text-muted font-normal">({cap(actionable)})</span></button>
+      <button className="font-black py-2 -my-2" onClick={toggle}>{open ? "▾" : "▸"} Hôm nay của tôi <span className="text-muted font-normal">({cap(actionable)})</span></button>
       {rows.map((r) => { const k = String(r.kind); const [lbl, cls] = KIND[k] ?? [k, "bg-surface-2"]; return <button key={k} className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls} ${filter === k ? "ring-2 ring-slate-500" : ""}`} onClick={() => { setFilter(filter === k ? null : k); if (!open) toggle(); }}>{lbl}: {cap(Number(r.n))}</button>; })}
       {actionable === 0 && !counts.loading && <span className="text-xs text-brand">✓ Không có việc tồn — làm tốt!</span>}
-      <a className="ml-auto text-xs underline text-muted" href="/ca">Ca của tôi</a><a className="text-xs underline text-muted" href="/phe-duyet">Phê duyệt</a><a className="text-xs underline text-muted" href="/thong-bao">Tin</a>
+      <a className="ml-auto text-xs underline text-muted py-2 px-1 -my-2" href="/ca">Ca của tôi</a><a className="text-xs underline text-muted py-2 px-1 -my-2" href="/phe-duyet">Phê duyệt</a><a className="text-xs underline text-muted py-2 px-1 -my-2" href="/thong-bao">Tin</a>
     </div>
     {open && <div className="mt-2 max-h-72 overflow-auto divide-y">
       {items.map((r, i) => { const k = String(r.kind); const [lbl, cls] = KIND[k] ?? [k, "bg-surface-2"]; const late = r.due_at && new Date(String(r.due_at)) < new Date(); return <a key={i} href={String(r.link ?? "/ca")} className="flex items-center gap-2 py-1.5 hover:bg-slate-50">

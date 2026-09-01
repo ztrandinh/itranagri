@@ -77,8 +77,8 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
   table.tbl { @apply w-full text-[15px]; } table.tbl th { @apply text-left text-xs uppercase tracking-wide text-slate-500 font-semibold py-2 border-b border-slate-200 bg-slate-50; } table.tbl td { @apply py-2 border-b border-slate-100 align-top; } table.tbl tbody tr:hover td { @apply bg-slate-50; }
   /* nút chuyển tab dùng chung (segmented control) — thay chỗ tự vẽ rounded-lg + bg-emerald-700 rời rạc,
      tránh lặp lại đúng lớp bug "class Tailwind cứng không tự đổi theo dark mode" đã vá ở Tabs.tsx. */
-  .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap border; }
-  .tab-btn-active { @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap border; }
+  .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border; }
+  .tab-btn-active { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border; }
 }
 /* ===== CLASS NGỮ NGHĨA THẬT (dọn nợ kỹ thuật) — thay cho việc chặn ở tầng CSS bằng !important lên
    class Tailwind cứng (vẫn còn tồn tại phía dưới cho code cũ chưa đổi). Code MỚI/đang dọn phải dùng

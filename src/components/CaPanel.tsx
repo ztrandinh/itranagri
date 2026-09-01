@@ -116,7 +116,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span></button>)}
             </div>)}
-          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={spec!} /></div>)}
+          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm py-2.5 -my-2.5 px-1 -ml-1" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={spec!} /></div>)}
         </div>)}
       {tab === "giaoca" && (
         <div className="space-y-3">

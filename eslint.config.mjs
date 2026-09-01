@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // .next/** không khớp .next lồng trong worktree phụ (vd .claude/worktrees/x/.next) —
+    // loại cả dạng đệ quy và toàn bộ thư mục worktree phụ (mỗi worktree tự lint riêng).
+    "**/.next/**",
+    "**/out/**",
+    "**/build/**",
+    ".claude/worktrees/**",
   ]),
   {
     rules: {
