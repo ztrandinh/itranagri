@@ -59,6 +59,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ table: 
       });
       results.push({ client_ref: ev.client_ref, ...r });
     } catch (e) {
+      // Race hiếm: 2 request cùng client_ref gần như đồng thời (đúng kịch bản retry offline) có thể
+      // cùng qua bước SELECT kiểm trùng ở trên trước khi cái nào commit — unique index (farm_id,
+      // client_ref) vẫn chặn đúng ở tầng DB, nhưng trước đây cái thua cuộc bị báo REJECTED/ERR_DB
+      // (client tưởng ghi lỗi, có thể tự ý thử lại lần nữa) thay vì DUPLICATE sạch như bình thường.
+      if ((e as { code?: string }).code === "23505") {
+        try {
+          const found = await withCtx(sess, (c) => c.query(`select id from ${t} where farm_id=$1 and client_ref=$2`, [sess.farmId, ev.client_ref]));
+          if (found.rows[0]) { results.push({ client_ref: ev.client_ref, status: "DUPLICATE", id: found.rows[0].id }); continue; }
+        } catch { /* rơi xuống nhánh lỗi chung bên dưới nếu tra lại cũng fail */ }
+      }
       const msg = e instanceof Error ? e.message : String(e);
       const code = msg.match(/ERR_[A-Z_]+/)?.[0] ?? "ERR_DB";
       results.push({ client_ref: ev.client_ref, status: "REJECTED", errors: [code, msg.slice(0, 200)] });

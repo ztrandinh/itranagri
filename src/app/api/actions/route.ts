@@ -125,6 +125,10 @@ export async function POST(req: Request) {
           await c.query("update sessions set revoked_at=now() where staff_id=$1 and revoked_at is null", [b.staff_id]); return { ok: true };
         }
         case "bulk_move_animals": {
+          // Cùng mức rủi ro với intake_herd (thao tác hàng loạt trên vật nuôi) — trước đây bulk lại
+          // KHÔNG có role check trong khi bản đơn lẻ qua /api/events (animal_events) và intake_herd
+          // đều giới hạn worker..owner. Đồng bộ theo đúng role set intake_herd đã dùng.
+          if (!["worker","team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           if (!Array.isArray(b.animal_ids) || !b.animal_ids.length) throw new Error("ERR_EMPTY");
           for (const aid of b.animal_ids as string[]) {
             await c.query("insert into animal_events(farm_id,created_by,animal_id,event_type,detail,client_ref) values ($1,$2,$3,'CHUYEN',$4,$5)", [s.farmId, s.staffId, aid, JSON.stringify({ to_location: b.location_id ?? null, to_group: b.group_id ?? null, bulk: true }), `bulk-${Date.now()}-${aid}`]);
@@ -147,6 +151,9 @@ export async function POST(req: Request) {
           return { ok: true, sale_id: saleId };
         }
         case "assign_tag": {
+          // Đồng bộ với intake_herd/bulk_move_animals — thay đổi định danh vật nuôi (luật 4) không nên
+          // mở cho accountant/auditor/it_engineer trong khi các thao tác vật nuôi khác đều giới hạn.
+          if (!["worker","team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           await c.query("update animal_tags set to_ts=now(), reason=$3 where animal_id=$1 and tag_type=$2 and to_ts is null", [b.animal_id, b.tag_type, b.reason ?? "thay tai"]);
           await c.query("insert into animal_tags(farm_id,animal_id,tag_type,value,created_by) values ($1,$2,$3,$4,$5)", [s.farmId, b.animal_id, b.tag_type, b.value, s.staffId]);
           if (b.tag_type === "RFID") await c.query("update animals set rfid=$2, tag_pending=false where id=$1", [b.animal_id, b.value]);
@@ -154,6 +161,7 @@ export async function POST(req: Request) {
           return { ok: true };
         }
         case "new_animal": {
+          if (!["worker","team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const code = (await c.query("select next_code($1,$2,5) as c", [s.farmId, b.species === "DE" ? "DE" : "BO"])).rows[0].c;
           await c.query("insert into animals(id,farm_id,species,breed,sex,birth_date,dam_id,sire_code,rfid,visual_tag,source,intake_lot_id,group_id,status,location_id,tag_pending,cost_center) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)",
             [code, s.farmId, b.species ?? "BO", b.breed ?? null, b.sex ?? null, b.birth_date ?? null, b.dam_id ?? null, b.sire_code ?? null, b.rfid ?? null, b.visual_tag ?? null, b.source ?? "SINH", b.intake_lot_id ?? null, b.group_id ?? null, b.status ?? (b.source === "MUA" ? "CACH_LY" : "SO_SINH"), b.location_id ?? null, !b.rfid, s.farmId + "-CC-BO"]);
@@ -190,13 +198,23 @@ export async function POST(req: Request) {
           await c.query("insert into orders(id,farm_id,partner_id,channel,deliver_date,lines,total,status,cutoff_ok,created_by,note) values ($1,$2,$3,$4,$5,$6,$7,'CHOT',$8,$9,$10)", [id, s.farmId, b.partner_id, b.channel ?? 1, b.deliver_date ?? null, JSON.stringify(b.lines), total, nowHM <= String(cutoff).replace(/"/g, ""), s.staffId, b.note ?? null]);
           return { ok: true, id, total };
         }
-        case "order_status": { await c.query("update orders set status=$2 where id=$1 and farm_id=$3", [b.id, b.status, s.farmId]); if (b.status === "LENH_SX") await c.query("insert into tasks(farm_id,kind,title,target_type,target_id,role_hint,due_at,priority,source,rule_code) values ($1,'LENH_SX','Lệnh sản xuất/đóng gói đơn '||$2,'order',$2,'worker:A7',now()+interval '18 hours','CAO','ORDER','LSX-'||$2)", [s.farmId, b.id]); return { ok: true }; }
+        case "order_status": {
+          // Trước đây không kiểm role nào — auditor (vai chỉ-đọc theo thiết kế RLS) có thể đổi trạng thái
+          // đơn hàng bất kỳ, kể cả kích hoạt LENH_SX. Chặn tối thiểu: auditor không được ghi/đổi trạng thái.
+          if (s.role === "auditor") throw new Error("ERR_FORBIDDEN_ROLE");
+          await c.query("update orders set status=$2 where id=$1 and farm_id=$3", [b.id, b.status, s.farmId]); if (b.status === "LENH_SX") await c.query("insert into tasks(farm_id,kind,title,target_type,target_id,role_hint,due_at,priority,source,rule_code) values ($1,'LENH_SX','Lệnh sản xuất/đóng gói đơn '||$2,'order',$2,'worker:A7',now()+interval '18 hours','CAO','ORDER','LSX-'||$2)", [s.farmId, b.id]); return { ok: true }; }
         case "create_contract": {
+          // Hợp đồng bao tiêu/cam kết — không có bước "approve_contract" riêng nào khác trong toàn
+          // bộ file này để chốt chặn sau, nên phải chặn ngay ở tạo. Dùng đúng role set sell_livestock
+          // (hành động cam kết tài sản/quan hệ tương đương) — worker không được tạo hợp đồng.
+          if (!["team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const id = (await c.query("select next_code($1,'HD',4) as c", [s.farmId])).rows[0].c;
           await c.query("insert into contracts(id,farm_id,partner_id,kind,sku,qty_committed,unit,price,start_date,end_date,note,created_by) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)", [id, s.farmId, b.partner_id, b.kind ?? "BAO_TIEU", b.sku ?? null, b.qty_committed ?? null, b.unit ?? null, b.price ?? null, b.start_date ?? null, b.end_date ?? null, b.note ?? null, s.staffId]);
           return { ok: true, id };
         }
         case "create_custody": {
+          // Ký gửi/nhận nuôi có phí + thay đổi owner_type vật nuôi — cùng lý do với create_contract.
+          if (!["team_lead","tech_head","director","owner"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const id = (await c.query("select next_code($1,'NN',4) as c", [s.farmId])).rows[0].c;
           await c.query("insert into custody_contracts(id,farm_id,partner_id,kind,animal_ids,package,fee,period_months,prepaid,start_date,end_option,consent_at,note,created_by) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,current_date,$10,now(),$11,$12)", [id, s.farmId, b.partner_id, b.kind ?? "NHAN_NUOI", b.animal_ids ?? [], b.package ?? null, b.fee ?? null, b.period_months ?? null, b.prepaid ?? null, b.end_option ?? null, b.note ?? null, s.staffId]);
           for (const aid of (b.animal_ids ?? []) as string[]) { await c.query("update animals set owner_type=$2 where id=$1", [aid, b.kind === "KY_GUI" ? "KHACH" : "DONG_SO_HUU"]); await c.query("insert into animal_ownership(animal_id,partner_id,pct,contract_id) values ($1,$2,$3,null)", [aid, b.partner_id, b.kind === "KY_GUI" ? 100 : 50]); }
@@ -244,7 +262,10 @@ export async function POST(req: Request) {
         case "create_staff": {
           if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const id = (await c.query("select next_code($1,'NS',3) as c", [s.orgId])).rows[0].c.replace(s.orgId + "-", "");
-          await c.query("insert into staff(id,org_id,farm_id,full_name,role,dept,position,phone,login,pin_hash,farm_ids) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,crypt($10,gen_salt('bf')),$11)", [id, s.orgId, b.farm_id ?? s.farmId, b.full_name, b.role ?? "worker", b.dept ?? null, b.position ?? null, b.phone ?? null, b.login, String(b.pin ?? "1234"), [b.farm_id ?? s.farmId]]);
+          // Không đặt PIN mặc định "1234" mà không ép đổi (như reset_pin đã làm đúng) — tài khoản mới
+          // dùng PIN mặc định công khai sẽ bị đánh dấu phải đổi ngay khi đăng nhập lần đầu.
+          const usedDefault = b.pin == null;
+          await c.query("insert into staff(id,org_id,farm_id,full_name,role,dept,position,phone,login,pin_hash,farm_ids,must_change_pin) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,crypt($10,gen_salt('bf')),$11,$12)", [id, s.orgId, b.farm_id ?? s.farmId, b.full_name, b.role ?? "worker", b.dept ?? null, b.position ?? null, b.phone ?? null, b.login, String(b.pin ?? "1234"), [b.farm_id ?? s.farmId], usedDefault]);
           return { ok: true, id };
         }
         case "save_process": {
@@ -312,7 +333,11 @@ export async function POST(req: Request) {
         case "add_reserve_item": { if (!["owner","director","tech_head","it_engineer","team_lead"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const g = (await c.query("select * from stock_groups where code=$1", [b.group])).rows[0]; if (!g) throw new Error("ERR_GROUP"); const sku = String(b.sku ?? ("SKU-" + String(b.name).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 24))); await c.query("insert into products(sku, org_id, name, kind, unit, stock_group, reserve, active, shelf_life_days) values ($1,'ITRAN',$2,$3,$4,$5,true,true,$6) on conflict (sku) do update set reserve=true, stock_group=excluded.stock_group", [sku, b.name, g.kind_default ?? "NGUYEN_LIEU", b.unit ?? g.unit_default ?? "kg", b.group, b.shelf_life_days ?? null]); return { ok: true, sku }; }
         case "tool_issue": { const r = await c.query("insert into tool_issues(farm_id, warehouse_id, sku, qty, staff_id, dept, purpose, due_back) values ($1,$2,$3,$4,$5,$6,$7,$8) returning id", [s.farmId, b.warehouse_id, b.sku, Number(b.qty ?? 1), b.staff_id ?? null, b.dept ?? null, b.purpose ?? null, b.due_back ?? null]); return { ok: true, id: r.rows[0].id }; }
         case "tool_return": { const t = (await c.query("select * from tool_issues where id=$1 and farm_id=$2", [b.id, s.farmId])).rows[0]; if (!t) throw new Error("ERR_NOT_FOUND"); const cond = String(b.condition ?? "TOT"); const rq = Number(b.returned_qty ?? t.qty); await c.query("update tool_issues set returned_at=now(), returned_qty=$2, condition=$3, note=coalesce(note,'')||$4 where id=$1", [b.id, rq, cond, b.note ? " · " + b.note : ""]); if ((cond === "HONG" || cond === "MAT") && Number(t.qty) - rq > 0) { await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, ref_type, ref_id, client_ref) values ($1,$2,$3,$4,-1,$5,(select unit from products where sku=$4),$6,$7,'tool_issue',$8,$9)", [s.farmId, s.staffId, t.warehouse_id, t.sku, Number(t.qty) - rq, cond, "Cấp phát #" + b.id, String(b.id), "tool-" + b.id + "-" + cond]); } return { ok: true }; }
-        case "tool_move": { const q = Number(b.qty); if (!(q > 0)) throw new Error("ERR_QTY"); const u = (await c.query("select unit from products where sku=$1", [b.sku])).rows[0]?.unit; const ref = "toolmove-" + Date.now(); await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref) values ($1,$2,$3,$4,-1,$5,$6,'CHUYEN',$7,$8)", [s.farmId, s.staffId, b.from_wh, b.sku, q, u, "→ " + b.to_wh, ref + "-out"]); await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref) values ($1,$2,$3,$4,1,$5,$6,'CHUYEN',$7,$8)", [s.farmId, s.staffId, b.to_wh, b.sku, q, u, "← " + b.from_wh, ref + "-in"]); return { ok: true }; }
+        case "tool_move": { const q = Number(b.qty); if (!(q > 0)) throw new Error("ERR_QTY"); const u = (await c.query("select unit from products where sku=$1", [b.sku])).rows[0]?.unit; const ref = "toolmove-" + Date.now();
+          // ref_type/ref_id trước đây bỏ trống — đứt truy xuất (2 dòng move cùng 1 lần chuyển không nối được nhau qua báo cáo). Gắn ref_type='TOOL_MOVE', ref_id=ref chung cho cả 2 dòng.
+          await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref, ref_type, ref_id) values ($1,$2,$3,$4,-1,$5,$6,'CHUYEN',$7,$8,'TOOL_MOVE',$9)", [s.farmId, s.staffId, b.from_wh, b.sku, q, u, "→ " + b.to_wh, ref + "-out", ref]);
+          await c.query("insert into inventory_moves(farm_id, created_by, warehouse_id, sku, direction, qty, unit, reason, from_to, client_ref, ref_type, ref_id) values ($1,$2,$3,$4,1,$5,$6,'CHUYEN',$7,$8,'TOOL_MOVE',$9)", [s.farmId, s.staffId, b.to_wh, b.sku, q, u, "← " + b.from_wh, ref + "-in", ref]);
+          return { ok: true }; }
         case "run_grade_review": { if (!["owner","director","accountant","it_engineer"].includes(s.role) && s.dept !== "HCNS") throw new Error("ERR_FORBIDDEN_ROLE"); const r = await c.query("select run_grade_review($1,$2) as n", [s.farmId, b.quarter]); return { ok: true, n: r.rows[0].n }; }
         case "sign_grade": { const r = await c.query("select sign_grade_review($1::uuid,$2,$3) as j", [b.id, s.staffId, b.slot]); return { ok: true, ...r.rows[0].j }; }
         case "reject_grade": { if (!["owner","director","tech_head","team_lead","accountant"].includes(s.role) && s.dept !== "HCNS") throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update grade_reviews set status='TU_CHOI', note=$3, decided_at=now() where id=$1 and farm_id=$2 and staff_id<>$4", [b.id, s.farmId, b.note ?? null, s.staffId]); return { ok: true }; }
@@ -411,6 +436,11 @@ export async function POST(req: Request) {
     return NextResponse.json(out);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: msg.match(/ERR_[A-Z_]+/)?.[0] ?? "ERR", detail: msg }, { status: 400 });
+    const code = msg.match(/ERR_[A-Z_]+/)?.[0];
+    // Có mã ERR_* = lỗi nghiệp vụ do chính app ném ra, message vốn viết cho người dùng đọc — giữ nguyên.
+    // KHÔNG có mã = exception thô (thường từ driver Postgres: lộ tên bảng/cột/constraint nội bộ) —
+    // không trả nguyên văn ra client (mọi role kể cả worker gọi được endpoint này), chỉ log ở server.
+    if (!code) console.error("[actions]", b?.action, msg);
+    return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }
