@@ -12,12 +12,16 @@ import { createHash } from "node:crypto";
 export async function POST(req: Request, { params }: { params: Promise<{ job: string }> }) {
   const { job } = await params; const url = new URL(req.url);
   const s = await getSession(); const key = req.headers.get("x-job-key");
-  if (!s && key !== (process.env.JOB_KEY ?? "dev-job-key")) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
+  // KHÔNG fallback về key mặc định công khai (trước đây "dev-job-key" trùng default trong docker-compose.yml)
+  // — nếu JOB_KEY chưa được set, đường x-job-key coi như tắt hẳn (chỉ còn vào được qua session đăng nhập).
+  const jobKeyOk = !!process.env.JOB_KEY && key === process.env.JOB_KEY;
+  if (!s && !jobKeyOk) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
   if (s && !["tech_head","director","owner","it_engineer"].includes(s.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE" }, { status: 403 });
   const farms = url.searchParams.get("farm") ? [url.searchParams.get("farm")!] : (await adminPool().query("select id from farms where status='ACTIVE'")).rows.map((r) => r.id as string);
   const date = url.searchParams.get("date") ?? new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
   const out: Record<string, unknown> = {};
   for (const f of farms) {
+   try {
     if (job === "recon" || job === "all") out[`recon:${f}`] = await runRecon(f, date);
     if (job === "alerts" || job === "all") out[`alerts:${f}`] = await runAlerts(f);
     if (job === "backup") {
@@ -61,6 +65,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
     if (job === "grade" || (job === "all" && new Date().getDate() === 1)) { out[`probation:${f}`] = (await adminPool().query("select confirm_probation_grades($1) as n", [f])).rows[0].n; const d = new Date(); if (job === "grade" || d.getMonth() % 3 === 0) out[`grade_review:${f}`] = (await adminPool().query("select run_grade_review($1,$2) as n", [f, `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`])).rows[0].n; }
     if (job === "tasks" || job === "all") { out[`deleg_end:${f}`] = (await adminPool().query("select end_delegations($1) as n", [f])).rows[0].n; out[`stale_closed:${f}`] = (await adminPool().query("select expire_stale_tasks($1) as n", [f])).rows[0].n; out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks_v2($1) as n", [f])).rows[0].n; out[`monitor:${f}`] = (await adminPool().query("select gen_monitoring_tasks($1) as n", [f])).rows[0].n; out[`compliance:${f}`] = (await adminPool().query("select gen_compliance_tasks($1) as n", [f])).rows[0].n; out[`recording:${f}`] = (await adminPool().query("select gen_recording_alerts($1) as n", [f])).rows[0].n; out[`amu:${f}`] = (await adminPool().query("select gen_amu_alerts($1) as n", [f])).rows[0].n; out[`mortality:${f}`] = (await adminPool().query("select gen_mortality_alerts($1) as n", [f])).rows[0].n; out[`withdrawal:${f}`] = (await adminPool().query("select gen_withdrawal_reminders($1) as n", [f])).rows[0].n; out[`lot_expiry:${f}`] = (await adminPool().query("select gen_lot_expiry_alerts($1) as n", [f])).rows[0].n; out[`lots_closed:${f}`] = (await adminPool().query("select close_depleted_lots($1) as n", [f])).rows[0].n; out[`herd:${f}`] = (await adminPool().query("select gen_herd_actions($1) as n", [f])).rows[0].n; out[`cyclecount:${f}`] = (await adminPool().query("select gen_cycle_counts($1) as n", [f])).rows[0].n; out[`dunning:${f}`] = (await adminPool().query("select run_dunning($1) as n", [f])).rows[0].n; out[`supervision:${f}`] = (await adminPool().query("select run_supervision_auto($1) as n", [f])).rows[0].n; if (new Date().getDay() === 1) { out[`training:${f}`] = (await adminPool().query("select gen_training_week($1) as n", [f])).rows[0].n; out[`sup_tasks:${f}`] = (await adminPool().query("select gen_supervision_tasks($1) as n", [f])).rows[0].n; await adminPool().query("select run_supervision_auto($1, (date_trunc('week', current_date) - interval '7 days')::date)", [f]); } await adminPool().query("select refresh_compliance_gaps()"); out[`assigned:${f}`] = (await adminPool().query("select assign_open_tasks($1) as n", [f])).rows[0].n; }
     await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),true,$3)", [f, job, JSON.stringify({ date, keys: Object.keys(out).filter((k) => k.endsWith(":" + f)) })]);
+   } catch (e) {
+    // Trước đây 1 trại lỗi giữa chừng làm mất luôn các trại còn lại trong vòng lặp (exception văng thẳng
+    // ra khỏi handler), và KHÔNG có job_runs nào được ghi cho trại lỗi — job chết mà không ai biết.
+    // Nay: ghi nhận lỗi cho đúng trại này, tiếp tục các trại còn lại, và trả về lỗi trong response để gọi
+    // thủ công (KTT/GĐ) thấy ngay; cron gọi qua x-job-key nên kiểm tra "out.errors" thay vì chỉ HTTP 200.
+    const msg = (e as Error).message.slice(0, 500);
+    out[`error:${f}`] = msg;
+    await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),false,$3)", [f, job, JSON.stringify({ date, error: msg })]).catch(() => {});
+   }
   }
-  return NextResponse.json({ ok: true, date, out });
+  const errors = Object.keys(out).filter((k) => k.startsWith("error:"));
+  return NextResponse.json({ ok: errors.length === 0, date, out, ...(errors.length ? { errors } : {}) }, { status: errors.length ? 207 : 200 });
 }

@@ -20,9 +20,18 @@ export async function runRecon(farmId: string, day: string) {
       if (err) status = "LOI";
       else if (r.threshold_mode === "ABS") { diffPct = Math.abs(a! - b!); status = diffPct > Number(r.threshold_pct) ? (r.level === "DO" ? "DO" : "VANG") : "OK"; }
       else { const base = Math.max(Math.abs(a!), Math.abs(b!)); diffPct = base > 0 ? Math.round((Math.abs(a! - b!) / base) * 10000) / 100 : 0; if (a === 0 && b === 0) status = "KHONG_DU_LIEU"; else status = diffPct > Number(r.threshold_pct) ? (r.level === "DO" ? "DO" : "VANG") : "OK"; }
-      await c.query("insert into recon_results(farm_id,rule_code,period,expected,actual,diff_pct,status,detail) values ($1,$2,$3,$4,$5,$6,$7,$8)", [farmId, r.code, day, a, b, diffPct, status, JSON.stringify({ err, threshold: r.threshold_pct, mode: r.threshold_mode })]);
+      // idempotent: chạy lại đúng ngày này (retry sau lỗi, hoặc chạy tay lại) ghi đè thay vì nhân đôi (0190)
+      await c.query(
+        `insert into recon_results(farm_id,rule_code,period,expected,actual,diff_pct,status,detail) values ($1,$2,$3,$4,$5,$6,$7,$8)
+         on conflict (farm_id,rule_code,period) do update set expected=excluded.expected, actual=excluded.actual, diff_pct=excluded.diff_pct, status=excluded.status, detail=excluded.detail, ts=now()`,
+        [farmId, r.code, day, a, b, diffPct, status, JSON.stringify({ err, threshold: r.threshold_pct, mode: r.threshold_mode })]
+      );
       if (status === "DO" || status === "VANG") {
-        await c.query("insert into alerts(farm_id,rule_code,level,subject,payload,sent_to) values ($1,$2,$3,$4,$5,$6)", [farmId, r.code, status, `${r.name}: A=${a} B=${b} lệch ${diffPct}${r.threshold_mode === "ABS" ? "" : "%"}`, JSON.stringify({ a, b, diffPct, day }), r.recipients ?? []]);
+        // chặn bắn lặp alert khi rerun cùng ngày cho cùng rule (trước đây insert vô điều kiện)
+        const already = await c.query("select 1 from alerts where farm_id=$1 and rule_code=$2 and ts::date=$3::date", [farmId, r.code, day]);
+        if (!already.rows[0]) {
+          await c.query("insert into alerts(farm_id,rule_code,level,subject,payload,sent_to) values ($1,$2,$3,$4,$5,$6)", [farmId, r.code, status, `${r.name}: A=${a} B=${b} lệch ${diffPct}${r.threshold_mode === "ABS" ? "" : "%"}`, JSON.stringify({ a, b, diffPct, day }), r.recipients ?? []]);
+        }
       }
       out.push({ code: r.code, a, b, diffPct, status, err });
     }

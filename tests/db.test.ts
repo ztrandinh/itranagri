@@ -40,6 +40,51 @@ describe("Append-only", () => {
     await app.query("insert into animal_events(farm_id,animal_id,event_type,value,created_by,client_ref,supersedes_id) values ('F01','F01-BO-00005','CAN',355,'NS-003',$1,$2)", ["t-sup2-" + Date.now(), a.rows[0].id]);
     expect((await app.query("select status from animal_events where id=$1", [a.rows[0].id])).rows[0].status).toBe("SUPERSEDED");
   });
+  it("0189: 7 bảng bị hở UPDATE trước đây (crop_inputs/harvests/pos_receipts/hosp_folio/irrigation_logs/pest_scouting/supervision_checks) nay bị chặn sửa cột nghiệp vụ", async () => {
+    await ctx("F01", "director");
+    for (const t of ["crop_inputs", "harvests", "pos_receipts", "hosp_folio", "irrigation_logs", "pest_scouting", "supervision_checks"]) {
+      await expect(app.query(`update ${t} set created_by='HACK' where farm_id='F01'`)).rejects.toThrow(/permission denied/);
+    }
+  });
+  it("0189: supersede qua status vẫn hoạt động trên bảng vừa vá (harvests)", async () => {
+    await ctx("F01", "tech_head");
+    const plot = (await admin.query("select id from plots where farm_id='F01' limit 1")).rows[0].id;
+    const a = await app.query("insert into harvests(farm_id,plot_id,crop,qty_kg,unit,created_by,client_ref) values ('F01',$1,'TEST',100,'kg','NS-003',$2) returning id", [plot, "t-hv-" + Date.now()]);
+    await app.query("insert into harvests(farm_id,plot_id,crop,qty_kg,unit,created_by,client_ref,supersedes_id) values ('F01',$1,'TEST',105,'kg','NS-003',$2,$3)", [plot, "t-hv2-" + Date.now(), a.rows[0].id]);
+    expect((await app.query("select status from harvests where id=$1", [a.rows[0].id])).rows[0].status).toBe("SUPERSEDED");
+  });
+});
+describe("RLS đa trại (farm_ids)", () => {
+  it("0188: director có farm_ids nhiều trại phải thấy đủ các trại đó, không chỉ trại hiện tại", async () => {
+    await ctx("F01", "director", "NS-003");
+    await app.query("select set_config('app.farm_ids','F01,F99',false)");
+    expect((await app.query("select can_see_farm('F01') a, can_see_farm('F99') b")).rows[0]).toEqual({ a: true, b: true });
+  });
+  it("0188: director KHÔNG được tự ý thấy trại ngoài farm_ids đã gán", async () => {
+    await ctx("F01", "director", "NS-003");
+    await app.query("select set_config('app.farm_ids','F01',false)");
+    expect((await app.query("select can_see_farm('F99') b")).rows[0].b).toBe(false);
+  });
+});
+describe("Thu hồi session (revoke_sessions/reset_pin)", () => {
+  it("session bị revoked_at thì hết hiệu lực đúng theo điều kiện lib/auth.ts#isSessionLive", async () => {
+    const staff = (await admin.query("select id from staff limit 1")).rows[0].id;
+    const s = await admin.query("insert into sessions(staff_id,farm_id,expires_at) values ($1,'F01', now() + interval '7 days') returning id", [staff]);
+    const sid = s.rows[0].id;
+    const live = (q: string) => admin.query("select exists(select 1 from sessions where id=$1 and revoked_at is null and expires_at > now()) as live", [q]).then((r) => r.rows[0].live);
+    expect(await live(sid)).toBe(true);
+    await admin.query("update sessions set revoked_at=now() where staff_id=$1 and revoked_at is null", [staff]); // đúng câu revoke_sessions/reset_pin dùng
+    expect(await live(sid)).toBe(false);
+    await admin.query("delete from sessions where id=$1", [sid]);
+  });
+  it("session hết hạn (expires_at quá khứ) cũng bị coi là hết hiệu lực dù chưa bị revoke", async () => {
+    const staff = (await admin.query("select id from staff limit 1")).rows[0].id;
+    const s = await admin.query("insert into sessions(staff_id,farm_id,expires_at) values ($1,'F01', now() - interval '1 minute') returning id", [staff]);
+    const sid = s.rows[0].id;
+    const live = (await admin.query("select exists(select 1 from sessions where id=$1 and revoked_at is null and expires_at > now()) as live", [sid])).rows[0].live;
+    expect(live).toBe(false);
+    await admin.query("delete from sessions where id=$1", [sid]);
+  });
 });
 describe("Luật nghiệp vụ", () => {
   it("chặn XUẤT khi đang ngưng thuốc (ERR_WITHDRAWAL_ACTIVE)", async () => {

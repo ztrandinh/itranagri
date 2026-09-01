@@ -23,6 +23,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   const farm = u.searchParams.get("farm") ?? s.farmId; const from = u.searchParams.get("from") ?? "2000-01-01"; const to = u.searchParams.get("to") ?? "2100-01-01";
   const sku = u.searchParams.get("sku"); const lot = u.searchParams.get("lot");
   const ctx = { ...s, farmId: farm };
+  // BẢO MẬT: trước đây chỉ kind="all" kiểm role — mọi kind khác (audit-pack/tt66/sales-tax/table:*/…)
+  // chỉ cần đăng nhập là tải được trọn dữ liệu tuân thủ/tài chính của cả trại (RLS chỉ chặn theo farm_id,
+  // KHÔNG chặn theo role khi SELECT). Chặn chung ở đây cho MỌI kind: worker/team_lead không xuất hàng loạt
+  // (vẫn xem đủ dữ liệu qua UI bình thường — chỉ export CSV/ZIP toàn trại là bị chặn).
+  if (["worker", "team_lead"].includes(s.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE" }, { status: 403 });
   const zipRes = async (name: string, files: Record<string, string>) => {
     const zip = new JSZip(); const manifest: Record<string, string> = {};
     for (const [n, content] of Object.entries(files)) { zip.file(n, content); manifest[n] = createHash("sha256").update(content).digest("hex"); }
@@ -35,6 +40,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   try {
     return await withCtx(ctx, async (c) => {
       const q = async (sql: string, p: unknown[] = []) => (await c.query(sql, p)).rows as Record<string, unknown>[];
+      // Ai xuất gì khi nào (trước đây không nơi nào ghi lại — bằng chứng duy nhất là MANIFEST tự nộp trong
+      // chính file ZIP do người tải kiểm soát). Ghi TRƯỚC khi chạy — export lỗi vẫn để lại dấu vết đã yêu cầu.
+      await c.query("insert into audit_log(farm_id,table_name,pk,action,after,by_staff,by_role) values ($1,$2,$3,'EXPORT',$4,$5,$6)",
+        [farm, kind, farm, JSON.stringify({ from, to, sku, lot }), s.staffId, s.role]).catch(() => {});
       switch (kind) {
         case "all": {
           if (!["director","owner","auditor","it_engineer","accountant"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");

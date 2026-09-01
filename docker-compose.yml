@@ -15,7 +15,7 @@ services:
       DATABASE_ADMIN_URL: "postgres://postgres:${PG_PASSWORD:-itranagri}@db:5432/itranagri"
       DATABASE_URL: "postgres://app_user:app_user_pw@db:5432/itranagri"
       SESSION_SECRET: "${SESSION_SECRET:?set SESSION_SECRET}"
-      JOB_KEY: "${JOB_KEY:-dev-job-key}"
+      JOB_KEY: "${JOB_KEY:?set JOB_KEY}"
       BACKUP_DIR: /backups
       UPLOAD_DIR: /uploads
       SCHEDULER: "1"

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
+import { EVENT_TABLES } from "@/lib/events";
 /** Hành động có duyệt / cập nhật cột được phép: approve_adjustment, digitize_paper, ack_alert, ack_recon, approve_checklist, close_incident, void_event */
 export async function POST(req: Request) {
   const s = await getSession(); if (!s) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
@@ -35,9 +36,12 @@ export async function POST(req: Request) {
         }
         case "void_event": {
           if (!["tech_head","director"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
-          if (!/^[a-z_]+$/.test(b.table)) throw new Error("ERR_BAD_TABLE");
-          // BẢO MẬT: cấm void bảng KIỂM SOÁT (ATTP/tài chính/truy xuất/phê duyệt) — sửa sai đi qua supersede/adjustment/quy trình chuyên trách (luật 2),
-          // không được set status='VOID' để lách control (vd void đơn → xoá doanh thu; void lab KHÔNG ĐẠT → xoá bằng chứng; void recall → huỷ thu hồi).
+          // BẢO MẬT: chỉ cho void đúng BẢNG SỰ KIỆN đã đăng ký (EVENT_TABLES, nguồn: lib/events.ts) — whitelist thật,
+          // không phải regex tên bảng (trước đây `/^[a-z_]+$/` cho phép nhắm bất kỳ bảng nào có cột id/farm_id/status).
+          if (!(EVENT_TABLES as readonly string[]).includes(b.table)) throw new Error("ERR_BAD_TABLE");
+          // Trong số bảng sự kiện hợp lệ, vẫn cấm void bảng KIỂM SOÁT (ATTP/tài chính/truy xuất) — sửa sai đi qua
+          // supersede/adjustment/quy trình chuyên trách (luật 2), không được set status='VOID' để lách control
+          // (vd void đơn → xoá doanh thu; void lab KHÔNG ĐẠT → xoá bằng chứng).
           const PROTECTED = new Set(["sales","sales_returns","supplier_returns","expense_requests","approvals","approval_matrix","payroll_runs","salary_scales","bonus_ledger","loans","loan_schedule","insurance_claims","insurance_policies","lots","qc_holds","lab_samples","recalls","food_samples","certifications","compliance_gaps","customs_declarations","import_permits","trade_contracts","trade_documents","shipments","grade_reviews","staff_grades","whistle_reports","cross_checks","gs_omissions","production_orders","contracts","custody_contracts","stock_reservations","journal_entries","adjustments"]);
           if (PROTECTED.has(b.table)) throw new Error("ERR_PROTECTED_TABLE: bảng kiểm soát không được void — dùng quy trình chuyên trách (giải toả QC / điều chỉnh có duyệt / thu hồi / supersede)");
           await c.query(`update ${b.table} set status='VOID' where id=$1 and farm_id=$2`, [b.id, s.farmId]); return { ok: true };

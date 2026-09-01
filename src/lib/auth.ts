@@ -5,7 +5,7 @@ import { adminPool, type Ctx } from "./db";
 const COOKIE = "itran_session";
 const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET ?? "dev-secret-change-me-please-32chars!!");
 
-export type Session = Ctx & { staffName: string; position: string | null; dept?: string | null; farmName?: string };
+export type Session = Ctx & { sid: string; staffName: string; position: string | null; dept?: string | null; farmName?: string };
 
 export async function login(loginId: string, pin: string, deviceId?: string): Promise<Session | null> {
   const r = await adminPool().query(
@@ -24,21 +24,31 @@ export async function login(loginId: string, pin: string, deviceId?: string): Pr
   if (!s || !s.ok || !s.active) return null;
   const farmIds: string[] = s.farm_ids?.length ? s.farm_ids : s.farm_id ? [s.farm_id] : [];
   const farmId = s.farm_id ?? farmIds[0] ?? "";
-  const sess: Session = { orgId: s.org_id, farmId, role: s.role, staffId: s.id, farmIds, staffName: s.full_name, position: s.position, dept: s.dept, account: s.account ?? null, positionCode: s.position_code ?? null };
-  await adminPool().query("insert into sessions(staff_id, farm_id, device_id, expires_at) values ($1,$2,$3, now() + interval '7 days')", [s.id, farmId, deviceId ?? null]);
+  const sessionRow = await adminPool().query("insert into sessions(staff_id, farm_id, device_id, expires_at) values ($1,$2,$3, now() + interval '7 days') returning id", [s.id, farmId, deviceId ?? null]);
+  const sess: Session = { sid: sessionRow.rows[0].id, orgId: s.org_id, farmId, role: s.role, staffId: s.id, farmIds, staffName: s.full_name, position: s.position, dept: s.dept, account: s.account ?? null, positionCode: s.position_code ?? null };
   return sess;
 }
 
 export async function setSessionCookie(sess: Session) {
   const token = await new SignJWT(sess as unknown as Record<string, unknown>).setProtectedHeader({ alg: "HS256" }).setExpirationTime("7d").sign(secret());
-  (await cookies()).set(COOKIE, token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 7 * 86400 });
+  (await cookies()).set(COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7 * 86400 });
 }
 export async function clearSession() { (await cookies()).delete(COOKIE); }
 
+/** Phiên đã bị thu hồi (revoke_sessions/reset_pin) hoặc hết hạn ở DB thì token dù còn hợp lệ chữ ký cũng vô hiệu. */
+async function isSessionLive(sid: unknown): Promise<boolean> {
+  if (typeof sid !== "string" || !sid) return false;
+  const r = await adminPool().query("select 1 from sessions where id=$1 and revoked_at is null and expires_at > now()", [sid]);
+  return (r.rowCount ?? 0) > 0;
+}
 export async function getSession(): Promise<Session | null> {
   const t = (await cookies()).get(COOKIE)?.value;
   if (!t) return null;
-  try { const { payload } = await jwtVerify(t, secret()); return payload as unknown as Session; } catch { return null; }
+  try {
+    const { payload } = await jwtVerify(t, secret());
+    if (!(await isSessionLive((payload as unknown as Session).sid))) return null;
+    return payload as unknown as Session;
+  } catch { return null; }
 }
 export async function requireSession(): Promise<Session> {
   const s = await getSession();
@@ -46,7 +56,11 @@ export async function requireSession(): Promise<Session> {
   return s;
 }
 export async function verifyToken(t: string): Promise<Session | null> {
-  try { const { payload } = await jwtVerify(t, secret()); return payload as unknown as Session; } catch { return null; }
+  try {
+    const { payload } = await jwtVerify(t, secret());
+    if (!(await isSessionLive((payload as unknown as Session).sid))) return null;
+    return payload as unknown as Session;
+  } catch { return null; }
 }
 export const COOKIE_NAME = COOKIE;
 

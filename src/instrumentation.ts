@@ -3,7 +3,11 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.SCHEDULER !== "1") return;
   const g = globalThis as unknown as { __itranSched?: boolean }; if (g.__itranSched) return; g.__itranSched = true;
   const { dispatchEvents } = await import("@/lib/notify"); const { deliverChannels } = await import("@/lib/channels"); const { adminPool } = await import("@/lib/db");
-  const port = process.env.PORT ?? "3000"; const key = process.env.JOB_KEY ?? "dev-job-key";
+  const port = process.env.PORT ?? "3000"; const key = process.env.JOB_KEY;
+  // Trước đây fallback "dev-job-key" trùng default công khai trong docker-compose.yml — nếu operator quên
+  // set JOB_KEY, scheduler vẫn "chạy" nhưng mọi lệnh gọi job đêm đều bị /api/jobs từ chối âm thầm (log lỗi
+  // cá nhân từng call, không ai để ý). Nay chặn hẳn từ đầu, báo rõ 1 lần thay vì lỗi lặp mỗi phút.
+  if (!key) { console.error("[ITRAN AGRI] SCHEDULER=1 nhưng JOB_KEY chưa set — scheduler KHÔNG bật (xem docker-compose.yml)"); return; }
   const farms = async () => (await adminPool().query("select id from farms where status='ACTIVE'")).rows.map((r) => String(r.id));
   const call = async (job: string, farm: string) => { try { await fetch(`http://127.0.0.1:${port}/api/jobs/${job}?farm=${farm}`, { method: "POST", headers: { "x-job-key": key } }); } catch (e) { console.error("sched", job, farm, (e as Error).message); } };
   setInterval(async () => { try { await dispatchEvents(); await deliverChannels(); } catch (e) { console.error("sched:dispatch", (e as Error).message); } }, 60e3);
