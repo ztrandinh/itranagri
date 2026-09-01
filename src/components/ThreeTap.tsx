@@ -167,7 +167,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
         </div>)}
       {step === 2 && target && (
         <div className="space-y-4">
-          <div className="rounded-xl bg-surface-2 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-muted text-sm">· {target.sub}</span>}</span><button className="underline text-sm" onClick={() => setStep(1)}>đổi</button></div>
+          <div className="rounded-xl bg-surface-2 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-muted text-sm">· {target.sub}</span>}</span><button className="underline text-sm py-2 -my-2 px-1 -mx-1" onClick={() => setStep(1)}>đổi</button></div>
           {spec.fields.map((f) => (
             <div key={f.key}>
               <label className="block text-sm text-muted mb-1">{f.label}{f.required && " *"}</label>

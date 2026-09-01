@@ -56,7 +56,7 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
                 style={{ zIndex: "var(--z-sheet)", minWidth: 240, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", boxShadow: "var(--sh-2)" }}>
                 {rest.map(([k, l]) => (
                   <button key={k} role="menuitem" type="button" onClick={() => { onChange(k); setOpen(false); }}
-                    className="block w-full text-left px-3 py-2 rounded-lg text-sm" style={{ color: "var(--ink)" }}
+                    className="block w-full text-left px-3 py-2 min-h-[40px] rounded-lg text-sm" style={{ color: "var(--ink)" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-soft)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{l}</button>
                 ))}
               </div>
