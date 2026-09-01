@@ -8,14 +8,18 @@ import JSZip from "jszip";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-/** POST /api/jobs/{recon|alerts|tasks|all}?farm=F01&date=YYYY-MM-DD — chạy tay (KTT/GĐ/KS CN) hoặc cron với header x-job-key */
+/** POST/GET /api/jobs/{recon|alerts|tasks|all}?farm=F01&date=YYYY-MM-DD — chạy tay (KTT/GĐ/KS CN),
+ *  cron nội bộ Docker (header x-job-key, xem instrumentation.ts), hoặc Vercel Cron (GET + header
+ *  Authorization: Bearer $CRON_SECRET tự động do Vercel gửi — xem vercel.json). Có GET để tương thích
+ *  Vercel Cron (chỉ gọi được GET) — không đọc body nên logic giống hệt POST, không cần tách hàm. */
 export async function POST(req: Request, { params }: { params: Promise<{ job: string }> }) {
   const { job } = await params; const url = new URL(req.url);
   const s = await getSession(); const key = req.headers.get("x-job-key");
   // KHÔNG fallback về key mặc định công khai (trước đây "dev-job-key" trùng default trong docker-compose.yml)
   // — nếu JOB_KEY chưa được set, đường x-job-key coi như tắt hẳn (chỉ còn vào được qua session đăng nhập).
   const jobKeyOk = !!process.env.JOB_KEY && key === process.env.JOB_KEY;
-  if (!s && !jobKeyOk) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
+  const cronOk = !!process.env.CRON_SECRET && req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
+  if (!s && !jobKeyOk && !cronOk) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
   if (s && !["tech_head","director","owner","it_engineer"].includes(s.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE" }, { status: 403 });
   const farms = url.searchParams.get("farm") ? [url.searchParams.get("farm")!] : (await adminPool().query("select id from farms where status='ACTIVE'")).rows.map((r) => r.id as string);
   const date = url.searchParams.get("date") ?? new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
@@ -101,3 +105,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
   const errors = Object.keys(out).filter((k) => k.startsWith("error:"));
   return NextResponse.json({ ok: errors.length === 0, date, out, ...(errors.length ? { errors } : {}) }, { status: errors.length ? 207 : 200 });
 }
+// Vercel Cron chỉ gọi GET — logic không đọc req.json() nên dùng lại nguyên vẹn hàm POST là đủ.
+export const GET = POST;

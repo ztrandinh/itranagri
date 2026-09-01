@@ -10,11 +10,19 @@ on:
         type: choice
         options: [staging, production]
         default: staging
+      skip_staging_gate:
+        description: "CHỈ dùng khi khẩn cấp: bỏ qua yêu cầu commit này đã qua staging xanh trước đó"
+        type: boolean
+        default: false
 
 # Không cho 2 lượt deploy chồng nhau lên cùng môi trường
 concurrency:
   group: deploy-${{ github.event.inputs.target }}
   cancel-in-progress: false
+
+# contents:write cần cho bước đánh tag `staging-verified` (gate staging→production) trong job app.
+permissions:
+  contents: write
 
 jobs:
   # 1) CỔNG CHẤT LƯỢNG: dựng lại từ CSDL trắng + test + build (không xanh thì KHÔNG deploy)
@@ -42,9 +50,31 @@ jobs:
       - name: Lint · types · test · build
         run: pnpm lint && pnpm exec tsc --noEmit && pnpm test && pnpm build
 
+  # 1b) GATE STAGING → PRODUCTION: trước đây chỉ là khuyến nghị quy trình trong docs/DEPLOY.md, không
+  # có gì kỹ thuật chặn việc chọn thẳng "production" mà chưa qua "staging" xanh. Nay ép bằng git tag
+  # `staging-verified` (job app, bước cuối, chỉ khi target=staging deploy thành công) — deploy production
+  # đòi tag này phải trỏ ĐÚNG commit đang deploy. `skip_staging_gate` là lối thoát khẩn cấp có chủ ý,
+  # không phải bypass ngầm — phải tự tay tick mỗi lần.
+  staging-gate:
+    needs: gate
+    if: ${{ github.event.inputs.target == 'production' && github.event.inputs.skip_staging_gate != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Xác nhận commit này đã qua staging xanh
+        run: |
+          git fetch --tags --force
+          if ! git tag --points-at HEAD | grep -qx "staging-verified"; then
+            echo "::error::Commit $(git rev-parse HEAD) chưa được deploy staging thành công (tag staging-verified không trỏ tới commit này). Deploy staging trước, hoặc tick skip_staging_gate nếu thật sự khẩn cấp."
+            exit 1
+          fi
+          echo "OK — commit đã qua staging."
+
   # 2) ĐẨY MIGRATION lên Supabase (CSDL production). Cần secrets ở repo (xem docs/DEPLOY.md).
   db-push:
-    needs: gate
+    needs: [gate, staging-gate]
+    if: ${{ !failure() && !cancelled() && (github.event.inputs.target != 'production' || needs.staging-gate.result == 'success' || github.event.inputs.skip_staging_gate == 'true') }}
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.target }}
     steps:
@@ -85,3 +115,10 @@ jobs:
           npx vercel pull --yes --environment=${{ github.event.inputs.target == 'production' && 'production' || 'preview' }} --token="$VERCEL_TOKEN"
           npx vercel build ${{ github.event.inputs.target == 'production' && '--prod' || '' }} --token="$VERCEL_TOKEN"
           npx vercel deploy --prebuilt ${{ github.event.inputs.target == 'production' && '--prod' || '' }} --token="$VERCEL_TOKEN"
+      - name: Đánh dấu commit đã qua staging (gate cho lượt deploy production sau)
+        if: ${{ github.event.inputs.target == 'staging' }}
+        run: |
+          git config user.name "itran-deploy-bot"
+          git config user.email "deploy-bot@itran.farm"
+          git tag -f staging-verified
+          git push origin staging-verified --force

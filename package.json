@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "analyze": "ANALYZE=true next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings 181",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:reset": "tsx scripts/migrate.ts --reset",
     "test": "vitest run",
@@ -14,7 +15,8 @@
     "db:codes": "tsx scripts/normalize-codes.ts",
     "db:codes:check": "tsx scripts/normalize-codes.ts --check",
     "db:seed:sim": "tsx scripts/simulate.ts && tsx scripts/normalize-codes.ts",
-    "db:seed:history": "tsx scripts/seed-history.ts && tsx scripts/normalize-codes.ts"
+    "db:seed:history": "tsx scripts/seed-history.ts && tsx scripts/normalize-codes.ts",
+    "load:smoke": "k6 run scripts/load/smoke.js"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
@@ -32,6 +34,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.3.4",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",
