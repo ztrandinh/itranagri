@@ -97,6 +97,10 @@ describe("Luật nghiệp vụ", () => {
     await expect(app.query("insert into feed_logs(farm_id,qty_kg,source,created_by,client_ref) values ('F01',10,'PAPER','NS-011',$1)", ["t-pp-" + Date.now()])).rejects.toThrow(/ERR_PAPER_SERIAL_REQUIRED/);
   });
   it("máy sinh mã theo trại", async () => { const r = await admin.query("select next_code('F99','BO',5) as c"); expect(r.rows[0].c).toMatch(/^F99-BO-\d{5}$/); });
+  it("0192: sales.lot_id nay có FK — lô không tồn tại bị chặn ở tầng DB", async () => {
+    await ctx("F01", "team_lead");
+    await expect(app.query("insert into sales(farm_id,partner_id,sku,lot_id,qty,price,channel,created_by,client_ref) select 'F01', p.id, pr.sku, 'LOT-KHONG-TON-TAI-XYZ', 1, 1000, 1, 'NS-003', $1 from partners p, products pr where p.farm_id='F01' limit 1", ["t-lotfk-" + Date.now()])).rejects.toThrow(/foreign key|violates/i);
+  });
   it("thêm trại mới = 1 dòng farms (không sửa code)", async () => {
     await admin.query("insert into farms(id,org_id,region_id,kind,name,s_ha,k_factor) values ('F98','ITRAN','TRUNG-DU','VE_TINH','Test F98',2.5,17) on conflict do nothing");
     expect((await admin.query("select count(*) from farms where id='F98'")).rows[0].count).toBe("1");

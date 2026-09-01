@@ -148,5 +148,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
         }
       }
     });
-  } catch (e) { const msg = e instanceof Error ? e.message : String(e); return NextResponse.json({ error: msg.match(/ERR_[A-Z_]+/)?.[0] ?? "ERR", detail: msg }, { status: 400 }); }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const code = msg.match(/ERR_[A-Z_]+/)?.[0];
+    if (!code) console.error("[exports]", kind, msg); // không lộ chi tiết driver DB ra client (xem actions/route.ts)
+    return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
+  }
 }
