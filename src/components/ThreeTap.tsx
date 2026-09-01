@@ -212,7 +212,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
                         </div>);
                     })}
                   </div>)}
-              {f.type === "photo" && (<div className="flex items-center gap-2"><input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />{photoUrls.map((u) => <img key={u} src={u} alt="" className="h-12 w-12 object-cover rounded" />)}</div>)}
+              {f.type === "photo" && (<div className="flex items-center gap-2"><input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />{photoUrls.map((u) => <img key={u} src={u} alt="" loading="lazy" className="h-12 w-12 object-cover rounded" />)}</div>)}
             </div>))}
           <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(1)}>← Quay lại</button><button className="btn-primary flex-1" disabled={missing.length > 0} onClick={() => setStep(3)}>{missing.length ? `Thiếu: ${missing.join(", ")}` : "Tiếp →"}</button></div>
         </div>)}
