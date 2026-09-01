@@ -27,9 +27,14 @@ export async function dispatchEvents(limit = 500): Promise<number> {
   // thật). Đặt processed_at=now() ngay khi claim: nhất quán với thiết kế hiện có (processed_at vốn đã
   // là marker "đã xử lý xong hay lỗi", không phải riêng "thành công") — lỗi xử lý phía dưới chỉ còn cần
   // ghi cột error, không cần set lại processed_at.
+  // Trước đây bất kỳ lỗi xử lý nào (0197) cũng coi như "đã xử lý", không dead-letter, không nơi nào đọc
+  // lại cột error — mất-là-mất vĩnh viễn dù lỗi chỉ là tạm thời. Nay: claim kèm tăng attempts; lỗi dưới
+  // MAX_ATTEMPTS được UNCLAIM (processed_at=null) để lượt dispatch sau thử lại thật; vượt ngưỡng mới đánh
+  // dead_letter_at (dừng thử, còn thấy được qua /api/health & truy vấn trực tiếp — không mất trong im lặng).
+  const MAX_ATTEMPTS = 5;
   const evs = (await p.query(
-    `update event_bus set processed_at = now()
-     where id in (select id from event_bus where processed_at is null order by id limit $1 for update skip locked)
+    `update event_bus set processed_at = now(), attempts = attempts + 1
+     where id in (select id from event_bus where processed_at is null and dead_letter_at is null order by id limit $1 for update skip locked)
      returning *`,
     [limit]
   )).rows;
@@ -95,9 +100,16 @@ export async function dispatchEvents(limit = 500): Promise<number> {
     // Tự chạy quy trình theo sự kiện (processes.auto_start.topic)
     if (farm) { const autos = (await p.query("select code from processes where status='BAN_HANH' and auto_start->>'topic'=$1 and (farm_id is null or farm_id=$2)", [e.topic, farm])).rows; for (const a of autos) { try { await p.query("select start_process_run($1,$2,'SYSTEM',$3,$4,$5,$6)", [farm, a.code, String(pl.table ?? e.topic), String(pl.id ?? pl.alert_id ?? e.id), `${e.topic} ${pl.id ?? ""}`, JSON.stringify(pl)]); } catch (err) { console.error("auto_start", a.code, (err as Error).message); } } }
    } catch (err) {
-     // processed_at đã được set atomic lúc claim (đầu hàm) — ở đây chỉ cần ghi lỗi để không lặp lại mãi; hàng đợi chảy tiếp.
      console.error("dispatch event", e.id, e.topic, (err as Error).message);
-     await p.query("update event_bus set error=$2 where id=$1", [e.id, (err as Error).message.slice(0, 200)]).catch(() => {});
+     const msg = (err as Error).message.slice(0, 200);
+     if (Number(e.attempts) >= MAX_ATTEMPTS) {
+       // vượt ngưỡng thử lại — giữ processed_at (đã claim), đánh dead_letter_at để vận hành thấy được
+       // sự kiện thật sự bị bỏ, phân biệt rõ với "đã xử lý thành công".
+       await p.query("update event_bus set error=$2, dead_letter_at=now() where id=$1", [e.id, msg]).catch(() => {});
+     } else {
+       // còn lượt thử — unclaim (processed_at=null) để lượt dispatch kế tiếp thử lại thật, không phải mất-là-mất.
+       await p.query("update event_bus set processed_at=null, error=$2 where id=$1", [e.id, msg]).catch(() => {});
+     }
    }
   }
   return n;
