@@ -143,21 +143,21 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-2">
-        <div><h2 className="text-xl font-bold">{spec.title}</h2>{spec.record && <div className="text-xs text-emerald-700 mt-0.5" title={spec.record.std}>📋 Ghi vào hồ sơ: <b>{spec.record.name}</b> ({spec.record.code}) · {spec.record.std}</div>}</div>
-        <div className="text-sm text-stone-500">Bước {step}/3</div>
+        <div><h2 className="text-xl font-bold">{spec.title}</h2>{spec.record && <div className="text-xs text-brand mt-0.5" title={spec.record.std}>📋 Ghi vào hồ sơ: <b>{spec.record.name}</b> ({spec.record.code}) · {spec.record.std}</div>}</div>
+        <div className="text-sm text-muted">Bước {step}/3</div>
       </div>
-      {msg && <div role="status" aria-live="polite" className={`mb-2 rounded-xl border px-3 py-2 ${msgErr ? "bg-red-50 border-red-200 text-red-800" : "bg-green-50 border-green-200 text-green-900"}`}>{msg}</div>}
+      {msg && <div role="status" aria-live="polite" className={`mb-2 rounded-xl border px-3 py-2 ${msgErr ? "bg-danger-soft-tok border-danger-tok text-danger-tok" : "bg-brand-soft border-brand-soft text-brand"}`}>{msg}</div>}
       {step === 1 && (
         <div>
-          <label className="block text-sm text-stone-600 mb-1">{spec.targetLabel}</label>
+          <label className="block text-sm text-muted mb-1">{spec.targetLabel}</label>
           <div className="flex gap-2"><QrScan onResult={(v) => setSearch(v)} /><input className="input" autoFocus placeholder="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" aria-label="Quét QR/RFID hoặc gõ mã / tên (không dấu được)" value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { const exact = spec.targets.find((t) => t.id.toLowerCase() === search.trim().toLowerCase() || t.meta?.rfid === search.trim() || t.meta?.visual_tag?.toString().toLowerCase() === search.trim().toLowerCase()); if (exact) { setTarget(exact); setStep(2); } else if (spec.allowScanInput && search.trim()) { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); } } }} /></div>
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-auto">
             {filtered.map((t) => (
               <button key={t.id} className="btn-secondary !py-3 !text-base flex-col items-start" onClick={() => { setTarget(t); setStep(2); }}>
-                <span className="font-semibold">{t.label}</span>{t.sub && <span className="text-xs text-stone-500">{t.sub}</span>}
+                <span className="font-semibold">{t.label}</span>{t.sub && <span className="text-xs text-muted">{t.sub}</span>}
               </button>))}
-            {!filtered.length && <div className="col-span-full text-stone-500 py-6 text-center">{spec.allowScanInput ? (search.trim() ? "Chưa có trong danh sách — bấm nút xanh bên dưới để dùng mã vừa gõ." : `Quét mã, hoặc gõ ${spec.targetLabel.toLowerCase()} vào ô trên.`) : "Chưa có đối tượng nào để chọn — báo tổ trưởng."}</div>}
+            {!filtered.length && <div className="col-span-full text-muted py-6 text-center">{spec.allowScanInput ? (search.trim() ? "Chưa có trong danh sách — bấm nút xanh bên dưới để dùng mã vừa gõ." : `Quét mã, hoặc gõ ${spec.targetLabel.toLowerCase()} vào ô trên.`) : "Chưa có đối tượng nào để chọn — báo tổ trưởng."}</div>}
           </div>
           {/* Trước đây lối đi duy nhất khi danh sách rỗng (vd bảo vệ ghi "Nhật ký cổng", đối tượng là
               biển số xe nên không thể có sẵn danh sách) là bấm phím Enter — trên bàn phím điện thoại
@@ -167,30 +167,30 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
         </div>)}
       {step === 2 && target && (
         <div className="space-y-4">
-          <div className="rounded-xl bg-stone-100 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-stone-500 text-sm">· {target.sub}</span>}</span><button className="underline text-sm" onClick={() => setStep(1)}>đổi</button></div>
+          <div className="rounded-xl bg-surface-2 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-muted text-sm">· {target.sub}</span>}</span><button className="underline text-sm" onClick={() => setStep(1)}>đổi</button></div>
           {spec.fields.map((f) => (
             <div key={f.key}>
-              <label className="block text-sm text-stone-600 mb-1">{f.label}{f.required && " *"}</label>
+              <label className="block text-sm text-muted mb-1">{f.label}{f.required && " *"}</label>
               {f.type === "choice" && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {f.options.map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-green-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: o.id }))}>{o.label}</button>)}
+                  {f.options.map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-brand-tok text-white" : "bg-surface border border-line"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: o.id }))}>{o.label}</button>)}
                 </div>)}
               {f.type === "number" && (
                 <div className="flex items-center gap-2">
                   <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Math.max(f.min ?? -1e9, Number(v0[f.key] ?? 0) - (f.step ?? 1)) }))}>−</button>
                   <input type="number" inputMode="decimal" className="input text-center text-2xl font-bold" value={(vals[f.key] as number) ?? ""} min={f.min} max={f.max} step={f.step ?? "any"} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Number(v0[f.key] ?? 0) + (f.step ?? 1) }))}>+</button>
-                  {f.unit && <span className="text-stone-600 w-16">{f.unit}</span>}
+                  {f.unit && <span className="text-muted w-16">{f.unit}</span>}
                   {f.unit === "kg" && <button type="button" className="btn-secondary !px-3 !py-2 !text-sm" title="Đọc từ cân Bluetooth" onClick={() => readBleScale(f.key)}>⚖ BLE</button>}
                 </div>)}
               {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
               {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
-              {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
+              {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-brand-tok text-white" : "bg-surface border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
               {/* Checklist THẬT: từng bước SOP một dòng, chấm riêng. Trước đây cả quy trình
                   chỉ có MỘT công tắc "Tất cả bước ĐẠT" — một cú bấm như vậy không phải bằng
                   chứng tuân thủ, và không ai biết bước nào hỏng. */}
               {f.type === "steps" && (buocSop.length === 0
-                ? <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">Quy trình này chưa khai bước nào — báo tổ trưởng bổ sung SOP trước khi ghi.</div>
+                ? <div className="rounded-xl border border-amber-300 bg-warning-soft-tok px-3 py-2 text-sm text-warning-tok">Quy trình này chưa khai bước nào — báo tổ trưởng bổ sung SOP trước khi ghi.</div>
                 : <div className="space-y-1">
                     <div className="flex gap-2 mb-1">
                       <button className="btn-secondary !py-2 !text-sm flex-1" onClick={() => setVals((v0) => ({ ...v0, [f.key]: buocSop.map((b) => ({ ...b, ok: true })) }))}>Chấm tất cả ĐẠT</button>
@@ -204,11 +204,11 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
                         return { ...v0, [f.key]: [...cu, { ...b, ok }].sort((x, y) => x.n - y.n) };
                       });
                       return (
-                        <div key={b.n} className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${cur === false ? "border-red-300 bg-red-50" : cur === true ? "border-green-300 bg-green-50" : "border-stone-200"}`}>
-                          <span className="text-sm text-stone-500 w-6 shrink-0">{b.n}.</span>
+                        <div key={b.n} className={`flex items-center gap-2 rounded-xl border px-2 py-1.5 ${cur === false ? "border-danger-tok bg-danger-soft-tok" : cur === true ? "border-green-300 bg-brand-soft" : "border-line"}`}>
+                          <span className="text-sm text-muted w-6 shrink-0">{b.n}.</span>
                           <span className="flex-1 text-sm">{b.a}</span>
-                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === true ? "bg-green-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => dat(true)} aria-label={`Bước ${b.n} đạt`}>Đạt</button>
-                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === false ? "bg-red-700 text-white" : "bg-white border border-stone-300"}`} onClick={() => dat(false)} aria-label={`Bước ${b.n} không đạt`}>Không</button>
+                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === true ? "bg-brand-tok text-white" : "bg-surface border border-line"}`} onClick={() => dat(true)} aria-label={`Bước ${b.n} đạt`}>Đạt</button>
+                          <button className={`btn !py-1.5 !px-3 !text-sm ${cur === false ? "bg-red-700 text-white" : "bg-surface border border-line"}`} onClick={() => dat(false)} aria-label={`Bước ${b.n} không đạt`}>Không</button>
                         </div>);
                     })}
                   </div>)}
@@ -218,8 +218,8 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
         </div>)}
       {step === 3 && target && (
         <div className="space-y-3">
-          <div className="rounded-xl bg-green-50 border border-green-200 p-3">
-            <div className="text-sm text-stone-600">Xác nhận ghi</div>
+          <div className="rounded-xl bg-brand-soft border border-brand-soft p-3">
+            <div className="text-sm text-muted">Xác nhận ghi</div>
             <div className="text-lg font-bold">{spec.title} · {target.label}</div>
             <ul className="text-base mt-1">{spec.fields.filter((f) => vals[f.key] != null && vals[f.key] !== "").map((f) => <li key={f.key}>{f.label}: <b>{f.type === "choice" ? f.options.find((o) => o.id === vals[f.key])?.label : String(vals[f.key])}</b>{f.type === "number" && f.unit ? ` ${f.unit}` : ""}</li>)}{photoUrls.length > 0 && <li>Ảnh: {photoUrls.length}</li>}{spec.paper?.serial && <li>Từ phiếu giấy: <b>{spec.paper.serial}</b></li>}</ul>
           </div>

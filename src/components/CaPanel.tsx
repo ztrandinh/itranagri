@@ -70,15 +70,15 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
 
       {tab === "viec" && (
         <div className="space-y-2">
-          {!viecCuaToi.length && <div className="card text-stone-500">Bạn không có việc nào được giao đích danh. Bấm "Ghi 3 chạm" để ghi việc thường ngày.</div>}
+          {!viecCuaToi.length && <div className="card text-muted">Bạn không có việc nào được giao đích danh. Bấm "Ghi 3 chạm" để ghi việc thường ngày.</div>}
           {viecCuaToi.map((t) => (
-            <div key={t.id} className={`card flex items-start gap-3 ${t.priority === "KHAN" ? "border-red-300" : t.priority === "CAO" ? "border-amber-300" : ""}`}>
+            <div key={t.id} className={`card flex items-start gap-3 ${t.priority === "KHAN" ? "border-danger-tok" : t.priority === "CAO" ? "border-amber-300" : ""}`}>
               <div className="flex-1">
                 <div className="font-semibold">{t.title}</div>
                 {/* Nói rõ bấm một cái là đóng bao nhiêu việc — đừng để công nhân bấm mà không
                     biết mình vừa đóng 120 bản ghi. */}
-                {(t.group_n ?? 1) > 1 && <div className="text-xs text-amber-800">Gồm {t.group_n} việc giống nhau — bấm ✓ Xong là đóng cả nhóm</div>}
-                <div className="text-sm text-stone-500">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>} {t.sop_code && <a className="underline ml-1" href={`/sop/${t.sop_code}`}>{t.sop_code}</a>}{t.handover_note && <div className="text-amber-800">📝 {t.handover_note}</div>}</div>
+                {(t.group_n ?? 1) > 1 && <div className="text-xs text-warning-tok">Gồm {t.group_n} việc giống nhau — bấm ✓ Xong là đóng cả nhóm</div>}
+                <div className="text-sm text-muted">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>} {t.sop_code && <a className="underline ml-1" href={`/sop/${t.sop_code}`}>{t.sop_code}</a>}{t.handover_note && <div className="text-warning-tok">📝 {t.handover_note}</div>}</div>
               </div>
               <div className="flex flex-col gap-1">
                 <button className="btn-primary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
@@ -86,24 +86,24 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                 {["KHAM_THAI", "CACH_LY_RA"].includes(t.kind) && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("animal_event"); setTab("ghi"); }}>Ghi sự kiện</button>}
                 {t.kind === "SO_HOA_GIAY" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/giay">Nhập từ phiếu</a>}
                 {t.kind === "ALERT" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/canh-bao">Xem cảnh báo</a>}
-                <button className="text-xs underline text-stone-500" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { ids: t.group_ids ?? [t.id], status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
+                <button className="text-xs underline text-muted" onClick={async () => { const n = await prompt({ title: "Treo việc sang ca sau", label: "Treo sang ca sau — ghi chú:", type: "text", required: false }); if (n != null) { await act("task_status", { ids: t.group_ids ?? [t.id], status: "TREO", handover_note: n }); tasks.reload(); } }}>treo</button>
               </div>
             </div>))}
           {/* KHÔNG xoá việc chung — chỉ gấp lại để nó không nhấn chìm việc đích danh. */}
           {!!viecChung.length && (
             <details className="card">
               <summary className="cursor-pointer font-semibold">Việc chung của bộ phận, chưa giao ai — {viecChung.length}{chungQuaHan ? ` · ${chungQuaHan} quá hạn` : ""}</summary>
-              <div className="text-sm text-stone-500 mt-1 mb-2">Đây là việc hệ thống sinh cho cả nhóm, chưa chỉ định người làm. Ai làm thì bấm ✓ Xong; nếu thấy đúng là việc của mình, báo tổ trưởng giao đích danh để lần sau hiện ở trên.</div>
+              <div className="text-sm text-muted mt-1 mb-2">Đây là việc hệ thống sinh cho cả nhóm, chưa chỉ định người làm. Ai làm thì bấm ✓ Xong; nếu thấy đúng là việc của mình, báo tổ trưởng giao đích danh để lần sau hiện ở trên.</div>
               <div className="space-y-2">
                 {viecChung.slice(0, 30).map((t) => (
                   <div key={t.id} className="rounded-xl border px-3 py-2 flex items-start gap-3">
                     <div className="flex-1">
                       <div className="font-semibold">{t.title}</div>
-                      <div className="text-sm text-stone-500">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>}</div>
+                      <div className="text-sm text-muted">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>}</div>
                     </div>
                     <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
                   </div>))}
-                {viecChung.length > 30 && <div className="text-sm text-stone-500">…còn {viecChung.length - 30} việc nữa. Danh sách quá dài là do việc được sinh mà không giao người — cần tổ trưởng phân công.</div>}
+                {viecChung.length > 30 && <div className="text-sm text-muted">…còn {viecChung.length - 30} việc nữa. Danh sách quá dài là do việc được sinh mà không giao người — cần tổ trưởng phân công.</div>}
               </div>
             </details>)}
         </div>)}
@@ -125,12 +125,12 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
             <textarea className="input" rows={3} placeholder="Con B012 bỏ ăn sáng, ca sau theo dõi…" aria-label="Con B012 bỏ ăn sáng, ca sau theo dõi…" value={noteTxt} onChange={(e) => setNoteTxt(e.target.value)} />
             <div className="flex gap-2 mt-2"><button className="btn-secondary" onClick={async () => { if (!noteTxt.trim()) return; await act("shift_note", { note: noteTxt, dept: sess.position, shift: new Date().getHours() < 12 ? "SANG" : "CHIEU" }); setNoteTxt(""); notes.reload(); }}>Lưu ghi chú</button><button className="btn-primary" onClick={async () => { if (!noteTxt.trim()) return; await act("shift_note", { note: noteTxt, dept: sess.position, make_task: true, role_hint: myRoleKey ? `worker:${myRoleKey}` : sess.role }); setNoteTxt(""); notes.reload(); tasks.reload(); }}>Lưu + tạo việc cho ca sau</button></div>
           </div>
-          {(notes.rows ?? []).map((n) => <div key={n.id} className="card text-base"><div className="text-sm text-stone-500">{fmt.dt(n.ts)} · {n.by_name} · {n.dept}</div><div>{n.note}</div>{!n.ack_by && <button className="text-sm underline mt-1" onClick={async () => { await act("ack_note", { id: n.id }); notes.reload(); }}>Đã đọc</button>}{n.ack_by && <span className="b-grn mt-1">đã nhận</span>}</div>)}
+          {(notes.rows ?? []).map((n) => <div key={n.id} className="card text-base"><div className="text-sm text-muted">{fmt.dt(n.ts)} · {n.by_name} · {n.dept}</div><div>{n.note}</div>{!n.ack_by && <button className="text-sm underline mt-1" onClick={async () => { await act("ack_note", { id: n.id }); notes.reload(); }}>Đã đọc</button>}{n.ack_by && <span className="b-grn mt-1">đã nhận</span>}</div>)}
         </div>)}
       {tab === "gan_day" && (
         <div className="card overflow-auto">
           {recent.rows && !recent.rows.length
-            ? <div className="text-stone-500 py-6 text-center">Bạn chưa ghi gì. Mọi bản ghi bạn tạo sẽ hiện ở đây ngay sau khi lưu.</div>
+            ? <div className="text-muted py-6 text-center">Bạn chưa ghi gì. Mọi bản ghi bạn tạo sẽ hiện ở đây ngay sau khi lưu.</div>
             : <table className="tbl"><thead><tr><th>Lúc</th><th>Loại</th><th>Gì</th><th>Đối tượng</th><th>Nguồn</th></tr></thead><tbody>
               {(recent.rows ?? []).slice(0, 60).map((e, i) => <tr key={i}><td>{fmt.dt(e.ts)}</td><td>{String(e.kind)}</td><td>{String(e.what)}</td><td>{String(e.who ?? "")}</td><td>{String(e.source)}{e.is_backfill ? " (bù)" : ""}</td></tr>)}
             </tbody></table>}

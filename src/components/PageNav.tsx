@@ -11,6 +11,6 @@ export default function PageNav({ dept, title }: { dept?: string | null; title?:
     {/* KHÔNG đặt tên "Tiếp →": trùng với nút "Tiếp →" của form ghi 3 chạm → công nhân bấm nhầm,
         nhảy sang trang khác và mất dữ liệu đang nhập. Dùng ký hiệu tiến/lùi rõ ràng. */}
     <button type="button" className="px-2 py-1 rounded-lg border bg-white hover:bg-slate-50 font-semibold" onClick={() => window.history.forward()} title="Tiến tới trang vừa quay lại" aria-label="Tiến tới trang vừa quay lại">↷</button>
-    {title && <span className="ml-2 text-slate-500 truncate hidden sm:inline">/ {title}</span>}
+    {title && <span className="ml-2 text-muted truncate hidden sm:inline">/ {title}</span>}
   </div>;
 }
