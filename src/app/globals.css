@@ -80,6 +80,35 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
   .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap border; }
   .tab-btn-active { @apply inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold whitespace-nowrap border; }
 }
+/* ===== CLASS NGỮ NGHĨA THẬT (dọn nợ kỹ thuật) — thay cho việc chặn ở tầng CSS bằng !important lên
+   class Tailwind cứng (vẫn còn tồn tại phía dưới cho code cũ chưa đổi). Code MỚI/đang dọn phải dùng
+   thẳng các class này thay vì text-slate-900, bg-red-100... — cùng giá trị token, không cần lớp bù nữa. */
+.text-ink { color: var(--ink); }
+.text-muted { color: var(--muted); }
+.text-brand { color: var(--brand-strong); }
+.text-danger-tok { color: var(--danger); }
+.text-warning-tok { color: var(--warning); }
+.text-success-tok { color: var(--success); }
+.text-info-tok { color: var(--info); }
+.bg-surface { background-color: var(--surface); }
+.bg-surface-2 { background-color: var(--surface-2); }
+.bg-brand-tok { background-color: var(--brand); }
+/* Rất nhiều chỗ ghép "bg-brand-tok text-white" (chip/badge nhỏ) — lặp lại đúng lỗi tương phản đã đo và vá ở
+   .btn-primary: dark mode --brand SÁNG hơn (teal nhạt), chữ trắng cứng trên đó chỉ ~2.3:1, trượt WCAG AA.
+   Bắt cả 2 class trên CÙNG 1 phần tử, ghi đè bằng --bg (đã đo 8.26:1) — không cần sửa tay từng file JSX. */
+.bg-brand-tok.text-white { color: var(--bg) !important; }
+/* Vài file còn giữ class Tailwind thô (bg-emerald-600/700, bg-green-600/700 — đã bị ánh xạ sang var(--brand)
+   ở khối "Ánh xạ palette cũ" phía trên) ghép với text-white — cùng lỗi tương phản hệt trên. */
+.bg-emerald-600.text-white, .bg-emerald-700.text-white, .bg-green-600.text-white, .bg-green-700.text-white { color: var(--bg) !important; }
+.bg-brand-soft { background-color: var(--brand-soft); }
+.bg-danger-soft-tok { background-color: var(--danger-soft); }
+.bg-warning-soft-tok { background-color: var(--warning-soft); }
+.bg-success-soft-tok { background-color: var(--success-soft); }
+.bg-info-soft-tok { background-color: var(--info-soft); }
+.border-line { border-color: var(--line); }
+.border-brand-tok { border-color: var(--brand); }
+.border-brand-soft { border-color: var(--brand-soft); }
+.border-danger-tok { border-color: var(--danger); }
 /* Focus nhìn thấy được cho bàn phím (WCAG 2.4.7) — nút mọi biến thể + phần tử bấm được */
 .btn:focus-visible, .btn-primary:focus-visible, .btn-secondary:focus-visible, .btn-danger:focus-visible, .tile:focus-visible, a:focus-visible, button:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 8px; }
 /* Ánh xạ palette cũ (green/stone/emerald) sang TOKEN thương hiệu (không hardcode hex) để đổi 1 chỗ là đổi toàn app */
@@ -198,8 +227,9 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
 :root:not([data-theme="light"]) [class*="text-red-6"], :root:not([data-theme="light"]) [class*="text-red-7"], :root:not([data-theme="light"]) [class*="text-red-8"], :root:not([data-theme="light"]) [class*="text-red-9"] { color: var(--danger) !important; }
 :root[data-theme="dark"] [class*="text-amber-6"], :root[data-theme="dark"] [class*="text-amber-7"], :root[data-theme="dark"] [class*="text-amber-8"], :root[data-theme="dark"] [class*="text-amber-9"], :root[data-theme="dark"] [class*="text-orange-6"], :root[data-theme="dark"] [class*="text-orange-7"], :root[data-theme="dark"] [class*="text-orange-8"], :root[data-theme="dark"] [class*="text-orange-9"],
 :root:not([data-theme="light"]) [class*="text-amber-6"], :root:not([data-theme="light"]) [class*="text-amber-7"], :root:not([data-theme="light"]) [class*="text-amber-8"], :root:not([data-theme="light"]) [class*="text-amber-9"], :root:not([data-theme="light"]) [class*="text-orange-6"], :root:not([data-theme="light"]) [class*="text-orange-7"], :root:not([data-theme="light"]) [class*="text-orange-8"], :root:not([data-theme="light"]) [class*="text-orange-9"] { color: var(--warning) !important; }
-:root[data-theme="dark"] [class*="text-emerald-6"], :root[data-theme="dark"] [class*="text-emerald-7"], :root[data-theme="dark"] [class*="text-emerald-8"], :root[data-theme="dark"] [class*="text-emerald-9"], :root[data-theme="dark"] [class*="text-green-6"], :root[data-theme="dark"] [class*="text-green-7"], :root[data-theme="dark"] [class*="text-green-8"], :root[data-theme="dark"] [class*="text-green-9"],
-:root:not([data-theme="light"]) [class*="text-emerald-6"], :root:not([data-theme="light"]) [class*="text-emerald-7"], :root:not([data-theme="light"]) [class*="text-emerald-8"], :root:not([data-theme="light"]) [class*="text-emerald-9"], :root:not([data-theme="light"]) [class*="text-green-6"], :root:not([data-theme="light"]) [class*="text-green-7"], :root:not([data-theme="light"]) [class*="text-green-8"], :root:not([data-theme="light"]) [class*="text-green-9"] { color: var(--success) !important; }
+/* (KHÔNG map "text-emerald-N" / "text-green-N" ở đây — đã map sang --brand-strong không điều kiện ở khối
+   "Ánh xạ palette cũ" phía trên; từng có 2 rule chồng nhau khiến emerald hiện brand ở sáng nhưng success
+   ở tối, không nhất quán. Emerald là màu thương hiệu CŨ nên coi là brand xuyên suốt, không phải success.) */
 :root[data-theme="dark"] [class*="text-blue-6"], :root[data-theme="dark"] [class*="text-blue-7"], :root[data-theme="dark"] [class*="text-blue-8"], :root[data-theme="dark"] [class*="text-blue-9"], :root[data-theme="dark"] [class*="text-sky-6"], :root[data-theme="dark"] [class*="text-sky-7"], :root[data-theme="dark"] [class*="text-sky-8"], :root[data-theme="dark"] [class*="text-sky-9"],
 :root:not([data-theme="light"]) [class*="text-blue-6"], :root:not([data-theme="light"]) [class*="text-blue-7"], :root:not([data-theme="light"]) [class*="text-blue-8"], :root:not([data-theme="light"]) [class*="text-blue-9"], :root:not([data-theme="light"]) [class*="text-sky-6"], :root:not([data-theme="light"]) [class*="text-sky-7"], :root:not([data-theme="light"]) [class*="text-sky-8"], :root:not([data-theme="light"]) [class*="text-sky-9"] { color: var(--info) !important; }
 /* 2 sắc chỉ dùng để phân loại trực quan (không phải mức độ nặng nhẹ) ở TodayBar/Career — không có token riêng,

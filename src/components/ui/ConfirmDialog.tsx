@@ -17,7 +17,7 @@ export function useConfirm() {
 
   const element = state ? (
     <Modal open onClose={() => close(false)} title={state.title}>
-      {state.message && <p className="text-slate-600 mb-4">{state.message}</p>}
+      {state.message && <p className="text-muted mb-4">{state.message}</p>}
       <div className="flex gap-2 justify-end">
         <button className="btn-secondary !py-2.5 !px-4 !text-base" onClick={() => close(false)}>
           {state.cancelText ?? "Hủy"}

@@ -18,12 +18,12 @@ export function Field({ label, required, hint, error, children, className }: {
   const describedBy = [hintId, errId].filter(Boolean).join(" ") || undefined;
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm text-slate-600 mb-1 font-medium">
-        {label}{required && <span className="text-red-600" aria-hidden="true"> *</span>}
+      <label htmlFor={id} className="block text-sm text-muted mb-1 font-medium">
+        {label}{required && <span className="text-danger-tok" aria-hidden="true"> *</span>}
       </label>
       {children({ id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy })}
-      {hint && <p id={hintId} className="mt-1 text-xs text-slate-500">{hint}</p>}
-      {error && <p id={errId} className="mt-1 text-xs text-red-600" role="alert">{error}</p>}
+      {hint && <p id={hintId} className="mt-1 text-xs text-muted">{hint}</p>}
+      {error && <p id={errId} className="mt-1 text-xs text-danger-tok" role="alert">{error}</p>}
     </div>
   );
 }

@@ -12,12 +12,12 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-green-900 p-4">
       <form onSubmit={go} className="card w-full max-w-sm space-y-4">
-        <div className="text-center"><div className="text-3xl font-black text-green-800">ITRAN AGRI</div><div className="text-stone-500 text-sm">Hệ điều hành số trang trại tuần hoàn</div></div>
-        <div><label className="text-sm text-stone-600">Tài khoản (mã đăng nhập / SĐT)</label><input className="input" autoFocus autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="a1, gd, owner…" /></div>
-        <div><label className="text-sm text-stone-600">PIN</label><input className="input text-center tracking-[0.5em] text-2xl" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" /></div>
-        {err && <div className="text-red-700 text-sm">{err}</div>}
+        <div className="text-center"><div className="text-3xl font-black text-brand">ITRAN AGRI</div><div className="text-muted text-sm">Hệ điều hành số trang trại tuần hoàn</div></div>
+        <div><label className="text-sm text-muted">Tài khoản (mã đăng nhập / SĐT)</label><input className="input" autoFocus autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="a1, gd, owner…" /></div>
+        <div><label className="text-sm text-muted">PIN</label><input className="input text-center tracking-[0.5em] text-2xl" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" /></div>
+        {err && <div className="text-danger-tok text-sm">{err}</div>}
         <button className="btn-primary w-full" disabled={busy}>Đăng nhập</button>
-        <div className="text-xs text-stone-500 text-center">Dev: owner / gd / ktt-cn / a1…a11 / audit · PIN 1234</div>
+        <div className="text-xs text-muted text-center">Dev: owner / gd / ktt-cn / a1…a11 / audit · PIN 1234</div>
       </form>
     </div>);
 }

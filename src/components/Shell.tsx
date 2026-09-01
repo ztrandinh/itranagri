@@ -83,63 +83,63 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   const isActive = (href: string) => { const h = href.split("?")[0]; return path === h || path.startsWith(h + "/"); };
   const SideNav = (
     <nav className="flex-1 overflow-y-auto py-2 text-[15px]">
-      <Link href="/trang-chu" className={`mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 ${path === "/trang-chu" ? "bg-emerald-600 text-white" : "text-slate-200 hover:bg-slate-800"}`}><span>🏠</span>{!collapsed && <span>Trang chủ · khu vực</span>}</Link>
+      <Link href="/trang-chu" className={`mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 ${path === "/trang-chu" ? "bg-brand-tok text-white" : "text-slate-200 hover:bg-slate-800"}`}><span>🏠</span>{!collapsed && <span>Trang chủ · khu vực</span>}</Link>
       {zones.map((z) => <div key={z.key} className="mt-2">
-        {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-emerald-700 text-white px-1 normal-case">phòng tôi</span> : null}</div>}
-        {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-emerald-600 text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
+        {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-brand-tok text-white px-1 normal-case">phòng tôi</span> : null}</div>}
+        {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-brand-tok text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
       </div>)}
       {chiKhuCuaToi && !collapsed && (soKhuAn > 0 || xemHet) && (
-        <button className="mx-2 mt-2 w-[calc(100%-1rem)] rounded-lg px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-800"
+        <button className="mx-2 mt-2 w-[calc(100%-1rem)] rounded-lg px-3 py-1.5 text-left text-xs text-muted hover:bg-slate-800"
           onClick={() => setXemHet(!xemHet)}>
           {xemHet ? "▾ Thu gọn — chỉ hiện phòng tôi" : `▸ Xem thêm ${soKhuAn} khu khác của trại`}
         </button>)}
-      <div className="mt-3 border-t border-slate-800 pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
+      <div className="mt-3 border-t border-slate-800 pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-brand-tok text-white" : "text-slate-300 hover:bg-slate-800"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
     </nav>);
   return (
-    <div className="min-h-screen flex bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex bg-surface-2 text-ink">
       <Toaster />
       <ThemeBoot />
       <SunBoot />
       <CommandPalette />
       <a href="#main" className="ui-skip">Tới nội dung chính</a>
       <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-slate-900 text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
-        <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
+        <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-muted hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
         {SideNav}
-        <div className="border-t border-slate-800 p-3 text-xs text-slate-400">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
+        <div className="border-t border-slate-800 p-3 text-xs text-muted">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
       </aside>
-      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
+      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN AGRI<button className="ml-auto text-muted" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-slate-200 flex items-center gap-3 px-3">
+        <header className="sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-line flex items-center gap-3 px-3">
           <button className="md:hidden text-2xl" onClick={() => setSide(true)} aria-label="Menu">☰</button>
-          <span className="md:hidden font-black text-emerald-700">ITRAN AGRI</span>
+          <span className="md:hidden font-black text-brand">ITRAN AGRI</span>
           {sess.farmIds.length > 1 ? (
-            <select className="rounded-lg border border-slate-300 bg-white text-sm px-2 py-1 font-semibold" value={sess.farmId}
+            <select className="rounded-lg border border-line bg-surface text-sm px-2 py-1 font-semibold" value={sess.farmId}
               onChange={async (e) => { await fetch("/api/auth/switch-farm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ farm_id: e.target.value }) }); router.refresh(); window.location.reload(); }}>
               {sess.farmIds.map((f) => <option key={f} value={f}>Trại {f}</option>)}
-            </select>) : <span className="hidden sm:inline text-sm font-semibold text-slate-600">Trại {sess.farmId}</span>}
+            </select>) : <span className="hidden sm:inline text-sm font-semibold text-muted">Trại {sess.farmId}</span>}
           <div className="ml-auto flex items-center gap-2 text-sm">
             <Search />
             <SunToggle compact />
             <span className="hidden md:inline-flex"><ThemeToggle compact /></span>
             <Bell />
-            <button onClick={() => setShowQ(!showQ)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${!online ? "bg-amber-400 text-black" : q.length ? "bg-amber-200 text-amber-900" : "bg-emerald-100 text-emerald-800"}`} title="Hàng đợi đồng bộ">
+            <button onClick={() => setShowQ(!showQ)} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${!online ? "bg-amber-400 text-black" : q.length ? "bg-amber-200 text-warning-tok" : "bg-brand-soft text-brand"}`} title="Hàng đợi đồng bộ">
               {online ? (q.length ? `⏳ ${q.length}` : "✓ đồng bộ") : `📴 offline ${q.length}`}
             </button>
-            <span className="hidden lg:inline text-slate-600">{sess.staffName}</span>
+            <span className="hidden lg:inline text-muted">{sess.staffName}</span>
           </div>
         </header>
       {showQ && (
-        <div className="bg-amber-50 border-b border-amber-200 text-sm">
+        <div className="bg-warning-soft-tok border-b border-amber-200 text-sm">
           <div className="max-w-[1400px] mx-auto px-3 py-2">
-            <div className="flex items-center gap-3"><b>Hàng đợi: {q.length}</b> <button className="underline" onClick={() => void flush()}>Đồng bộ ngay</button> {failed.length > 0 && <span className="text-red-700">{failed.length} bản ghi bị từ chối — cần sửa</span>}</div>
-            <ul className="mt-1 max-h-48 overflow-auto">{q.map((x) => <li key={x.key} className="flex gap-2 py-0.5 border-t border-amber-100"><span className="font-mono text-xs">{x.table}</span><span className="truncate flex-1">{JSON.stringify(x.event).slice(0, 90)}</span>{x.last_error && <span className="text-red-700 text-xs">{x.last_error.slice(0, 60)}</span>}{x.last_error && <button className="text-xs underline" onClick={() => discard(x.key)}>bỏ</button>}</li>)}</ul>
+            <div className="flex items-center gap-3"><b>Hàng đợi: {q.length}</b> <button className="underline" onClick={() => void flush()}>Đồng bộ ngay</button> {failed.length > 0 && <span className="text-danger-tok">{failed.length} bản ghi bị từ chối — cần sửa</span>}</div>
+            <ul className="mt-1 max-h-48 overflow-auto">{q.map((x) => <li key={x.key} className="flex gap-2 py-0.5 border-t border-amber-100"><span className="font-mono text-xs">{x.table}</span><span className="truncate flex-1">{JSON.stringify(x.event).slice(0, 90)}</span>{x.last_error && <span className="text-danger-tok text-xs">{x.last_error.slice(0, 60)}</span>}{x.last_error && <button className="text-xs underline" onClick={() => discard(x.key)}>bỏ</button>}</li>)}</ul>
           </div>
         </div>)}
         <main id="main" className="flex-1 w-full max-w-[1800px] mx-auto px-3 md:px-5 py-4">
-          {title && <h1 className="text-xl md:text-2xl font-bold mb-3 text-slate-800">{title}</h1>}
+          {title && <h1 className="text-xl md:text-2xl font-bold mb-3 text-ink">{title}</h1>}
           {children}
         </main>
-        <footer className="text-center text-xs text-slate-400 py-3">ITRAN FARM · "Một vòng tròn — không gì bị bỏ đi" · người tạo bản ghi, máy viết báo cáo</footer>
+        <footer className="text-center text-xs text-muted py-3">ITRAN FARM · "Một vòng tròn — không gì bị bỏ đi" · người tạo bản ghi, máy viết báo cáo</footer>
         <BottomNav role={sess.role} />
       </div>
     </div>
