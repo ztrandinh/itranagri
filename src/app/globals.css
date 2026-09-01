@@ -90,6 +90,9 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
 .text-warning-tok { color: var(--warning); }
 .text-success-tok { color: var(--success); }
 .text-info-tok { color: var(--info); }
+.text-gold-tok { color: var(--gold); }
+.bg-gold-soft-tok { background-color: var(--gold-soft); }
+.border-gold-tok { border-color: var(--gold); }
 .bg-surface { background-color: var(--surface); }
 .bg-surface-2 { background-color: var(--surface-2); }
 .bg-brand-tok { background-color: var(--brand); }
@@ -164,11 +167,19 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
 .tile:hover { border-color: var(--brand); box-shadow: var(--sh-2); transform: translateY(-1px); }
 .card:hover, .kpi:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
 .kpi .v { color: var(--ink); } .kpi .l { color: var(--muted); letter-spacing: .04em; }
+/* Điểm nhấn thương hiệu thứ 2: dải accent mảnh đỉnh mỗi thẻ KPI (dùng ở 44 panel qua 1 class dùng chung) —
+   giữ teal (không dùng vàng) để vàng chỉ giữ nghĩa "chứng nhận/cao cấp" ở /chuan, không bị loãng. */
+.kpi { position: relative; overflow: hidden; }
+.kpi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--brand), var(--brand-strong)); opacity: .75; }
 /* nút bo góc mềm hơn cho hiện đại */
 .btn, .btn-primary, .btn-secondary, .btn-danger { border-radius: var(--r-md); }
 .tab-btn { background: var(--surface); color: var(--ink); border-color: var(--line); }
 .tab-btn:hover { background: var(--brand-soft); }
 .tab-btn-active, .tab-btn[aria-current="page"] { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+/* Điểm nhấn thương hiệu duy nhất, xuất hiện trên MỌI trang: viền dưới header đổi từ 1px xám phẳng
+   sang dải gradient mảnh teal→vàng→teal — tinh tế, không lạm dụng (1 vị trí, opacity thấp). */
+.app-header { position: relative; border-bottom-color: transparent !important; }
+.app-header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brand) 20%, var(--gold) 50%, var(--brand) 80%, transparent); opacity: .65; }
 
 /* ===== DARK MODE: bù cho các utility class hardcode đang dùng rải rác (100+ file) =====
    Chỉ ánh xạ về token — không đổi cấu trúc component. Gom vào 1 nơi để sau này gỡ dần. */
