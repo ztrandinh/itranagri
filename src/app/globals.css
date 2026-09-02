@@ -13,6 +13,11 @@
   --danger: #c0392b;  --danger-soft: #fdeceb;
   --info: #2f6ba3;    --info-soft: #eaf2fa;
   --gold: #a67c1e;    --gold-soft: #f7ecd2;
+  /* Sidebar trái: TỐI CỐ ĐỊNH, không đổi theo theme (giống Toast.tsx) — trước dùng bg-slate-900 trung tính
+     của Tailwind, không mang bản sắc thương hiệu dù cả app còn lại đều theo teal. Nhuộm nhẹ hướng teal
+     thương hiệu thay vì đen-xám chung chung. Định nghĩa 1 lần ở đây (không lặp trong dark-mode block vì
+     luôn giữ nguyên, không ăn theo theme) — dùng qua bg-[var(--side-bg)] v.v. trong Shell.tsx. */
+  --side-bg: #0b1615; --side-hover: #132522; --side-border: #1d302d; --side-brand: #4fb8c4;
   /* khoảng cách 4pt */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px;
   /* bo góc */

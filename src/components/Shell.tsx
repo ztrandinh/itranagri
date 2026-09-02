@@ -83,21 +83,21 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   const isActive = (href: string) => { const h = href.split("?")[0]; return path === h || path.startsWith(h + "/"); };
   const SideNav = (
     <nav className="flex-1 overflow-y-auto py-2 text-[15px]">
-      <Link href="/trang-chu" className={`mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 ${path === "/trang-chu" ? "bg-brand-tok text-white" : "text-slate-200 hover:bg-slate-800"}`}><span>🏠</span>{!collapsed && <span>Trang chủ · khu vực</span>}</Link>
+      <Link href="/trang-chu" className={`mx-2 mb-1 flex items-center gap-2 rounded-lg px-3 py-2 ${path === "/trang-chu" ? "bg-brand-tok text-white" : "text-slate-200 hover:bg-[var(--side-hover)]"}`}><span>🏠</span>{!collapsed && <span>Trang chủ · khu vực</span>}</Link>
       {zones.map((z) => <div key={z.key} className="mt-2">
         {/* Label nhóm trong sidebar TỐI CỐ ĐỊNH (không đổi theo theme, giống các mục nav bên dưới dùng
             text-slate-200/300 cứng) — trước dùng .text-muted (token ăn theo theme): ở light mode ra màu
             xám vừa cho nền sáng, đặt lên nền sidebar gần đen → tương phản ~2.8:1, dưới chuẩn. Đổi sang
             text-slate-400 cứng, cùng quy ước với phần còn lại của sidebar, luôn đúng bất kể theme. */}
         {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-brand-tok text-white px-1 normal-case">phòng tôi</span> : null}</div>}
-        {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-brand-tok text-white font-semibold" : "text-slate-200 hover:bg-slate-800"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
+        {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-brand-tok text-white font-semibold" : "text-slate-200 hover:bg-[var(--side-hover)]"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
       </div>)}
       {chiKhuCuaToi && !collapsed && (soKhuAn > 0 || xemHet) && (
-        <button className="mx-2 mt-2 w-[calc(100%-1rem)] rounded-lg px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-slate-800"
+        <button className="mx-2 mt-2 w-[calc(100%-1rem)] rounded-lg px-3 py-1.5 text-left text-xs text-slate-400 hover:bg-[var(--side-hover)]"
           onClick={() => setXemHet(!xemHet)}>
           {xemHet ? "▾ Thu gọn — chỉ hiện phòng tôi" : `▸ Xem thêm ${soKhuAn} khu khác của trại`}
         </button>)}
-      <div className="mt-3 border-t border-slate-800 pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-brand-tok text-white" : "text-slate-300 hover:bg-slate-800"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
+      <div className="mt-3 border-t border-[var(--side-border)] pt-2">{nav.filter((n) => !zones.some((z) => z.items.some((i) => i.href.split("?")[0] === n.href))).map((n) => <Link key={n.href} href={n.href} className={`mx-2 flex items-center rounded-lg px-3 py-1.5 ${isActive(n.href) ? "bg-brand-tok text-white" : "text-slate-300 hover:bg-[var(--side-hover)]"}`}>{collapsed ? n.label.slice(0, 2) : n.label}</Link>)}</div>
     </nav>);
   return (
     <div className="min-h-screen flex bg-surface-2 text-ink">
@@ -106,12 +106,12 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
       <SunBoot />
       <CommandPalette />
       <a href="#main" className="ui-skip">Tới nội dung chính</a>
-      <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-slate-900 text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
-        <div className="flex items-center gap-2 px-3 h-14 border-b border-slate-800"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-emerald-400">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
+      <aside className={`hidden md:flex flex-col sticky top-0 h-screen bg-[var(--side-bg)] text-slate-100 shrink-0 transition-all ${collapsed ? "w-16" : "w-60"}`}>
+        <div className="flex items-center gap-2 px-3 h-14 border-b border-[var(--side-border)]"><Link href="/trang-chu" className="font-black text-lg tracking-tight text-[var(--side-brand)]">{collapsed ? "IT" : "ITRAN AGRI"}</Link><button className="ml-auto text-slate-400 hover:text-white" title="Thu gọn" onClick={() => { const v = !collapsed; setCollapsed(v); try { localStorage.setItem("itran.side", v ? "1" : "0"); } catch { /* */ } }}>{collapsed ? "»" : "«"}</button></div>
         {SideNav}
-        <div className="border-t border-slate-800 p-3 text-xs text-slate-400">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
+        <div className="border-t border-[var(--side-border)] p-3 text-xs text-slate-400">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
       </aside>
-      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-slate-900 text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-slate-800 font-black text-emerald-400">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
+      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-[var(--side-bg)] text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-[var(--side-border)] font-black text-[var(--side-brand)]">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}>✕</button></div>{SideNav}</aside></div>}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="app-header sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-line flex items-center gap-3 px-3">
           <button className="md:hidden text-2xl min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -ml-2" onClick={() => setSide(true)} aria-label="Menu">☰</button>
