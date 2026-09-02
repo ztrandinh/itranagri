@@ -53,6 +53,29 @@ describe("Append-only", () => {
     await app.query("insert into harvests(farm_id,plot_id,crop,qty_kg,unit,created_by,client_ref,supersedes_id) values ('F01',$1,'TEST',105,'kg','NS-003',$2,$3)", [plot, "t-hv2-" + Date.now(), a.rows[0].id]);
     expect((await app.query("select status from harvests where id=$1", [a.rows[0].id])).rows[0].status).toBe("SUPERSEDED");
   });
+  it("0193: adjustments/paper_scans (bỏ sót ở 0189) nay bị chặn sửa cột nghiệp vụ, chỉ cột duyệt/trạng thái còn sửa được", async () => {
+    await ctx("F01", "team_lead");
+    const adj = await app.query("insert into adjustments(farm_id,target_table,target_id,delta,reason,requested_by,client_ref) values ('F01','inventory_moves',gen_random_uuid(),10,'ban đầu','NS-003',$1) returning id", ["t-adj-" + Date.now()]);
+    await expect(app.query("update adjustments set delta=999999, reason='HACKED' where id=$1", [adj.rows[0].id])).rejects.toThrow(/permission denied/);
+    await expect(app.query("update adjustments set adj_status='DUYET' where id=$1", [adj.rows[0].id])).resolves.toBeTruthy();
+    // serial dùng đuôi số ngắn (không phải Date.now() 13 chữ số): RC11b cast đuôi số của serial sang ::int
+    // để dò seri nhảy quãng, timestamp đầy đủ sẽ tràn phạm vi integer và làm hỏng rule đó cho farm F01.
+    const scan = await app.query("insert into paper_scans(farm_id,form_code,serial,created_by,client_ref) values ('F01','BM01',$1,'NS-003',$2) returning id", ["SR-" + String(Date.now()).slice(-6), "t-ps-" + Date.now()]);
+    await expect(app.query("update paper_scans set form_code='HACKED' where id=$1", [scan.rows[0].id])).rejects.toThrow(/permission denied/);
+    await expect(app.query("update paper_scans set digitized=true where id=$1", [scan.rows[0].id])).resolves.toBeTruthy();
+  });
+});
+describe("0194 — dedupe DB thật (sensor ingest / webhook đơn hàng)", () => {
+  it("sensor_reads: cùng (farm_id, device_id, metric, ts) bị chặn ở DB, không chỉ dựa vào app không insert trùng", async () => {
+    const ts = new Date().toISOString();
+    await admin.query("insert into sensor_reads(ts,farm_id,device_id,metric,value) values ($1,'F01','TEST-DEV','temp',25)", [ts]);
+    await expect(admin.query("insert into sensor_reads(ts,farm_id,device_id,metric,value) values ($1,'F01','TEST-DEV','temp',26)", [ts])).rejects.toThrow(/duplicate key/);
+  });
+  it("orders: cùng (farm_id, attrs.source, attrs.external_id) từ webhook bị chặn ở DB — backstop cho race giữa 2 lần sàn TMĐT gọi lại", async () => {
+    const ext = "TEST-EXT-" + Date.now();
+    await admin.query("insert into orders(id,farm_id,channel,attrs) values ($1,'F01',3,$2)", ["t-ord-1-" + Date.now(), JSON.stringify({ source: "SHOPEE", external_id: ext })]);
+    await expect(admin.query("insert into orders(id,farm_id,channel,attrs) values ($1,'F01',3,$2)", ["t-ord-2-" + Date.now(), JSON.stringify({ source: "SHOPEE", external_id: ext })])).rejects.toThrow(/duplicate key/);
+  });
 });
 describe("RLS đa trại (farm_ids)", () => {
   it("0188: director có farm_ids nhiều trại phải thấy đủ các trại đó, không chỉ trại hiện tại", async () => {
@@ -162,10 +185,14 @@ describe("Đăng nhập · phiên", () => {
 });
 describe("Feed species guard (0143)", () => {
   // Cấm cho ăn SAI LOÀI: loài đàn (animal_groups.species) phải khớp loài khẩu phần (recipes.species_phase 'LOÀI/…').
+  // Chốt farm_id='F01' cho cả đàn lẫn recipe: recipes chỉ seed cho F01 (0005_seed.sql), trong khi
+  // animal_groups loài BO tồn tại ở NHIỀU trại (F01, F99…) — nếu không chốt, "limit 1" không ORDER BY
+  // có thể chọn đàn F99 ghép với recipe F01 (khác trại), khiến RLS ẩn recipe khỏi hàm kiểm tra và
+  // test flaky theo thứ tự scan vật lý, không phải theo logic loài đang muốn kiểm.
   it("khẩu phần loài KHÁC đàn → ERR_FEED_WRONG_SPECIES; khớp loài → qua", async () => {
-    const bo = (await admin.query("select id from animal_groups where species='BO' limit 1")).rows[0];
-    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
-    const boRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='BO' limit 1")).rows[0];
+    const bo = (await admin.query("select id from animal_groups where species='BO' and farm_id='F01' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    const boRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='BO' limit 1")).rows[0];
     expect(bo && gaRec && boRec).toBeTruthy();
     await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, gaRec.id])).rejects.toThrow(/ERR_FEED_WRONG_SPECIES/);
     await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, boRec.id])).resolves.toBeTruthy();
@@ -173,8 +200,8 @@ describe("Feed species guard (0143)", () => {
     await expect(admin.query("select chk_feed_species($1,null)", [bo.id])).resolves.toBeTruthy();
   });
   it("trigger feed_logs chặn thật khi ghi khẩu phần sai loài", async () => {
-    const bo = (await admin.query("select id, farm_id from animal_groups where species='BO' limit 1")).rows[0];
-    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    const bo = (await admin.query("select id, farm_id from animal_groups where species='BO' and farm_id='F01' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
     await ctx(bo.farm_id, "worker", "NS-011");
     await expect(app.query(
       "insert into feed_logs(farm_id, dest_group_id, recipe_id, qty_kg, source, created_by, client_ref) values ($1,$2,$3,10,'APP','NS-011',$4)",
