@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 /** Offline-first (luật 5 CLAUDE.md) — hàng đợi IndexedDB, trước đây 0 coverage E2E. Ngắt mạng thật
  * (context.setOffline), ghi 1 bản ghi, xác nhận: (a) UI báo "đã lưu trong máy" chứ không giả vờ đã
  * gửi, (b) huy hiệu hàng đợi hiện đúng trạng thái offline, (c) khi có mạng lại → tự đồng bộ (offline.ts
- * lắng nghe sự kiện 'online'), badge về "✓ đồng bộ", và bản ghi THẬT SỰ tới được server (không chỉ nằm
+ * lắng nghe sự kiện 'online'), badge về "đồng bộ" (icon ✓), và bản ghi THẬT SỰ tới được server (không chỉ nằm
  * mãi trong máy). Cùng giới hạn dữ liệu như threetap.spec.ts: để lại 1 bản ghi thật vô hại ở F01. */
 test("offline: ghi khi mất mạng → lưu máy → tự đồng bộ khi có mạng lại", async ({ page, context }) => {
   await page.goto("/login");
@@ -42,19 +42,23 @@ test("offline: ghi khi mất mạng → lưu máy → tự đồng bộ khi có 
   const textInputs = page.locator('.card input[type="text"]:visible, .card input:not([type]):visible');
   for (let i = 0; i < (await textInputs.count()); i++) { const inp = textInputs.nth(i); if ((await inp.inputValue()) === "") await inp.fill("E2E offline").catch(() => {}); }
 
-  const next = page.getByRole("button", { name: /Tiếp →|Thiếu:/ });
+  // Icon migration: nút Bước 2 giờ "Tiếp" + <IconArrowRight> (không còn ký tự "→" trong tên truy cập).
+  const next = page.getByRole("button", { name: /^Tiếp$|Thiếu:/ });
   const nextText = await next.textContent();
   if (nextText?.includes("Thiếu:")) console.log("SKIP REASON:", nextText);
   test.skip(!!nextText?.includes("Thiếu:"), `Form có trường không điền được tự động — ${nextText}`);
   await next.click();
-  await page.getByRole("button", { name: "✓ XÁC NHẬN" }).click();
+  // Icon migration: nút Bước 3 giờ <IconCheck> + "XÁC NHẬN" (không còn ký tự "✓" trong tên truy cập).
+  await page.getByRole("button", { name: "XÁC NHẬN" }).click();
 
   // Đang offline: PHẢI báo "lưu trong máy", không được giả vờ "đã ghi" (bug đã sửa trước đây, xem
   // comment trong ThreeTap.tsx dòng ~89) — và huy hiệu hàng đợi phải hiện offline + số lượng.
   await expect(page.getByText(/Đã lưu trong máy \(chưa có mạng\)/)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByTitle("Hàng đợi đồng bộ")).toContainText(/📴 offline [1-9]/);
+  // Icon migration: badge giờ <IconCloudOff> + "offline N" (không còn emoji 📴 trong text).
+  await expect(page.getByTitle("Hàng đợi đồng bộ")).toContainText(/offline [1-9]/);
 
   // CÓ MẠNG LẠI: offline.ts tự flush khi bắt sự kiện 'online' — không cần thao tác gì thêm.
   await context.setOffline(false);
-  await expect(page.getByTitle("Hàng đợi đồng bộ")).toContainText("✓ đồng bộ", { timeout: 15_000 });
+  // Icon migration: badge giờ <IconCheck> + "đồng bộ" (không còn ký tự "✓" trong text).
+  await expect(page.getByTitle("Hàng đợi đồng bộ")).toContainText("đồng bộ", { timeout: 15_000 });
 });
