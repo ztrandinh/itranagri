@@ -138,7 +138,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
         case "recon": return csvRes(`doi-soat-${farm}.csv`, await q("select * from recon_results where farm_id=$1 and period between $2 and $3 order by period, rule_code", [farm, from, to]));
         case "epcis": {
           if (!lot) throw new Error("ERR_LOT_REQUIRED");
-          const links = await q("select * from v_trace_links where farm_id=$1 and (input_lot=$2 or output_lot=$2)", [farm, lot]);
+          // Truy xuất TOÀN CHUỖI (0201) thay vì chỉ 1-hop v_trace_links trực tiếp trên lô này — kế thừa
+          // đúng giới hạn cũ ("1 bước lùi–1 bước tiến") đã được vá ở /trace/{lot}, áp dụng luôn cho EPCIS.
+          const chain = ((await q("select trace_full_chain($1,$2) as j", [farm, lot]))[0]?.j ?? {}) as { batches?: { input_lot: string; output_lot: string; batch_code: string; ts: string }[] };
+          const links = chain.batches ?? [];
           const moves = await q("select * from inventory_moves where farm_id=$1 and lot_id=$2 and status='ACTIVE' order by ts", [farm, lot]);
           const sales = await q("select s.*, p.name as partner_name from sales s left join partners p on p.id=s.partner_id where s.farm_id=$1 and s.lot_id=$2 and s.status='ACTIVE'", [farm, lot]);
           // CBV đầy đủ hơn: eventID (định danh duy nhất mỗi event, bắt buộc theo EPCIS 2.0 §7.3) + recordTime
