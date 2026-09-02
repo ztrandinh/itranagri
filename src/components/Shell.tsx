@@ -11,6 +11,7 @@ import { ThemeToggle, ThemeBoot } from "@/components/ui/ThemeToggle";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { SunToggle, SunBoot } from "@/components/ui/SunMode";
 import { CommandPalette } from "@/components/ui/CommandPalette";
+import { ZoneIcon } from "@/components/icons/ZoneIcons";
 
 /** `account` = mã CHỖ NGỒI bất biến (job_accounts.code, vd KTCN-A-03); `positionCode` = mã NGHỀ
  *  trong danh mục (A1…A18, T01…, K01…). Bộ form và việc giao xuống bám hai mã này, không bám
@@ -89,7 +90,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
             text-slate-200/300 cứng) — trước dùng .text-muted (token ăn theo theme): ở light mode ra màu
             xám vừa cho nền sáng, đặt lên nền sidebar gần đen → tương phản ~2.8:1, dưới chuẩn. Đổi sang
             text-slate-400 cứng, cùng quy ước với phần còn lại của sidebar, luôn đúng bất kể theme. */}
-        {!collapsed && <div className="px-4 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}>{z.icon} {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-brand-tok text-white px-1 normal-case">phòng tôi</span> : null}</div>}
+        {!collapsed && <div className="px-4 pt-2 pb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400" title={z.desc}><ZoneIcon zoneKey={z.key} size={16} /> {z.label}{myDept && z.dept === myDept ? <span className="ml-1 rounded bg-brand-tok text-white px-1 normal-case">phòng tôi</span> : null}</div>}
         {z.items.map((i) => <Link key={i.href} href={i.href} title={MODULES[i.href.split("?")[0]]?.purpose ?? i.label} className={`mx-2 flex items-center gap-2 rounded-lg px-3 py-1.5 ${isActive(i.href) ? "bg-brand-tok text-white font-semibold" : "text-slate-200 hover:bg-[var(--side-hover)]"}`}>{collapsed ? <span className="text-xs">{i.label.slice(0, 2)}</span> : <span>{i.label}</span>}</Link>)}
       </div>)}
       {chiKhuCuaToi && !collapsed && (soKhuAn > 0 || xemHet) && (
