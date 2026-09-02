@@ -16,7 +16,8 @@
     "db:codes:check": "tsx scripts/normalize-codes.ts --check",
     "db:seed:sim": "tsx scripts/simulate.ts && tsx scripts/normalize-codes.ts",
     "db:seed:history": "tsx scripts/seed-history.ts && tsx scripts/normalize-codes.ts",
-    "load:smoke": "k6 run scripts/load/smoke.js"
+    "load:smoke": "k6 run scripts/load/smoke.js",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
