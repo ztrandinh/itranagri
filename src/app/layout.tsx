@@ -2,9 +2,15 @@ import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 
+// Trước đây load 5 weight (400/500/600/700/800) × 2 subset — nhưng weight 800 (font-extrabold)
+// KHÔNG hề dùng ở đâu trong codebase (grep xác nhận 0 kết quả), trong khi `font-black` (weight 900,
+// dùng ~40 lần cho tiêu đề toàn app) lại KHÔNG được load — mọi tiêu đề "font-black" trước đây render
+// sai độ đậm (browser tự chọn weight gần nhất thay vì 900 thật). Sửa đúng bộ weight thật sự dùng
+// (400/600/700/900, gộp font-medium hiếm dùng vào font-semibold — xem Field.tsx) — vừa giảm 1 weight
+// vừa vá đúng lỗi hiển thị.
 const sans = Be_Vietnam_Pro({
   subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "600", "700", "900"],
   variable: "--font-sans",
   display: "swap",
 });
