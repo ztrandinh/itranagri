@@ -23,8 +23,8 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [x] Company.tsx (61 dòng) — bảng nhân sự tab "ns"
 - [ ] SoLieuPanel.tsx (64 dòng — fetch tay + state riêng, cần wiring loading/error riêng)
 - [x] Notify.tsx (68 dòng) — bảng danh mục luật cảnh báo
-- [ ] ToChuc.tsx (70 dòng)
-- [ ] MeterReading.tsx (75 dòng)
+- [x] ToChuc.tsx (70 dòng) — bảng event bus (tab bus); các bảng khác là danh mục/tham chiếu tĩnh, rủi ro thấp hơn, bỏ qua
+- [x] MeterReading.tsx (75 dòng) — bảng số đọc chính + bảng khâu ghi chép quá hạn (2/4 bảng, 2 bảng còn lại ưu tiên thấp hơn)
 - [ ] Marketing.tsx (85 dòng)
 - [ ] QuanTri.tsx (93 dòng — panel CRUD tổng quát, cẩn thận)
 - [ ] KhoPanel.tsx (97 dòng — đã lazy-fetch theo tab ở PR #68, giờ thêm DataBoundary cho từng tab)
