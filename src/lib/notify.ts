@@ -1,4 +1,5 @@
 import { withCtx, adminPool, type Ctx } from "./db";
+import { logger } from "./logger";
 const sysCtx = (farmId: string): Ctx => ({ orgId: "ITRAN", farmId, role: "it_engineer", staffId: "SYSTEM", farmIds: [farmId] });
 const LV: Record<string, number> = { XANH: 0, INFO: 0, VANG: 1, CAM: 2, DO: 3 };
 
@@ -98,9 +99,9 @@ export async function dispatchEvents(limit = 500): Promise<number> {
       n++;
     }
     // Tự chạy quy trình theo sự kiện (processes.auto_start.topic)
-    if (farm) { const autos = (await p.query("select code from processes where status='BAN_HANH' and auto_start->>'topic'=$1 and (farm_id is null or farm_id=$2)", [e.topic, farm])).rows; for (const a of autos) { try { await p.query("select start_process_run($1,$2,'SYSTEM',$3,$4,$5,$6)", [farm, a.code, String(pl.table ?? e.topic), String(pl.id ?? pl.alert_id ?? e.id), `${e.topic} ${pl.id ?? ""}`, JSON.stringify(pl)]); } catch (err) { console.error("auto_start", a.code, (err as Error).message); } } }
+    if (farm) { const autos = (await p.query("select code from processes where status='BAN_HANH' and auto_start->>'topic'=$1 and (farm_id is null or farm_id=$2)", [e.topic, farm])).rows; for (const a of autos) { try { await p.query("select start_process_run($1,$2,'SYSTEM',$3,$4,$5,$6)", [farm, a.code, String(pl.table ?? e.topic), String(pl.id ?? pl.alert_id ?? e.id), `${e.topic} ${pl.id ?? ""}`, JSON.stringify(pl)]); } catch (err) { logger.error({ process: a.code, err: (err as Error).message }, "notify: auto_start lỗi"); } } }
    } catch (err) {
-     console.error("dispatch event", e.id, e.topic, (err as Error).message);
+     logger.error({ eventId: e.id, topic: e.topic, err: (err as Error).message }, "notify: dispatch event lỗi");
      const msg = (err as Error).message.slice(0, 200);
      if (Number(e.attempts) >= MAX_ATTEMPTS) {
        // vượt ngưỡng thử lại — giữ processed_at (đã claim), đánh dead_letter_at để vận hành thấy được

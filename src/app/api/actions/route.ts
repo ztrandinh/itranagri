@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
 import { EVENT_TABLES } from "@/lib/events";
+import { logger } from "@/lib/logger";
 /** Hành động có duyệt / cập nhật cột được phép: approve_adjustment, digitize_paper, ack_alert, ack_recon, approve_checklist, close_incident, void_event */
 export async function POST(req: Request) {
   const s = await getSession(); if (!s) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
@@ -448,7 +449,7 @@ export async function POST(req: Request) {
     // Có mã ERR_* = lỗi nghiệp vụ do chính app ném ra, message vốn viết cho người dùng đọc — giữ nguyên.
     // KHÔNG có mã = exception thô (thường từ driver Postgres: lộ tên bảng/cột/constraint nội bộ) —
     // không trả nguyên văn ra client (mọi role kể cả worker gọi được endpoint này), chỉ log ở server.
-    if (!code) console.error("[actions]", b?.action, msg);
+    if (!code) logger.error({ action: b?.action, err: msg }, "actions: lỗi driver thô");
     return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }

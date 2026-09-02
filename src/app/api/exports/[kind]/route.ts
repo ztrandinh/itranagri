@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { createHash } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 /** GET /api/exports/{kind}?from&to&sku&lot&farm  — kinds:
  *  all (ZIP CSV toàn bộ + schema + sha256) · audit-pack (ZIP hồ sơ audit ≤24h theo kỳ/SKU) · tt66 (hồ sơ chăn nuôi TT 66/2025) ·
@@ -163,7 +164,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const code = msg.match(/ERR_[A-Z_]+/)?.[0];
-    if (!code) console.error("[exports]", kind, msg); // không lộ chi tiết driver DB ra client (xem actions/route.ts)
+    if (!code) logger.error({ kind, err: msg }, "exports: lỗi driver thô"); // không lộ chi tiết driver DB ra client (xem actions/route.ts)
     return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }
