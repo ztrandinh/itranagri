@@ -1,8 +1,12 @@
-# DataBoundary rollout — checklist theo dõi
+# DataBoundary rollout — checklist theo dõi (HOÀN THÀNH)
 
 15/46 panel đã dùng `DataBoundary` (rà lại — checklist gốc ghi "1/37" đã lỗi thời). Còn lại 31 file,
 trong đó 4 file không có data fetch dạng danh sách (Home/HuongDan/FarmProfile/DesignSystem) — không áp
-dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ → lớn) để làm dần, kiểm chứng liên tục.
+dụng. **27/27 file đã rà xong**: 25 file đã bọc DataBoundary thật (bảng thao tác chính, ưu tiên
+transaction/tài chính/y tế hơn danh mục tĩnh), 2 file (SoLieuPanel, Obj360) rà kỹ thấy đã tự xử lý
+đúng loading/error/empty bằng tay từ trước — không cần sửa. Kiểm chứng cuối: tsc sạch, 53/53 test,
+lint 181 (không tăng), build xanh, soi trực tiếp qua browser xác nhận cả trạng thái rỗng ("Không có.")
+lẫn trạng thái tải (skeleton) hoạt động đúng trên panel PheDuyet/Ops.
 
 - [x] Pedigree.tsx (22 dòng) — PedigreePanel (2 khối) + EpiPanel (2 bảng)
 - [x] TaiKhoan.tsx (25 dòng)
@@ -21,7 +25,8 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [x] AnimalDetail.tsx (54 dòng) — thêm loading/error cho fetch tay (ev), bảng hồ sơ sự kiện
 - [x] DoiTuong.tsx (55 dòng) — 4 bảng vận hành chính (staff/bySpecies/objCrops/products); bỏ qua bảng danh mục tĩnh (roles/positions/species-def/classes/crops-def/kinds) ít rủi ro hơn
 - [x] Company.tsx (61 dòng) — bảng nhân sự tab "ns"
-- [ ] SoLieuPanel.tsx (64 dòng — fetch tay + state riêng, cần wiring loading/error riêng)
+- [x] SoLieuPanel.tsx (64 dòng) — ĐÃ RÀ, không cần sửa: tự phân biệt đúng loading/error/empty bằng tay (dòng 55-58), không có bug flicker
+- [x] Obj360.tsx (44 dòng) — ĐÃ RÀ, không cần sửa: `row` khởi tạo `null` (không phải mảng rỗng) nên "Đang tải thuộc tính…" hiện đúng lúc, không nhầm sang "trống"
 - [x] Notify.tsx (68 dòng) — bảng danh mục luật cảnh báo
 - [x] ToChuc.tsx (70 dòng) — bảng event bus (tab bus); các bảng khác là danh mục/tham chiếu tĩnh, rủi ro thấp hơn, bỏ qua
 - [x] MeterReading.tsx (75 dòng) — bảng số đọc chính + bảng khâu ghi chép quá hạn (2/4 bảng, 2 bảng còn lại ưu tiên thấp hơn)
