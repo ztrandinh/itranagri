@@ -40,7 +40,7 @@ jobs:
       DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri"
       SESSION_SECRET: ci-secret
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
@@ -60,7 +60,7 @@ jobs:
     if: ${{ github.event.inputs.target == 'production' && github.event.inputs.skip_staging_gate != 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - name: Xác nhận commit này đã qua staging xanh
         run: |
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.target }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: supabase/setup-cli@v1
         with: { version: latest }
       - name: Đẩy migration (supabase db push)
@@ -102,7 +102,7 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }

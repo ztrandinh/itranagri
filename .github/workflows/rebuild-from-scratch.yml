@@ -40,7 +40,7 @@ jobs:
       # migrate.ts + seed dùng DATABASE_ADMIN_URL (không phải DATABASE_URL) — thiếu nó thì rơi về cổng dev 54499 → ECONNREFUSED
       DATABASE_ADMIN_URL: postgres://postgres:itranagri@localhost:5432/itranagri
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
