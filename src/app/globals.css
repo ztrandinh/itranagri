@@ -160,7 +160,15 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
 
 /* ĐỒNG ĐỀU CỠ CHỮ (refresh 2026): chặn các cỡ nhỏ lẻ (10–11px) về mức tối thiểu 12px, line-height nhất quán */
 .text-\[10px\], .text-\[11px\] { font-size: 12px !important; line-height: 1.4 !important; }
-.text-xs { line-height: 1.45; } .text-sm { line-height: 1.5; }
+/* Luật "chữ ≥16pt" (CLAUDE.md): text-xs/text-sm mặc định Tailwind là 12px/14px — dưới ngưỡng ở ~1700
+   vị trí toàn app. Nâng qua 1 override CSS (như 2 dòng trên đã làm cho 10-11px) thay vì sửa tay từng
+   vị trí JSX — an toàn hơn nhiều (không có browser để soi từng màn lúc sửa), áp dụng NGAY LẬP TỨC cho
+   toàn bộ 1700+ vị trí bằng 1 thay đổi kiểm chứng được. Chọn nâng có chừng mực (không đẩy thẳng lên
+   16px) để giữ lại phân cấp thị giác — đẩy text-xs (nhãn/mã/thời gian) ngang text-base sẽ làm mất hết
+   phân biệt với chữ chính, có thể còn dễ vỡ layout bảng dày dữ liệu hơn (KhoPanel, đối soát…) hơn là
+   không sửa gì. Đây là bước cải thiện thật, CHƯA phải tuân thủ đúng nghĩa đen "16pt" — xem checklist. */
+.text-xs { font-size: 13px !important; line-height: 1.45; }
+.text-sm { font-size: 15px !important; line-height: 1.5; }
 /* KHUNG RÕ ĐỘ NỔI: bo góc mềm nhất quán, viền mảnh, bóng rõ ràng hơn; thẻ bấm được nổi nhẹ khi hover */
 .card, .kpi, .tile { border-radius: 14px; box-shadow: var(--sh-1); }
 .tile, .card, .kpi { transition: box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease); }
