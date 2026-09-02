@@ -7,6 +7,7 @@ import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { usePrompt } from "@/components/ui/PromptDialog";
 import { useUrlTab } from "@/lib/useUrlTab";
+import { IconCheck, IconArrowLeft, IconPencil } from "@/components/icons/UiIcons";
 
 type Task = { id: string; kind: string; title: string; due_at: string; priority: string; status: string; role_hint: string | null; sop_code: string | null; target_type: string | null; target_id: string | null; handover_note: string | null; assignee_id: string | null;
   /** Việc lặp đã được GOM ở truy vấn: `group_ids` là toàn bộ việc con trong nhóm.
@@ -78,10 +79,10 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                 {/* Nói rõ bấm một cái là đóng bao nhiêu việc — đừng để công nhân bấm mà không
                     biết mình vừa đóng 120 bản ghi. */}
                 {(t.group_n ?? 1) > 1 && <div className="text-xs text-warning-tok">Gồm {t.group_n} việc giống nhau — bấm ✓ Xong là đóng cả nhóm</div>}
-                <div className="text-sm text-muted">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>} {t.sop_code && <a className="underline ml-1" href={`/sop/${t.sop_code}`}>{t.sop_code}</a>}{t.handover_note && <div className="text-warning-tok">📝 {t.handover_note}</div>}</div>
+                <div className="text-sm text-muted">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>} {t.sop_code && <a className="underline ml-1" href={`/sop/${t.sop_code}`}>{t.sop_code}</a>}{t.handover_note && <div className="text-warning-tok flex items-center gap-1.5"><IconPencil size={13} /> {t.handover_note}</div>}</div>
               </div>
               <div className="flex flex-col gap-1">
-                <button className="btn-primary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
+                <button className="btn-primary !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}><IconCheck size={14} /> Xong</button>
                 {t.kind === "CHECKLIST" && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("checklist"); setTab("ghi"); }}>Mở checklist</button>}
                 {["KHAM_THAI", "CACH_LY_RA"].includes(t.kind) && <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={() => { setForm("animal_event"); setTab("ghi"); }}>Ghi sự kiện</button>}
                 {t.kind === "SO_HOA_GIAY" && <a className="btn-secondary !py-2 !px-3 !text-sm" href="/giay">Nhập từ phiếu</a>}
@@ -101,7 +102,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
                       <div className="font-semibold">{t.title}</div>
                       <div className="text-sm text-muted">{t.kind} · hạn {fmt.dt(t.due_at)} {new Date(t.due_at) < new Date() && <span className="b-red ml-1">quá hạn</span>}</div>
                     </div>
-                    <button className="btn-secondary !py-2 !px-3 !text-sm" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}>✓ Xong</button>
+                    <button className="btn-secondary !py-2 !px-3 !text-sm inline-flex items-center gap-1.5" onClick={async () => { await act("task_status", { ids: t.group_ids ?? [t.id], status: "XONG" }); tasks.reload(); }}><IconCheck size={14} /> Xong</button>
                   </div>))}
                 {viecChung.length > 30 && <div className="text-sm text-muted">…còn {viecChung.length - 30} việc nữa. Danh sách quá dài là do việc được sinh mà không giao người — cần tổ trưởng phân công.</div>}
               </div>
@@ -116,7 +117,7 @@ export default function CaPanel({ sess, forceForms }: { sess: Sess; forceForms?:
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {keys.filter((k) => forms[k]).map((k) => <button key={k} className="tile" onClick={() => setForm(k)}><span className="text-lg font-bold">{forms[k].title}</span></button>)}
             </div>)}
-          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm py-2.5 -my-2.5 px-1 -ml-1" onClick={() => setForm(null)}>← Chọn việc khác</button><ThreeTap spec={spec!} /></div>)}
+          {forms && form && forms[form] && (<div><button className="mb-2 underline text-sm py-2.5 -my-2.5 px-1 -ml-1 inline-flex items-center gap-1" onClick={() => setForm(null)}><IconArrowLeft size={13} /> Chọn việc khác</button><ThreeTap spec={spec!} /></div>)}
         </div>)}
       {tab === "giaoca" && (
         <div className="space-y-3">

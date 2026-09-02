@@ -23,7 +23,7 @@ export function Term({ k, children }: { k: string; children?: React.ReactNode })
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         className="cursor-help font-inherit"
-        style={{ textDecoration: "underline dotted", textUnderlineOffset: 3, textDecorationColor: "var(--muted)", background: "none", padding: 0, font: "inherit", color: "inherit" }}
+        style={{ textDecoration: "underline dotted", textUnderlineOffset: 3, textDecorationColor: "var(--muted)", background: "none", padding: "8px 2px", margin: "-8px -2px", font: "inherit", color: "inherit" }}
       >
         {children ?? k}
       </button>

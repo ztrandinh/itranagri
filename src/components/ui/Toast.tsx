@@ -3,6 +3,7 @@
  *  gắn 1 lần ở Shell. Dùng ở bất kỳ đâu: toast.ok("Đã lưu") / toast.err("Lỗi…") / toast.info(...).
  *  Tự ẩn sau ~4s, có nút đóng, aria-live cho screen-reader. */
 import { useSyncExternalStore } from "react";
+import { IconX } from "@/components/icons/UiIcons";
 
 export type ToastKind = "ok" | "err" | "info";
 export type ToastItem = { id: number; kind: ToastKind; msg: string };
@@ -46,7 +47,7 @@ export function Toaster() {
           }`}
         >
           <span className="flex-1 break-words">{t.msg}</span>
-          <button className="shrink-0 opacity-70 hover:opacity-100" aria-label="Đóng" onClick={() => dismiss(t.id)}>✕</button>
+          <button className="shrink-0 opacity-70 hover:opacity-100" aria-label="Đóng" onClick={() => dismiss(t.id)}><IconX size={16} /></button>
         </div>
       ))}
     </div>

@@ -2,6 +2,7 @@
 /** CHẾ ĐỘ NẮNG — bật tương phản tối đa để đọc màn hình ngoài trời (công nhân đi đồng).
  *  Ghi data-sun="1" lên <html>; nhớ theo thiết bị. Chỉ đổi token nên không đụng component nào. */
 import { useEffect, useState } from "react";
+import { IconSunCloud } from "@/components/icons/UiIcons";
 
 const KEY = "itran.sun";
 
@@ -29,7 +30,7 @@ export function SunToggle({ compact }: { compact?: boolean }) {
         transition: "background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)",
       }}
     >
-      <span aria-hidden="true">🌤</span>{!compact && <span className="ml-1 hidden sm:inline">{on ? "Đang bật nắng" : "Chế độ nắng"}</span>}
+      <span aria-hidden="true"><IconSunCloud size={14} /></span>{!compact && <span className="ml-1 hidden sm:inline">{on ? "Đang bật nắng" : "Chế độ nắng"}</span>}
     </button>
   );
 }
