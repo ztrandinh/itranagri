@@ -4,12 +4,13 @@
  *  Chỉ hiện trên mobile (<md) và cho vai thao tác hiện trường. */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { IconClipboard, IconPencil, IconCamera, IconUser } from "@/components/icons/UiIcons";
 
-const ITEMS: { href: string; icon: string; label: string }[] = [
-  { href: "/ca", icon: "📋", label: "Việc" },
-  { href: "/ca?tab=ghi", icon: "✍", label: "Ghi" },
-  { href: "/giay", icon: "📷", label: "Phiếu" },
-  { href: "/tai-khoan", icon: "👤", label: "Tôi" },
+const ITEMS: { href: string; Icon: (p: { size?: number }) => React.ReactNode; label: string }[] = [
+  { href: "/ca", Icon: IconClipboard, label: "Việc" },
+  { href: "/ca?tab=ghi", Icon: IconPencil, label: "Ghi" },
+  { href: "/giay", Icon: IconCamera, label: "Phiếu" },
+  { href: "/tai-khoan", Icon: IconUser, label: "Tôi" },
 ];
 
 export function BottomNav({ role }: { role: string }) {
@@ -44,7 +45,7 @@ export function BottomNav({ role }: { role: string }) {
                     transition: `color var(--dur-fast) var(--ease)`,
                   }}
                 >
-                  <span aria-hidden="true" style={{ fontSize: 20, lineHeight: 1 }}>{it.icon}</span>
+                  <span aria-hidden="true" style={{ lineHeight: 1 }}><it.Icon size={20} /></span>
                   {it.label}
                 </Link>
               </li>

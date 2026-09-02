@@ -45,7 +45,7 @@ export function DeptGraph({ depts, io, processes, focus, onFocus }: { depts: R[]
   const cols = ["DIEU_HANH", "CHIEN_LUOC", "SAN_XUAT", "CHUOI_CUNG_UNG", "KINH_DOANH", "HO_TRO"];
   const pos = useMemo(() => { const m = new Map<string, { x: number; y: number }>(); const colW = 190, top = 40; cols.forEach((b, ci) => { const list = depts.filter((d) => d.block === b); list.forEach((d, ri) => m.set(String(d.code), { x: 20 + ci * colW, y: top + ri * 74 })); }); return m; }, [depts]); // eslint-disable-line react-hooks/exhaustive-deps
   const edges = useMemo(() => { const m = new Map<string, { from: string; to: string; items: R[] }>(); for (const r of io) { const f = String(r.from_dept), t = String(r.to_dept); if (f === t || f === "*" || t === "*" || !pos.has(f) || !pos.has(t)) continue; const k = `${f}>${t}`; const e = m.get(k) ?? { from: f, to: t, items: [] }; e.items.push(r); m.set(k, e); } return [...m.values()]; }, [io, pos]);
-  const height = Math.max(...[...pos.values()].map((p) => p.y)) + 90; const width = 20 + cols.length * 190 + 40;
+  const height = Math.max(0, ...[...pos.values()].map((p) => p.y)) + 90; const width = 20 + cols.length * 190 + 40;
   const active = (e: { from: string; to: string }) => !focus || e.from === focus || e.to === focus;
   const dname = (c: string) => String(depts.find((d) => d.code === c)?.short ?? c);
   return (<div className="overflow-x-auto"><svg width={Math.max(width, 900)} height={height} style={{ fontFamily: "ui-sans-serif, system-ui" }}>
