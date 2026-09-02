@@ -20,9 +20,9 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [x] SinhHoc.tsx (51 dòng) — bảng theo dây chuyền + luống trùn
 - [x] AnimalDetail.tsx (54 dòng) — thêm loading/error cho fetch tay (ev), bảng hồ sơ sự kiện
 - [x] DoiTuong.tsx (55 dòng) — 4 bảng vận hành chính (staff/bySpecies/objCrops/products); bỏ qua bảng danh mục tĩnh (roles/positions/species-def/classes/crops-def/kinds) ít rủi ro hơn
-- [ ] Company.tsx (61 dòng)
+- [x] Company.tsx (61 dòng) — bảng nhân sự tab "ns"
 - [ ] SoLieuPanel.tsx (64 dòng — fetch tay + state riêng, cần wiring loading/error riêng)
-- [ ] Notify.tsx (68 dòng)
+- [x] Notify.tsx (68 dòng) — bảng danh mục luật cảnh báo
 - [ ] ToChuc.tsx (70 dòng)
 - [ ] MeterReading.tsx (75 dòng)
 - [ ] Marketing.tsx (85 dòng)
