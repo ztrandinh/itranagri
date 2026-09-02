@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
 import { logger } from "@/lib/logger";
+import { ACTION_SCHEMAS } from "@/lib/action-schemas";
 import * as kho from "./handlers/kho";
 import * as van_hanh from "./handlers/van_hanh";
 import * as canh_bao from "./handlers/canh_bao";
@@ -171,6 +172,13 @@ const REGISTRY: Record<string, ActionHandler> = {
 export async function POST(req: Request) {
   const s = await getSession(); if (!s) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
   const b = await req.json();
+  // Validate hình dạng body THEO ACTION nếu đã có schema (lib/action-schemas.ts) — action chưa có
+  // schema thì bỏ qua, giữ nguyên hành vi cũ (thêm dần theo domain, không phải chờ đủ 147 action).
+  const schema = ACTION_SCHEMAS[b?.action];
+  if (schema) {
+    const parsed = schema.safeParse(b);
+    if (!parsed.success) return NextResponse.json({ error: "ERR_VALIDATION", detail: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, { status: 400 });
+  }
   try {
     const out = await withCtx(s, async (c) => {
       const handler = REGISTRY[b.action];
