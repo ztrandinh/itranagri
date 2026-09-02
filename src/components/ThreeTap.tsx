@@ -8,7 +8,10 @@ import { uxTask, uxFormError } from "@/lib/ux";
 
 export type Option = { id: string; label: string; sub?: string; meta?: Record<string, unknown> };
 export type Field =
-  | { key: string; label: string; type: "choice"; options: Option[]; required?: boolean }
+  /** options tĩnh, hoặc HÀM theo đối tượng đã chọn ở Bước 1 — dùng khi lựa chọn ở bước 2 phải
+   *  khớp đối tượng (vd công thức phải cùng loài với đàn nhận) thay vì lọc kiểu random rồi bị
+   *  máy chủ từ chối ở bước 3: lọc NGAY khi vừa chọn xong Bước 1, không đợi tính sau. */
+  | { key: string; label: string; type: "choice"; options: Option[] | ((target: Option | null) => Option[]); required?: boolean }
   | { key: string; label: string; type: "number"; unit?: string; min?: number; max?: number; step?: number; required?: boolean; default?: number }
   | { key: string; label: string; type: "text"; required?: boolean; placeholder?: string }
   | { key: string; label: string; type: "date"; required?: boolean }
@@ -58,6 +61,18 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fieldSig]);
   useEffect(() => { setVals(soMacDinh); }, [soMacDinh]);
+  // Đàn/đối tượng đổi (Bước 1 → chọn lại) → xoá NGAY lựa chọn ở Bước 2 không còn hợp lệ với đối
+  // tượng mới (vd công thức của loài khác) — trước đây chỉ máy chủ từ chối lúc XÁC NHẬN (Bước 3),
+  // công nhân phải điền lại từ đầu. Không đụng options tĩnh (không phụ thuộc target) hay trường khác.
+  useEffect(() => {
+    for (const f of spec.fields) {
+      if (f.type !== "choice" || typeof f.options !== "function") continue;
+      const cur = vals[f.key];
+      if (cur == null) continue;
+      if (!f.options(target).some((o) => o.id === cur)) setVals((v0) => { const n = { ...v0 }; delete n[f.key]; return n; });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
 
   const filtered = useMemo(() => {
     const s = noAccent(search.trim());
@@ -173,7 +188,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
               <label className="block text-sm text-muted mb-1">{f.label}{f.required && " *"}</label>
               {f.type === "choice" && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {f.options.map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-brand-tok text-white" : "bg-surface border border-line"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: o.id }))}>{o.label}</button>)}
+                  {(typeof f.options === "function" ? f.options(target) : f.options).map((o) => <button key={o.id} className={`btn !py-3 !text-base ${vals[f.key] === o.id ? "bg-brand-tok text-white" : "bg-surface border border-line"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: o.id }))}>{o.label}</button>)}
                 </div>)}
               {f.type === "number" && (
                 <div className="flex items-center gap-2">
@@ -221,7 +236,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
           <div className="rounded-xl bg-brand-soft border border-brand-soft p-3">
             <div className="text-sm text-muted">Xác nhận ghi</div>
             <div className="text-lg font-bold">{spec.title} · {target.label}</div>
-            <ul className="text-base mt-1">{spec.fields.filter((f) => vals[f.key] != null && vals[f.key] !== "").map((f) => <li key={f.key}>{f.label}: <b>{f.type === "choice" ? f.options.find((o) => o.id === vals[f.key])?.label : String(vals[f.key])}</b>{f.type === "number" && f.unit ? ` ${f.unit}` : ""}</li>)}{photoUrls.length > 0 && <li>Ảnh: {photoUrls.length}</li>}{spec.paper?.serial && <li>Từ phiếu giấy: <b>{spec.paper.serial}</b></li>}</ul>
+            <ul className="text-base mt-1">{spec.fields.filter((f) => vals[f.key] != null && vals[f.key] !== "").map((f) => <li key={f.key}>{f.label}: <b>{f.type === "choice" ? (typeof f.options === "function" ? f.options(target) : f.options).find((o) => o.id === vals[f.key])?.label : String(vals[f.key])}</b>{f.type === "number" && f.unit ? ` ${f.unit}` : ""}</li>)}{photoUrls.length > 0 && <li>Ảnh: {photoUrls.length}</li>}{spec.paper?.serial && <li>Từ phiếu giấy: <b>{spec.paper.serial}</b></li>}</ul>
           </div>
           <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(2)}>← Sửa</button><button className="btn-primary flex-1 !text-xl" disabled={busy} onClick={submit}>✓ XÁC NHẬN</button></div>
         </div>)}
