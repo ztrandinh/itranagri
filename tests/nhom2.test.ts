@@ -52,7 +52,10 @@ describe("T2.2 — phúc lợi: lameness param + giảm đau thủ thuật", () 
   it("khử sừng/thiến thiếu giảm đau → task; có giảm đau/IMPORT → không", async () => {
     await db.query("begin");
     try {
-      const an = (await db.query("select id, farm_id from animals where farm_id='F01' limit 1")).rows[0];
+      // status not in (CHET,XUAT) + order by id: "limit 1" không order by không đảm bảo hàng nào —
+      // trúng con ĐÃ XUẤT thì insert DIEU_TRI bị itran_dead_check() chặn ERR_ANIMAL_CLOSED (đúng luật,
+      // sai đối tượng test — test này kiểm phúc lợi trên con còn sống).
+      const an = (await db.query("select id, farm_id from animals where farm_id='F01' and status not in ('CHET','XUAT') order by id limit 1")).rows[0];
       await db.query("insert into animal_events(farm_id,animal_id,event_type,detail,source) values($1,$2,'DIEU_TRI','{\"thu_thuat\":\"KHU_SUNG\"}'::jsonb,'APP')", [an.farm_id, an.id]);
       expect(Number((await db.query("select count(*) from tasks where kind='WELFARE_PAINREL' and detail->>'animal'=$1", [an.id])).rows[0].count)).toBe(1);
       await db.query("rollback"); await db.query("begin");
