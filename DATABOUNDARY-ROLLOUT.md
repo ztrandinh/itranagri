@@ -28,7 +28,8 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [x] Marketing.tsx (85 dòng) — bảng chiến dịch + bảng lắng nghe/khủng hoảng
 - [x] QuanTri.tsx (93 dòng) — bảng danh sách chính (thêm loading state cho fetch tay)
 - [ ] KhoPanel.tsx (97 dòng — đã lazy-fetch theo tab ở PR #68, giờ thêm DataBoundary cho từng tab)
-- [ ] ProcessDesigner.tsx (98 dòng)
+- [x] KhoPanel.tsx (97 dòng) — thêm DataBoundary cho bảng tồn kho chính (tab "ton"), bổ sung vào lazy-fetch đã có ở PR #68
+- [x] ProcessDesigner.tsx (98 dòng) — bảng các bước quy trình
 - [ ] More.tsx (106 dòng)
 - [ ] Depts.tsx (127 dòng)
 
