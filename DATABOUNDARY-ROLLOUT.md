@@ -18,8 +18,8 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [ ] Obj360.tsx (44 dòng — fetch tay, không qua useData, cần wiring loading/error riêng)
 - [x] KinhDoanh.tsx (45 dòng) — CrmPanel + PosPanel(receipts) + KenhPanel
 - [x] SinhHoc.tsx (51 dòng) — bảng theo dây chuyền + luống trùn
-- [ ] AnimalDetail.tsx (54 dòng)
-- [ ] DoiTuong.tsx (55 dòng)
+- [x] AnimalDetail.tsx (54 dòng) — thêm loading/error cho fetch tay (ev), bảng hồ sơ sự kiện
+- [x] DoiTuong.tsx (55 dòng) — 4 bảng vận hành chính (staff/bySpecies/objCrops/products); bỏ qua bảng danh mục tĩnh (roles/positions/species-def/classes/crops-def/kinds) ít rủi ro hơn
 - [ ] Company.tsx (61 dòng)
 - [ ] SoLieuPanel.tsx (64 dòng — fetch tay + state riêng, cần wiring loading/error riêng)
 - [ ] Notify.tsx (68 dòng)
