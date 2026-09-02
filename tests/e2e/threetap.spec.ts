@@ -56,7 +56,8 @@ test("ghi 3 chạm: chọn việc → điền → xác nhận → server chấp 
   const nText = await textInputs.count();
   for (let i = 0; i < nText; i++) { const inp = textInputs.nth(i); if ((await inp.inputValue()) === "") await inp.fill("E2E test").catch(() => {}); }
 
-  const next = page.getByRole("button", { name: /Tiếp →|Thiếu:/ });
+  // Icon migration: nút Bước 2 giờ "Tiếp" + <IconArrowRight> (không còn ký tự "→" trong tên truy cập).
+  const next = page.getByRole("button", { name: /^Tiếp$|Thiếu:/ });
   await expect(next).toBeVisible();
   // Nếu vẫn thiếu trường (vd "steps" checklist không lường được), test coi như đã xác nhận được
   // UI chặn đúng thiết kế (nút disabled khi thiếu) — không ép submit sai để không tạo dữ liệu rác.
@@ -65,7 +66,8 @@ test("ghi 3 chạm: chọn việc → điền → xác nhận → server chấp 
 
   await next.click();
   await expect(page.getByText("Xác nhận ghi")).toBeVisible();
-  await page.getByRole("button", { name: "✓ XÁC NHẬN" }).click();
+  // Icon migration: nút Bước 3 giờ <IconCheck> + "XÁC NHẬN" (không còn ký tự "✓" trong tên truy cập).
+  await page.getByRole("button", { name: "XÁC NHẬN" }).click();
 
   // Server thật sự chấp nhận: thông báo "Đã ghi …" (không phải "CHƯA GHI ĐƯỢC — máy chủ từ chối")
   const result = page.locator('[role="status"]');
