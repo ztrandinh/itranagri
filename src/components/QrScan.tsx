@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { IconCamera } from "@/components/icons/UiIcons";
 /** QUÉT QR/BARCODE bằng camera điện thoại (BarcodeDetector native — Android Chrome; fallback: nhập tay). Trả về chuỗi quét được (mã cá thể/lô/SKU/URL trace → lấy phần cuối). */
 export default function QrScan({ onResult, className }: { onResult: (v: string) => void; className?: string }) {
   const [open, setOpen] = useState(false); const [err, setErr] = useState(""); const videoRef = useRef<HTMLVideoElement | null>(null); const stopRef = useRef<() => void>(() => {});
@@ -20,7 +21,7 @@ export default function QrScan({ onResult, className }: { onResult: (v: string) 
     return () => { alive = false; stopRef.current(); };
   }, [open, onResult]);
   return (<>
-    <button type="button" className={className ?? "btn-secondary !py-2 !px-3"} title="Quét QR/mã vạch bằng camera" onClick={() => { setErr(""); setOpen(true); }}>📷 Quét</button>
+    <button type="button" className={className ?? "btn-secondary !py-2 !px-3"} title="Quét QR/mã vạch bằng camera" onClick={() => { setErr(""); setOpen(true); }}><span className="inline-flex items-center gap-1.5"><IconCamera size={16} /> Quét</span></button>
     {/* Trước đây là <div> tự chế (fixed inset-0), không Escape/focus-trap — nay dùng Modal chuẩn có sẵn. */}
     <Modal open={open} onClose={() => setOpen(false)} title="Quét QR / mã vạch">
       <video ref={videoRef} className="w-full rounded-xl bg-black aspect-square object-cover" muted playsInline />

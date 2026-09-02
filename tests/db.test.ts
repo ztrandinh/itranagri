@@ -185,10 +185,14 @@ describe("Đăng nhập · phiên", () => {
 });
 describe("Feed species guard (0143)", () => {
   // Cấm cho ăn SAI LOÀI: loài đàn (animal_groups.species) phải khớp loài khẩu phần (recipes.species_phase 'LOÀI/…').
+  // Chốt farm_id='F01' cho cả đàn lẫn recipe: recipes chỉ seed cho F01 (0005_seed.sql), trong khi
+  // animal_groups loài BO tồn tại ở NHIỀU trại (F01, F99…) — nếu không chốt, "limit 1" không ORDER BY
+  // có thể chọn đàn F99 ghép với recipe F01 (khác trại), khiến RLS ẩn recipe khỏi hàm kiểm tra và
+  // test flaky theo thứ tự scan vật lý, không phải theo logic loài đang muốn kiểm.
   it("khẩu phần loài KHÁC đàn → ERR_FEED_WRONG_SPECIES; khớp loài → qua", async () => {
-    const bo = (await admin.query("select id from animal_groups where species='BO' limit 1")).rows[0];
-    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
-    const boRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='BO' limit 1")).rows[0];
+    const bo = (await admin.query("select id from animal_groups where species='BO' and farm_id='F01' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    const boRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='BO' limit 1")).rows[0];
     expect(bo && gaRec && boRec).toBeTruthy();
     await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, gaRec.id])).rejects.toThrow(/ERR_FEED_WRONG_SPECIES/);
     await expect(admin.query("select chk_feed_species($1,$2)", [bo.id, boRec.id])).resolves.toBeTruthy();
@@ -196,8 +200,8 @@ describe("Feed species guard (0143)", () => {
     await expect(admin.query("select chk_feed_species($1,null)", [bo.id])).resolves.toBeTruthy();
   });
   it("trigger feed_logs chặn thật khi ghi khẩu phần sai loài", async () => {
-    const bo = (await admin.query("select id, farm_id from animal_groups where species='BO' limit 1")).rows[0];
-    const gaRec = (await admin.query("select id from recipes where split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
+    const bo = (await admin.query("select id, farm_id from animal_groups where species='BO' and farm_id='F01' limit 1")).rows[0];
+    const gaRec = (await admin.query("select id from recipes where farm_id='F01' and split_part(species_phase,'/',1)='GA' limit 1")).rows[0];
     await ctx(bo.farm_id, "worker", "NS-011");
     await expect(app.query(
       "insert into feed_logs(farm_id, dest_group_id, recipe_id, qty_kg, source, created_by, client_ref) values ($1,$2,$3,10,'APP','NS-011',$4)",

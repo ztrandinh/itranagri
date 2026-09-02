@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { enqueue, newClientRef, flush, pending } from "@/lib/offline";
 import { noAccent } from "@/lib/client";
 import { uxTask, uxFormError } from "@/lib/ux";
+import { IconArrowLeft, IconArrowRight, IconCheck, IconMinus, IconScale } from "@/components/icons/UiIcons";
 
 export type Option = { id: string; label: string; sub?: string; meta?: Record<string, unknown> };
 export type Field =
@@ -163,11 +164,11 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
               biển số xe nên không thể có sẵn danh sách) là bấm phím Enter — trên bàn phím điện thoại
               phím đó ghi "Xong"/"Go", công nhân gõ xong không thấy nút nào và tắc hẳn. Nay có nút rõ ràng. */}
           {spec.allowScanInput && search.trim() && !filtered.some((t) => t.id.toLowerCase() === search.trim().toLowerCase()) && (
-            <button className="btn-primary w-full mt-2 !py-3" onClick={() => { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); }}>Dùng “{search.trim()}” → Tiếp</button>)}
+            <button className="btn-primary w-full mt-2 !py-3 inline-flex items-center justify-center gap-1.5" onClick={() => { setTarget({ id: search.trim(), label: search.trim() }); setStep(2); }}>Dùng “{search.trim()}” <IconArrowRight size={16} /> Tiếp</button>)}
         </div>)}
       {step === 2 && target && (
         <div className="space-y-4">
-          <div className="rounded-xl bg-surface-2 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-muted text-sm">· {target.sub}</span>}</span><button className="underline text-sm" onClick={() => setStep(1)}>đổi</button></div>
+          <div className="rounded-xl bg-surface-2 px-3 py-2 flex justify-between items-center"><span><b>{target.label}</b> {target.sub && <span className="text-muted text-sm">· {target.sub}</span>}</span><button className="underline text-sm py-2 -my-2 px-1 -mx-1" onClick={() => setStep(1)}>đổi</button></div>
           {spec.fields.map((f) => (
             <div key={f.key}>
               <label className="block text-sm text-muted mb-1">{f.label}{f.required && " *"}</label>
@@ -177,15 +178,15 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
                 </div>)}
               {f.type === "number" && (
                 <div className="flex items-center gap-2">
-                  <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Math.max(f.min ?? -1e9, Number(v0[f.key] ?? 0) - (f.step ?? 1)) }))}>−</button>
+                  <button className="btn-secondary !px-4 flex items-center justify-center" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Math.max(f.min ?? -1e9, Number(v0[f.key] ?? 0) - (f.step ?? 1)) }))}><IconMinus size={16} /></button>
                   <input type="number" inputMode="decimal" className="input text-center text-2xl font-bold" value={(vals[f.key] as number) ?? ""} min={f.min} max={f.max} step={f.step ?? "any"} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                   <button className="btn-secondary !px-4" onClick={() => setVals((v0) => ({ ...v0, [f.key]: Number(v0[f.key] ?? 0) + (f.step ?? 1) }))}>+</button>
                   {f.unit && <span className="text-muted w-16">{f.unit}</span>}
-                  {f.unit === "kg" && <button type="button" className="btn-secondary !px-3 !py-2 !text-sm" title="Đọc từ cân Bluetooth" onClick={() => readBleScale(f.key)}>⚖ BLE</button>}
+                  {f.unit === "kg" && <button type="button" className="btn-secondary !px-3 !py-2 !text-sm inline-flex items-center gap-1.5" title="Đọc từ cân Bluetooth" onClick={() => readBleScale(f.key)}><IconScale size={15} /> BLE</button>}
                 </div>)}
               {f.type === "text" && <input className="input" placeholder={f.placeholder} value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
               {f.type === "date" && <input type="date" className="input" value={(vals[f.key] as string) ?? ""} onChange={(e) => setVals((v0) => ({ ...v0, [f.key]: e.target.value }))} />}
-              {f.type === "bool" && <button className={`btn !py-3 ${vals[f.key] ? "bg-brand-tok text-white" : "bg-surface border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? "✓ Có" : "Không"}</button>}
+              {f.type === "bool" && <button className={`btn !py-3 inline-flex items-center justify-center gap-1.5 ${vals[f.key] ? "bg-brand-tok text-white" : "bg-surface border"}`} onClick={() => setVals((v0) => ({ ...v0, [f.key]: !v0[f.key] }))}>{vals[f.key] ? <><IconCheck size={16} /> Có</> : "Không"}</button>}
               {/* Checklist THẬT: từng bước SOP một dòng, chấm riêng. Trước đây cả quy trình
                   chỉ có MỘT công tắc "Tất cả bước ĐẠT" — một cú bấm như vậy không phải bằng
                   chứng tuân thủ, và không ai biết bước nào hỏng. */}
@@ -214,7 +215,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
                   </div>)}
               {f.type === "photo" && (<div className="flex items-center gap-2"><input type="file" accept="image/*" capture="environment" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />{photoUrls.map((u) => <img key={u} src={u} alt="" loading="lazy" className="h-12 w-12 object-cover rounded" />)}</div>)}
             </div>))}
-          <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(1)}>← Quay lại</button><button className="btn-primary flex-1" disabled={missing.length > 0} onClick={() => setStep(3)}>{missing.length ? `Thiếu: ${missing.join(", ")}` : "Tiếp →"}</button></div>
+          <div className="flex gap-2"><button className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5" onClick={() => setStep(1)}><IconArrowLeft size={16} /> Quay lại</button><button className="btn-primary flex-1 inline-flex items-center justify-center gap-1.5" disabled={missing.length > 0} onClick={() => setStep(3)}>{missing.length ? `Thiếu: ${missing.join(", ")}` : <>Tiếp <IconArrowRight size={16} /></>}</button></div>
         </div>)}
       {step === 3 && target && (
         <div className="space-y-3">
@@ -223,7 +224,7 @@ export default function ThreeTap({ spec }: { spec: ThreeTapSpec }) {
             <div className="text-lg font-bold">{spec.title} · {target.label}</div>
             <ul className="text-base mt-1">{spec.fields.filter((f) => vals[f.key] != null && vals[f.key] !== "").map((f) => <li key={f.key}>{f.label}: <b>{f.type === "choice" ? f.options.find((o) => o.id === vals[f.key])?.label : String(vals[f.key])}</b>{f.type === "number" && f.unit ? ` ${f.unit}` : ""}</li>)}{photoUrls.length > 0 && <li>Ảnh: {photoUrls.length}</li>}{spec.paper?.serial && <li>Từ phiếu giấy: <b>{spec.paper.serial}</b></li>}</ul>
           </div>
-          <div className="flex gap-2"><button className="btn-secondary flex-1" onClick={() => setStep(2)}>← Sửa</button><button className="btn-primary flex-1 !text-xl" disabled={busy} onClick={submit}>✓ XÁC NHẬN</button></div>
+          <div className="flex gap-2"><button className="btn-secondary flex-1 inline-flex items-center justify-center gap-1.5" onClick={() => setStep(2)}><IconArrowLeft size={16} /> Sửa</button><button className="btn-primary flex-1 !text-xl inline-flex items-center justify-center gap-2" disabled={busy} onClick={submit}><IconCheck size={22} /> XÁC NHẬN</button></div>
         </div>)}
     </div>
   );
