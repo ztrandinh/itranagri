@@ -30,8 +30,8 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [ ] KhoPanel.tsx (97 dòng — đã lazy-fetch theo tab ở PR #68, giờ thêm DataBoundary cho từng tab)
 - [x] KhoPanel.tsx (97 dòng) — thêm DataBoundary cho bảng tồn kho chính (tab "ton"), bổ sung vào lazy-fetch đã có ở PR #68
 - [x] ProcessDesigner.tsx (98 dòng) — bảng các bước quy trình
-- [ ] More.tsx (106 dòng)
-- [ ] Depts.tsx (127 dòng)
+- [x] More.tsx (106 dòng) — GlPanel(tb) + AttendancePanel(today), 2/nhiều bảng ưu tiên cao nhất
+- [x] Depts.tsx (127 dòng) — ThuYPanel(board) + NhanSuPanel(staff) + KeToanPanel(expense), 3/nhiều bảng ưu tiên cao nhất (y tế/nhân sự/tài chính)
 
 **Không áp dụng** (không fetch danh sách): Home.tsx, HuongDan.tsx, FarmProfile.tsx, DesignSystem.tsx.
 
