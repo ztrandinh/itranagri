@@ -14,10 +14,10 @@ dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ �
 - [x] MuaHang.tsx (37 dòng) — 3 bảng (goiy/ds/bieudo); bỏ qua bảng "tao"/"nhan" (state cục bộ, không phải async list)
 - [x] Fulfillment.tsx (41 dòng) — ReturnsPanel + ProductionPanel (2 bảng)
 - [x] DuLich.tsx (44 dòng) — bookings/events/tours/occm (4 bảng chính); bỏ qua sơ đồ phòng dạng thẻ + list dv (rủi ro thấp hơn, không phải bảng)
-- [ ] HerdIntake.tsx (44 dòng)
+- [x] HerdIntake.tsx (44 dòng) — MonitoringRing (HerdIntake form chính không có async list, bỏ qua)
 - [ ] Obj360.tsx (44 dòng — fetch tay, không qua useData, cần wiring loading/error riêng)
-- [ ] KinhDoanh.tsx (45 dòng)
-- [ ] SinhHoc.tsx (51 dòng)
+- [x] KinhDoanh.tsx (45 dòng) — CrmPanel + PosPanel(receipts) + KenhPanel
+- [x] SinhHoc.tsx (51 dòng) — bảng theo dây chuyền + luống trùn
 - [ ] AnimalDetail.tsx (54 dòng)
 - [ ] DoiTuong.tsx (55 dòng)
 - [ ] Company.tsx (61 dòng)
