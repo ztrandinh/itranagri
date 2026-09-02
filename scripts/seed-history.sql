@@ -73,26 +73,21 @@ begin
   -- vỗ béo: 4 lứa × 30 con, mỗi lứa 180 ngày, mua tơ đực 18 tháng 220 kg, bán 430 kg (lứa 1–3 đã bán, lứa 4 đang nuôi)
   for k in 1..4 loop
     d := d0 + ((k-1)*180 || ' days')::interval;
+    ids := '{}'::text[]; -- gom cá thể lứa này để bán qua sell_livestock() thay vì insert sales rời (0200: sale_animals trống lịch sử vì seed cũ không nối)
     for i in 1..30 loop
       v_id := F||'-BO-V'||k||lpad(i::text,2,'0');
       insert into animals(id, farm_id, species, breed, sex, birth_date, source, status, location_id, class_code, visual_tag, group_id, created_at, unit_value, last_weight_kg, last_weight_at)
       values (v_id, F, 'BO', 'Lai Sind/Brahman', 'M', (d - interval '540 days')::date, 'MUA', 'CHO_PHOI', (F||'-CH-VO-1'), 'BO-VO-BEO', 'V'||k||lpad(i::text,2,'0'), (F||'-DAN-VO-01'), d, 22000000, case when k<4 then 430 else 220 + (current_date - d)*0.9 end, case when k<4 then d + 180 else current_date end)
       on conflict (id) do nothing;
-      continue when (select status from animals where id=v_id) = 'XUAT';
+      continue when (select status from animals where id=v_id) = 'XUAT'; -- chạy lại (idempotent): lứa này đã bán ở lần trước, ids rỗng → không gọi sell_livestock lần nữa
       insert into animal_events(farm_id, ts, created_by, source, client_ref, animal_id, event_type, value, unit, detail) values (F, d + time '08:00', U, 'IMPORT', 'h-vnhap-'||v_id, v_id, 'NHAP', 220+(i%15), 'kg', '{"note":"nhập vỗ béo"}') on conflict do nothing;
       -- cân mỗi 30 ngày
       n := 0; while d + n*30 <= least(current_date, d + 180) loop
         insert into animal_events(farm_id, ts, created_by, source, client_ref, animal_id, event_type, value, unit, detail) values (F, d + n*30 + time '07:30', U, 'IMPORT', 'h-vcan-'||v_id||'-'||n, v_id, 'CAN', 220 + (i%15) + n*35 + (i%5), 'kg', jsonb_build_object('adg', 1.05+(i%5)*0.03)) on conflict do nothing; n := n+1; end loop;
-      if k<4 then
-        insert into animal_events(farm_id, ts, created_by, source, client_ref, animal_id, event_type, value, unit, detail) values (F, d + 180 + time '06:00', U, 'IMPORT', 'h-vxuat-'||v_id, v_id, 'XUAT', 425+(i%12), 'kg', '{"note":"xuất bán hơi","buyer":"KH-0002"}') on conflict do nothing;
-        update animals set status='XUAT' where id=v_id;
-      end if;
+      if k<4 then ids := ids || v_id; end if; -- XUAT + sales + sale_animals đều do sell_livestock() sinh (dùng animals.last_weight_kg thật từ vòng cân trên, cập nhật qua trigger animal_events)
     end loop;
-    -- bán bò hơi lứa k
-    if k<4 then
-      insert into sales(farm_id, ts, created_by, source, client_ref, partner_id, sku, qty, unit, price, amount, channel, payment, paid, invoice_no)
-      values (F, d + 180 + time '10:00', U, 'IMPORT', 'h-sale-bo-'||k, 'KH-0002', 'SKU-BO-HOI', 30*430, 'kg', 82000, 30*430*82000, 1, 'CK', true, 'HD-BO-'||k) on conflict do nothing;
-    end if;
+    -- bán bò hơi lứa k: sell_livestock() tự sinh 1 đơn sales cho cả lô + sự kiện XUAT từng con + nối sale_animals
+    if k<4 and array_length(ids,1) > 0 then perform sell_livestock(F, U, ids, 'KH-0002', 82000, 'SKU-BO-HOI'); end if;
   end loop;
   -- ---------- 2. DÊ: 40 cái SS + 4 đực + con ----------
   for i in 1..40 loop v_id := F||'-DE-C'||lpad(i::text,3,'0'); insert into animals(id, farm_id, species, breed, sex, birth_date, source, status, location_id, class_code, visual_tag, created_at, unit_value) values (v_id, F, 'DE', case when i%2=0 then 'Boer lai' else 'Bách Thảo' end, 'F', (d0 - ((400 + i*5)||' days')::interval)::date, 'MUA', 'CHO_PHOI', (F||'-KHU-C'), 'DE-CAI-SS', 'DC'||i, d0 + interval '90 days', 6500000) on conflict do nothing; end loop;

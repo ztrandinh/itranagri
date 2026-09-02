@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { adminPool } from "@/lib/db";
+import { decryptHmacSecret, verifyHmac } from "@/lib/hmac";
 /** ĐẤU NỐI KÊNH BÁN ONLINE (Shopee · TikTok Shop · Lazada · Haravan/Sapo/Website · Zalo shop · Facebook): mọi đơn từ ngoài → 1 điểm nhận duy nhất
  *  POST /api/webhooks/orders/{source}  header x-api-key (scope 'orders')  body chuẩn hóa: { external_id, created_at?, customer:{name,phone,address,email?}, lines:[{sku|external_sku, name?, qty, price}], shipping_fee?, discount?, payment_status?, ship_to?, note? }
  *  Bộ chuyển đổi (Shopee/TikTok…) chạy ở middleware/Zapier/n8n hoặc app riêng → gọi vào đây theo mẫu chung; SKU ánh xạ qua products.attrs.external_skus hoặc trùng sku.
@@ -9,7 +10,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ source:
   const { source } = await params; const key = req.headers.get("x-api-key") ?? ""; if (!key) return NextResponse.json({ error: "ERR_NO_KEY" }, { status: 401 });
   const p = adminPool(); const k = (await p.query("select * from api_keys where key_hash=$1 and revoked_at is null and ('orders' = any(scopes) or 'write' = any(scopes))", [createHash("sha256").update(key).digest("hex")])).rows[0];
   if (!k) return NextResponse.json({ error: "ERR_BAD_KEY" }, { status: 403 });
-  const b = await req.json().catch(() => null); if (!b?.external_id || !Array.isArray(b.lines) || !b.lines.length) return NextResponse.json({ error: "ERR_BAD_BODY", need: "external_id, lines[]" }, { status: 400 });
+  // HMAC-of-body (0200): key đúng KHÔNG còn được tin tuyệt đối — nếu key này đã cấu hình hmac_secret_enc,
+  // bắt buộc chữ ký hợp lệ trên đúng nội dung gửi mới xử lý tiếp (đọc raw text TRƯỚC khi parse JSON vì
+  // HMAC phải tính trên byte thật, không phải object đã parse lại serialize).
+  const rawBody = await req.text();
+  const hmacSecret = await decryptHmacSecret(k.hmac_secret_enc);
+  if (hmacSecret && !verifyHmac(rawBody, req.headers.get("x-signature"), hmacSecret)) return NextResponse.json({ error: "ERR_BAD_SIGNATURE" }, { status: 401 });
+  const b = (() => { try { return JSON.parse(rawBody); } catch { return null; } })(); if (!b?.external_id || !Array.isArray(b.lines) || !b.lines.length) return NextResponse.json({ error: "ERR_BAD_BODY", need: "external_id, lines[]" }, { status: 400 });
   const farm = String(b.farm_id ?? k.farm_id ?? "F01"); const src = source.toUpperCase().replace(/[^A-Z0-9_]/g, "").slice(0, 20);
   const dup = (await p.query("select id from orders where farm_id=$1 and attrs->>'external_id'=$2 and attrs->>'source'=$3", [farm, String(b.external_id), src])).rows[0]; if (dup) return NextResponse.json({ ok: true, id: dup.id, duplicate: true });
   // Pre-check trên chỉ là fast-path, không đủ chống race giữa 2 lần sàn TMĐT gọi lại khi timeout —

@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 import { adminPool } from "@/lib/db";
-/** IoT INGEST: POST /api/ingest/sensor  header x-api-key  body {farm_id?, readings:[{device_id, metric, value, ts?, quality?}]}
+import { decryptHmacSecret, verifyHmac } from "@/lib/hmac";
+/** IoT INGEST: POST /api/ingest/sensor  header x-api-key (+ x-signature nếu key đã cấu hình HMAC)
+ *  body {farm_id?, readings:[{device_id, metric, value, ts?, quality?}]}
  *  Khóa API tạo ở Quản trị DL › api_keys (lưu sha256; scope 'ingest'). Gateway MQTT/LoRa/ESP32 gọi trực tiếp; partition tháng tự có (ensure_sensor_partitions). */
 export async function POST(req: Request) {
   const key = req.headers.get("x-api-key") ?? ""; if (!key) return NextResponse.json({ error: "ERR_NO_KEY" }, { status: 401 });
   const hash = createHash("sha256").update(key).digest("hex"); const p = adminPool();
   const k = (await p.query("select * from api_keys where key_hash=$1 and revoked_at is null and ('ingest' = any(scopes) or 'write' = any(scopes))", [hash])).rows[0];
   if (!k) return NextResponse.json({ error: "ERR_BAD_KEY" }, { status: 403 });
-  const b = await req.json().catch(() => null); const farm = String(b?.farm_id ?? k.farm_id ?? ""); const rs: { device_id: string; metric: string; value: number; ts?: string; quality?: string }[] = Array.isArray(b?.readings) ? b.readings : b ? [b] : [];
+  // HMAC-of-body (0200): key đúng không còn được tin tuyệt đối nếu đã cấu hình hmac_secret_enc.
+  const rawBody = await req.text();
+  const hmacSecret = await decryptHmacSecret(k.hmac_secret_enc);
+  if (hmacSecret && !verifyHmac(rawBody, req.headers.get("x-signature"), hmacSecret)) return NextResponse.json({ error: "ERR_BAD_SIGNATURE" }, { status: 401 });
+  const b = (() => { try { return JSON.parse(rawBody); } catch { return null; } })(); const farm = String(b?.farm_id ?? k.farm_id ?? ""); const rs: { device_id: string; metric: string; value: number; ts?: string; quality?: string }[] = Array.isArray(b?.readings) ? b.readings : b ? [b] : [];
   if (!farm || !rs.length) return NextResponse.json({ error: "ERR_EMPTY" }, { status: 400 });
   if (k.farm_id && k.farm_id !== farm) return NextResponse.json({ error: "ERR_FARM_SCOPE" }, { status: 403 });
   let n = 0, dup = 0; const errors: string[] = [];

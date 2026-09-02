@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { createHash } from "node:crypto";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 /** GET /api/exports/{kind}?from&to&sku&lot&farm  — kinds:
  *  all (ZIP CSV toàn bộ + schema + sha256) · audit-pack (ZIP hồ sơ audit ≤24h theo kỳ/SKU) · tt66 (hồ sơ chăn nuôi TT 66/2025) ·
@@ -70,7 +71,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
           files["animals.csv"] = csv(await q("select * from animals where farm_id=$1", [farm]));
           files["withdrawal.csv"] = csv(await q("select e.animal_id, e.ts, e.detail->>'note' as note, e.withdrawal_until from animal_events e where e.farm_id=$1 and e.event_type in ('DIEU_TRI','VACCINE') and e.ts::date between $2 and $3 order by ts", [farm, from, to]));
           files["audit_anchors.csv"] = csv(await q("select * from audit_anchors where farm_id=$1 and day between $2 and $3 order by day", [farm, from, to]));
-          files["INDEX.md"] = `# Hồ sơ audit ITRAN AGRI\nTrại ${farm} · kỳ ${from} → ${to}${sku ? ` · SKU ${sku}` : ""} · sinh ${new Date().toISOString()} bởi ${s.staffId}\n\nMục lục: nhật ký sự kiện vật nuôi, cho ăn, ruộng, mẻ, kho, bán, checklist, sự cố, cổng, hiệu chuẩn, phiếu giấy, điều chỉnh, kiểm kê, đối soát RC, cảnh báo, SOP ban hành, chứng chỉ nhân sự, lô, đàn, ngưng thuốc, neo audit (hash ngày).\nNguyên tắc: không bản ghi = không tồn tại; sự kiện append-only; mọi bản ghi có người ghi + thời gian + nguồn (APP/PAPER/DEVICE/IMPORT).`;
+          // Nhóm bằng chứng auditor cần nhất nhưng trước đây thiếu ở audit-pack (chỉ nằm ở export
+          // crop-dossier/audit-std riêng) — dư lượng BVTV/PHI/xét nghiệm, thu hoạch, chứng nhận hiệu lực.
+          files["harvests.csv"] = csv(await q("select * from harvests where farm_id=$1 and status='ACTIVE' and ts::date between $2 and $3 order by ts", [farm, from, to]));
+          files["crop_inputs.csv"] = csv(await q("select * from crop_inputs where farm_id=$1 and status='ACTIVE' and ts::date between $2 and $3 order by ts", [farm, from, to]));
+          files["lab_samples.csv"] = csv(await q("select * from lab_samples where farm_id=$1 and taken_at::date between $2 and $3 order by taken_at", [farm, from, to]));
+          files["certifications.csv"] = csv(await q("select * from certifications where farm_id=$1 or farm_id is null", [farm]));
+          files["INDEX.md"] = `# Hồ sơ audit ITRAN AGRI\nTrại ${farm} · kỳ ${from} → ${to}${sku ? ` · SKU ${sku}` : ""} · sinh ${new Date().toISOString()} bởi ${s.staffId}\n\nMục lục: nhật ký sự kiện vật nuôi, cho ăn, ruộng, mẻ, kho, bán, checklist, sự cố, cổng, hiệu chuẩn, phiếu giấy, điều chỉnh, kiểm kê, đối soát RC, cảnh báo, SOP ban hành, chứng chỉ nhân sự, lô, đàn, ngưng thuốc, neo audit (hash ngày), thu hoạch, liều BVTV/PHI, kết quả xét nghiệm dư lượng, chứng nhận hiệu lực.\nNguyên tắc: không bản ghi = không tồn tại; sự kiện append-only; mọi bản ghi có người ghi + thời gian + nguồn (APP/PAPER/DEVICE/IMPORT).`;
           return zipRes(`audit-pack-${farm}-${from}_${to}.zip`, files);
         }
         case "tt66": {
@@ -132,13 +139,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
         case "recon": return csvRes(`doi-soat-${farm}.csv`, await q("select * from recon_results where farm_id=$1 and period between $2 and $3 order by period, rule_code", [farm, from, to]));
         case "epcis": {
           if (!lot) throw new Error("ERR_LOT_REQUIRED");
-          const links = await q("select * from v_trace_links where farm_id=$1 and (input_lot=$2 or output_lot=$2)", [farm, lot]);
+          // Truy xuất TOÀN CHUỖI (0201) thay vì chỉ 1-hop v_trace_links trực tiếp trên lô này — kế thừa
+          // đúng giới hạn cũ ("1 bước lùi–1 bước tiến") đã được vá ở /trace/{lot}, áp dụng luôn cho EPCIS.
+          const chain = ((await q("select trace_full_chain($1,$2) as j", [farm, lot]))[0]?.j ?? {}) as { batches?: { input_lot: string; output_lot: string; batch_code: string; ts: string }[] };
+          const links = chain.batches ?? [];
           const moves = await q("select * from inventory_moves where farm_id=$1 and lot_id=$2 and status='ACTIVE' order by ts", [farm, lot]);
           const sales = await q("select s.*, p.name as partner_name from sales s left join partners p on p.id=s.partner_id where s.farm_id=$1 and s.lot_id=$2 and s.status='ACTIVE'", [farm, lot]);
+          // CBV đầy đủ hơn: eventID (định danh duy nhất mỗi event, bắt buộc theo EPCIS 2.0 §7.3) + recordTime
+          // (thời điểm hệ thống ghi nhận, khác eventTime là thời điểm xảy ra thật) + disposition (trạng thái
+          // vật lý CBV chuẩn — active/in_transit/sold) cho từng loại event.
           const events = [
-            ...links.map((l) => ({ type: "TransformationEvent", eventTime: l.ts, bizStep: "urn:epcglobal:cbv:bizstep:transforming", inputQuantityList: [{ epcClass: `urn:itran:lot:${l.input_lot}` }], outputQuantityList: [{ epcClass: `urn:itran:lot:${l.output_lot}` }], transformationID: l.batch_code, readPoint: { id: `urn:itran:farm:${farm}` } })),
-            ...moves.map((m) => ({ type: "ObjectEvent", eventTime: m.ts, action: Number(m.direction) > 0 ? "ADD" : "OBSERVE", bizStep: Number(m.direction) > 0 ? "urn:epcglobal:cbv:bizstep:receiving" : "urn:epcglobal:cbv:bizstep:shipping", quantityList: [{ epcClass: `urn:itran:lot:${lot}`, quantity: Number(m.qty), uom: m.unit }], readPoint: { id: `urn:itran:loc:${m.warehouse_id}` }, bizLocation: { id: `urn:itran:farm:${farm}` } })),
-            ...sales.map((x) => ({ type: "TransactionEvent", eventTime: x.ts, action: "ADD", bizStep: "urn:epcglobal:cbv:bizstep:shipping", bizTransactionList: [{ type: "urn:epcglobal:cbv:btt:inv", bizTransaction: `urn:itran:sale:${x.id}` }], quantityList: [{ epcClass: `urn:itran:lot:${lot}`, quantity: Number(x.qty), uom: x.unit }], destinationList: [{ type: "urn:epcglobal:cbv:sdt:owning_party", destination: `urn:itran:partner:${x.partner_id}` }] })),
+            ...links.map((l) => ({ eventID: `urn:itran:event:link:${l.batch_code}:${new Date(String(l.ts)).getTime()}`, type: "TransformationEvent", eventTime: l.ts, recordTime: new Date().toISOString(), bizStep: "urn:epcglobal:cbv:bizstep:transforming", disposition: "urn:epcglobal:cbv:disp:in_progress", inputQuantityList: [{ epcClass: `urn:itran:lot:${l.input_lot}` }], outputQuantityList: [{ epcClass: `urn:itran:lot:${l.output_lot}` }], transformationID: l.batch_code, readPoint: { id: `urn:itran:farm:${farm}` } })),
+            ...moves.map((m) => ({ eventID: `urn:itran:event:move:${m.id}`, type: "ObjectEvent", eventTime: m.ts, recordTime: m.created_at ?? m.ts, action: Number(m.direction) > 0 ? "ADD" : "OBSERVE", bizStep: Number(m.direction) > 0 ? "urn:epcglobal:cbv:bizstep:receiving" : "urn:epcglobal:cbv:bizstep:shipping", disposition: Number(m.direction) > 0 ? "urn:epcglobal:cbv:disp:active" : "urn:epcglobal:cbv:disp:in_transit", quantityList: [{ epcClass: `urn:itran:lot:${lot}`, quantity: Number(m.qty), uom: m.unit }], readPoint: { id: `urn:itran:loc:${m.warehouse_id}` }, bizLocation: { id: `urn:itran:farm:${farm}` } })),
+            ...sales.map((x) => ({ eventID: `urn:itran:event:sale:${x.id}`, type: "TransactionEvent", eventTime: x.ts, recordTime: x.created_at ?? x.ts, action: "ADD", bizStep: "urn:epcglobal:cbv:bizstep:shipping", disposition: "urn:epcglobal:cbv:disp:sold", bizTransactionList: [{ type: "urn:epcglobal:cbv:btt:inv", bizTransaction: `urn:itran:sale:${x.id}` }], quantityList: [{ epcClass: `urn:itran:lot:${lot}`, quantity: Number(x.qty), uom: x.unit }], destinationList: [{ type: "urn:epcglobal:cbv:sdt:owning_party", destination: `urn:itran:partner:${x.partner_id}` }] })),
           ];
           return NextResponse.json({ "@context": ["https://ref.gs1.org/standards/epcis/2.0.0/epcis-context.jsonld"], type: "EPCISDocument", schemaVersion: "2.0", creationDate: new Date().toISOString(), epcisBody: { eventList: events } });
         }
@@ -151,7 +164,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const code = msg.match(/ERR_[A-Z_]+/)?.[0];
-    if (!code) console.error("[exports]", kind, msg); // không lộ chi tiết driver DB ra client (xem actions/route.ts)
+    if (!code) logger.error({ kind, err: msg }, "exports: lỗi driver thô"); // không lộ chi tiết driver DB ra client (xem actions/route.ts)
     return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }

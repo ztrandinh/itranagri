@@ -29,6 +29,11 @@ jobs:
       - name: Tests
         env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm test
+      - name: Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: E2E (login/ghi 3 chạm/offline) — trước đây Playwright cài mà 0 test nào
+        env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret, JOB_KEY: ci-job-key, E2E_PORT: "3199" }
+        run: pnpm test:e2e
       - name: Build
         env: { DATABASE_ADMIN_URL: "postgres://postgres:itranagri@localhost:54499/itranagri", DATABASE_URL: "postgres://app_user:app_user_pw@localhost:54499/itranagri", SESSION_SECRET: ci-secret }
         run: pnpm build

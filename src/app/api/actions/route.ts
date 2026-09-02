@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { withCtx } from "@/lib/db";
 import { EVENT_TABLES } from "@/lib/events";
+import { logger } from "@/lib/logger";
 /** Hành động có duyệt / cập nhật cột được phép: approve_adjustment, digitize_paper, ack_alert, ack_recon, approve_checklist, close_incident, void_event */
 export async function POST(req: Request) {
   const s = await getSession(); if (!s) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
@@ -314,8 +315,16 @@ export async function POST(req: Request) {
           if (!["owner","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE");
           const raw = "itk_" + [...crypto.getRandomValues(new Uint8Array(24))].map((x) => x.toString(16).padStart(2, "0")).join("");
           const { createHash } = await import("node:crypto"); const h = createHash("sha256").update(raw).digest("hex");
-          const r = await c.query("insert into api_keys(org_id,farm_id,name,key_hash,scopes,created_by) values ($1,$2,$3,$4,$5,$6) returning id", [s.orgId, b.farm_id ?? s.farmId, b.name ?? "key", h, Array.isArray(b.scopes) ? b.scopes : ["ingest"], s.staffId]);
-          return { ok: true, id: r.rows[0].id, key: raw, note: "Lưu khóa này ngay — hệ thống chỉ giữ sha256" };
+          const scopes: string[] = Array.isArray(b.scopes) ? b.scopes : ["ingest"];
+          // HMAC-of-body cho scope orders/ingest (0200): secret KÝ riêng, độc lập với khóa bearer ở trên —
+          // mã hoá 2 chiều vì webhook/ingest cần server tính lại chữ ký từ nội dung thật khi verify.
+          const needsHmac = scopes.includes("orders") || scopes.includes("ingest");
+          let hmacSecret: string | null = null;
+          const r = needsHmac
+            ? await (async () => { const { newHmacSecret } = await import("@/lib/hmac"); const hs = newHmacSecret(); hmacSecret = hs.secret;
+                return c.query("insert into api_keys(org_id,farm_id,name,key_hash,scopes,created_by,hmac_secret_enc) values ($1,$2,$3,$4,$5,$6,pgp_sym_encrypt($7,$8)) returning id", [s.orgId, b.farm_id ?? s.farmId, b.name ?? "key", h, scopes, s.staffId, hs.secret, hs.encPassphrase]); })()
+            : await c.query("insert into api_keys(org_id,farm_id,name,key_hash,scopes,created_by) values ($1,$2,$3,$4,$5,$6) returning id", [s.orgId, b.farm_id ?? s.farmId, b.name ?? "key", h, scopes, s.staffId]);
+          return { ok: true, id: r.rows[0].id, key: raw, hmac_secret: hmacSecret, note: hmacSecret ? "Lưu CẢ HAI ngay — key dùng header x-api-key, hmac_secret dùng ký HMAC-SHA256 lên nội dung gửi (header x-signature). Hệ thống không hiện lại được cả 2 sau lần này." : "Lưu khóa này ngay — hệ thống chỉ giữ sha256" };
         }
         case "unlock_staff": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); await c.query("update staff set locked_until=null where id=$1", [b.staff_id]); await c.query("delete from login_attempts where login in (select login from staff where id=$1)", [b.staff_id]); return { ok: true }; }
         case "reset_pin": { if (!["owner","director","it_engineer"].includes(s.role)) throw new Error("ERR_FORBIDDEN_ROLE"); const tmp = String(Math.floor(100000 + Math.random() * 900000)); await c.query("update staff set pin_hash=crypt($2, gen_salt('bf')), must_change_pin=true, locked_until=null where id=$1", [b.staff_id, tmp]); await c.query("update sessions set revoked_at=now() where staff_id=$1 and revoked_at is null", [b.staff_id]); return { ok: true, temp_pin: tmp, note: "PIN tạm — nhân viên phải đổi ngay khi đăng nhập" }; }
@@ -440,7 +449,7 @@ export async function POST(req: Request) {
     // Có mã ERR_* = lỗi nghiệp vụ do chính app ném ra, message vốn viết cho người dùng đọc — giữ nguyên.
     // KHÔNG có mã = exception thô (thường từ driver Postgres: lộ tên bảng/cột/constraint nội bộ) —
     // không trả nguyên văn ra client (mọi role kể cả worker gọi được endpoint này), chỉ log ở server.
-    if (!code) console.error("[actions]", b?.action, msg);
+    if (!code) logger.error({ action: b?.action, err: msg }, "actions: lỗi driver thô");
     return NextResponse.json({ error: code ?? "ERR", detail: code ? msg : "Có lỗi xảy ra, vui lòng thử lại hoặc báo kỹ thuật." }, { status: 400 });
   }
 }

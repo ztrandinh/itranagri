@@ -23,6 +23,9 @@ const eslintConfig = defineConfig([
     rules: {
       "react/no-unescaped-entities": "off",
       "@next/next/no-html-link-for-pages": "off",
+      // Giữ "warn" (không "error"): codebase cũ có 181 vi phạm hiện hữu, ép "error" ngay sẽ đỏ CI
+      // hàng loạt không kiểm soát được. Chặn TÁI DIỄN thay vì chặn tồn tại: `pnpm lint` có
+      // `--max-warnings 181` (package.json) — số warning tăng thêm 1 là CI đỏ, chỉ giảm được, không tăng.
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/purity": "warn",
       "react-hooks/use-memo": "warn",

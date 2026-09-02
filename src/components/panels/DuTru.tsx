@@ -66,7 +66,7 @@ function Block({ b, title, hint, R0, W, groups, sess, onChanged }: { b: string; 
 /** DASHBOARD DỰ TRỮ tách 3 khối: ĐẦU VÀO (nguyên liệu/thức ăn cho vật nuôi, giống, phân/thuốc, bao bì, nhiên liệu) · ĐẦU RA (thành phẩm) · CÔNG CỤ (từng cuốc/xẻng/búa, nhiều kho theo khu vực, cấp phát/thu hồi/hỏng) */
 export default function DuTru({ sess }: { sess: Sess }) {
   const [tab, setTab] = useState<"vao" | "ra" | "cc">("vao");
-  const dash = useData("stock_dashboard"); const sgroups = useData("stock_groups"); const cst = useData("cache_status"); const fill = useData("warehouse_fill"); const tools = useData("tool_stock"); const issued = useData("tool_issued"); const cat = useData("tool_catalog"); const hist = useData("tool_history"); const staff = useData("staff_list"); const wh = useData("warehouses");
+  const dash = useData("stock_dashboard"); const sgroups = useData("stock_groups"); const cst = useData("cache_status"); const fill = useData("warehouse_fill"); const tools = useData("tool_stock"); const issued = useData("tool_issued"); const cat = useData("tool_catalog"); const hist = useData("tool_history"); const staff = useData("staff"); const wh = useData("warehouses");
   const [msg, setMsg] = useState(""); const [isF, setIsF] = useState<R>({}); const [mvF, setMvF] = useState<R>({}); const [grp, setGrp] = useState<string>(""); const { prompt, promptElement } = usePrompt();
   const canW = ["owner", "director", "tech_head", "team_lead", "worker", "it_engineer"].includes(sess.role);
   const rows = (b: string) => (dash.rows ?? []).filter((r) => r.block === b);

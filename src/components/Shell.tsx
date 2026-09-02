@@ -1,7 +1,7 @@
 "use client";
 import { MODULES, DEPT_HOME } from "@/lib/modules";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { pending, onQueueChange, flush, type Queued, discard } from "@/lib/offline";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "@/components/panels/Notify";
@@ -69,6 +69,28 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
   const nav = [...(sess.dept && DEPT_HOME[sess.dept] ? [{ href: DEPT_HOME[sess.dept], label: "Phòng tôi" }] : []), ...(NAV[sess.role] ?? NAV.worker)].filter((v, i, a) => a.findIndex((x) => x.href === v.href) === i).slice(0, 6);
   const failed = q.filter((x) => x.last_error && x.tries > 0);
   const [side, setSide] = useState(false); const [collapsed, setCollapsed] = useState(false);
+  // Menu hamburger mobile — điểm điều hướng DUY NHẤT trên điện thoại, trước đây không Escape/focus-trap
+  // (khác Modal/Sheet chuẩn đã có sẵn trong app). Bẫy focus + Esc + trả focus, cùng pattern Modal.tsx.
+  const drawerRef = useRef<HTMLElement>(null); const sidePrevFocus = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!side) return;
+    sidePrevFocus.current = document.activeElement as HTMLElement | null;
+    const el = drawerRef.current;
+    const first = el?.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    (first ?? el)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.stopPropagation(); setSide(false); }
+      if (e.key === "Tab" && el) {
+        const f = Array.from(el.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter((n) => !n.hasAttribute("disabled"));
+        if (!f.length) return;
+        const first0 = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first0) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first0.focus(); }
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => { document.removeEventListener("keydown", onKey, true); sidePrevFocus.current?.focus?.(); };
+  }, [side]);
   useEffect(() => { setSide(false); }, [path]);
   useEffect(() => { try { setCollapsed(localStorage.getItem("itran.side") === "1"); } catch { /* */ } }, []);
   const myDept = sess.dept ?? ""; const zonesRaw = ZONES.filter((z) => z.roles.includes(sess.role) || z.roles.includes("*")).map((z) => ({ ...z, items: z.items.filter((i) => !i.roles || i.roles.includes(sess.role)) })).filter((z) => z.items.length);
@@ -113,7 +135,7 @@ export default function Shell({ sess, title, children }: { sess: Sess; title?: s
         {SideNav}
         <div className="border-t border-[var(--side-border)] p-3 text-xs text-slate-400">{!collapsed && <><div className="font-semibold text-slate-200 truncate">{sess.staffName}</div><div className="truncate">{sess.position ?? sess.role} · {sess.farmId}</div><div className="mt-1 flex gap-3"><Link href="/tai-khoan" className="hover:text-white">Tài khoản</Link><button className="hover:text-white" onClick={async () => { await fetch("/api/auth/logout", { method: "POST" }); window.location.href = "/login"; }}>Thoát</button></div></>}</div>
       </aside>
-      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside className="absolute left-0 top-0 h-full w-72 bg-[var(--side-bg)] text-slate-100 flex flex-col" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-[var(--side-border)] font-black text-[var(--side-brand)]">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}><IconX size={18} /></button></div>{SideNav}</aside></div>}
+      {side && <div className="fixed inset-0 z-40 md:hidden" onClick={() => setSide(false)}><div className="absolute inset-0 bg-black/40" /><aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Menu điều hướng" tabIndex={-1} className="absolute left-0 top-0 h-full w-72 bg-[var(--side-bg)] text-slate-100 flex flex-col outline-none" onClick={(e) => e.stopPropagation()}><div className="flex items-center px-4 h-14 border-b border-[var(--side-border)] font-black text-[var(--side-brand)]">ITRAN AGRI<button className="ml-auto text-slate-400" onClick={() => setSide(false)}><IconX size={18} /></button></div>{SideNav}</aside></div>}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="app-header sticky top-0 z-20 h-14 bg-white/90 backdrop-blur border-b border-line flex items-center gap-3 px-3">
           <button className="md:hidden min-w-[44px] min-h-[44px] flex items-center justify-center -my-2 -ml-2" onClick={() => setSide(true)} aria-label="Menu"><IconMenu size={24} /></button>

@@ -18,7 +18,14 @@ export function newClientRef(): string {
   return `${t.slice(0, 8)}-${t.slice(8, 12)}-7${hex.slice(0, 3)}-${(8 + (r[2] & 3)).toString(16)}${hex.slice(4, 7)}-${hex.slice(7, 19)}`;
 }
 
+// Trước đây không giới hạn dung lượng hàng đợi — nếu công nhân mất mạng nhiều ngày liên tục (thực tế
+// ở trại vùng sâu), IndexedDB có thể chạm hạn ngạch trình duyệt và set() ném lỗi quota không rõ ràng,
+// hoặc hàng đợi phình quá lớn khiến 1 lần đồng bộ gửi hàng nghìn bản ghi cùng lúc (dễ timeout trên
+// mạng yếu). Chặn NGƯỠNG rõ ràng, báo lỗi có ý nghĩa thay vì để trình duyệt tự ném lỗi quota mơ hồ.
+const MAX_QUEUE = 500;
 export async function enqueue(table: string, event: Record<string, unknown>): Promise<Queued> {
+  const n = (await keys()).filter((k) => String(k).startsWith(PREFIX)).length;
+  if (n >= MAX_QUEUE) throw new Error(`ERR_QUEUE_FULL: hàng đợi offline đã đầy (${MAX_QUEUE} bản ghi) — cần có mạng để đồng bộ bớt trước khi ghi tiếp, báo tổ trưởng/IT nếu lặp lại.`);
   const key = PREFIX + (event.client_ref as string);
   const item: Queued = { key, table, event, created_at: Date.now(), tries: 0 };
   await set(key, item);

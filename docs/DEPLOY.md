@@ -27,4 +27,13 @@ Nên khai theo **Environment** (`staging` và `production` riêng) để mỗi m
 ## Rủi ro & lưu ý
 - `supabase db push` là **một chiều tiến tới** — migration phải chạy sạch từ trắng (CI `rebuild-from-scratch.yml` đã canh). Không sửa migration đã đẩy; sửa = migration mới.
 - Bảng sự kiện append-only + RLS đã bật — không cần thao tác thêm khi deploy.
-- Deploy `production` chỉ chạy sau khi `staging` xanh (khuyến nghị quy trình: deploy staging → kiểm → deploy production).
+- **Gate staging → production là kỹ thuật, không chỉ khuyến nghị**: deploy `staging` thành công tự đánh git tag `staging-verified` vào đúng commit; deploy `production` bắt buộc commit đó phải có tag này, nếu không job `staging-gate` chặn ngay trước `db-push`. Lối thoát khẩn cấp: tick `skip_staging_gate` khi chạy workflow — cố ý phải tự tay bật, không có bypass ngầm.
+
+## Cron đêm khi deploy qua Vercel
+`instrumentation.ts` (`setInterval`) chỉ đúng khi có 1 process chạy dài (Docker) — Vercel serverless không hỗ trợ. `vercel.json` khai `crons` gọi lại đúng các job (`dispatch` mỗi phút, `cache` mỗi 5', `all`+`backup` 01:15 ICT, `tasks` 06:00 ICT, `maint` Chủ nhật 02:30 ICT — quy đổi UTC sẵn trong file). Cần khai thêm 1 biến môi trường ở Vercel (ngoài bảng secrets ở trên, đây là **biến app**, không phải secret Actions):
+
+| Biến | Bắt buộc nếu deploy Vercel | Ghi chú |
+|---|---|---|
+| `CRON_SECRET` | ✅ | Chuỗi ngẫu nhiên mạnh tự đặt ở Vercel Project Settings → Environment Variables. Vercel tự gửi `Authorization: Bearer $CRON_SECRET` khi gọi cron — route `/api/jobs/[job]` đã hỗ trợ song song với `x-job-key` (Docker) và session (chạy tay). |
+
+Deploy Docker: bỏ qua mục này, giữ nguyên `SCHEDULER=1` như cũ, không cần `vercel.json`/`CRON_SECRET`.

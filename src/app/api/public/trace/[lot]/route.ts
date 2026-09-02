@@ -4,11 +4,19 @@ import { adminPool } from "@/lib/db";
 export async function GET(_: Request, { params }: { params: Promise<{ lot: string }> }) {
   const { lot } = await params; const key = decodeURIComponent(lot);
   const p = adminPool();
-  const l = (await p.query("select l.id, l.lot_no, l.mfg_date, l.expiry_date, l.status, p.name as product, p.sku, f.name as farm, f.province from lots l join products p on p.sku=l.sku join farms f on f.id=l.farm_id where l.id=$1", [key])).rows[0];
+  const l = (await p.query("select l.id, l.farm_id, l.lot_no, l.mfg_date, l.expiry_date, l.status, p.name as product, p.sku, f.name as farm, f.province from lots l join products p on p.sku=l.sku join farms f on f.id=l.farm_id where l.id=$1", [key])).rows[0];
   if (l) {
-    const chain = (await p.query("select input_lot, batch_code, ts from v_trace_links where output_lot=$1", [key])).rows;
-    const batch = chain.length ? (await p.query("select batch_code, line, ts, ccp_readings from batch_logs where batch_code = any($1) and status='ACTIVE'", [chain.map((c) => c.batch_code)])).rows : [];
-    return NextResponse.json({ kind: "LOT", lot: l, inputs: chain, batches: batch.map((b) => ({ ...b, ccp_ok: Array.isArray(b.ccp_readings) ? (b.ccp_readings as { ok?: boolean }[]).every((c) => c.ok !== false) : true })), story: "Một vòng tròn — không gì bị bỏ đi." });
+    // Truy xuất TOÀN CHUỖI (0201) — trước đây chỉ 1 bước lùi (input_lot trực tiếp), không chạm nguồn
+    // gốc thật (harvest/mua) hay điểm cuối thật (bán/cho ăn). Nay đệ quy qua mọi batch_logs liên quan
+    // (tới độ sâu 10) rồi tra origin/exit thật cho toàn bộ tập lô trong chuỗi.
+    const chainR = (await p.query("select trace_full_chain($1,$2) as j", [l.farm_id ?? "F01", key])).rows[0]?.j ?? {};
+    const batchCodes: string[] = ((chainR.batches ?? []) as { batch_code: string }[]).map((b) => b.batch_code);
+    const batch = batchCodes.length ? (await p.query("select batch_code, line, ts, ccp_readings from batch_logs where batch_code = any($1) and status='ACTIVE'", [batchCodes])).rows : [];
+    return NextResponse.json({
+      kind: "LOT", lot: l, chain: chainR,
+      batches: batch.map((b) => ({ ...b, ccp_ok: Array.isArray(b.ccp_readings) ? (b.ccp_readings as { ok?: boolean }[]).every((c) => c.ok !== false) : true })),
+      story: "Một vòng tròn — không gì bị bỏ đi.",
+    });
   }
   const a = (await p.query("select a.id, a.visual_tag, a.species, a.breed, a.sex, a.birth_date, a.status, a.last_weight_kg, a.last_weight_at, f.name as farm, f.province, g.name as group_name from animals a join farms f on f.id=a.farm_id left join animal_groups g on g.id=a.group_id where a.qr_token=$1 or a.id=$1", [key])).rows[0];
   if (a) {
