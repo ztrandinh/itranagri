@@ -47,3 +47,10 @@ Bối cảnh đã chốt với chủ đầu tư:
 
 ### Nguyên tắc chốt để không lạc
 Một công nghệ chỉ đưa vào khi thỏa CẢ 4: (a) bỏ ≥1 lần gõ/chép tay HOẶC bắt sớm 1 sự cố, (b) chạy offline, (c) ≤3 chạm ≤20s, chữ ≥16pt, (d) ROI đo được — và đo trước–sau bằng chính hệ (thời gian/bản ghi, tỷ lệ đúng hạn, việc quá hạn).
+
+## Bug có sẵn phát hiện khi verify audit mobile/touch-target (phiên 2026-09-01, KHÔNG do đợt sửa này gây ra)
+
+Phát hiện khi agent verify độc lập đăng nhập `owner`/`gd` đi qua 27 trang đã sửa touch-target — xác nhận đợt sửa không gây hồi quy, nhưng lộ 2 lỗi console có sẵn từ trước, ngoài phạm vi frontend-only của phiên này:
+
+- **~~`/to-chuc` — console error~~ ĐÃ SỬA (commit 6325711)**: `<svg> attribute height: Expected length, "-Infinity"`. Gốc: `DeptGraph` (`ProcessFlow.tsx`) tính `height = Math.max(...mảng)` — `Math.max` trên mảng rỗng ra `-Infinity` khi `pos` (Map vị trí phòng ban) rỗng. Sửa bằng cách thêm sàn `Math.max(0, ...)`, cùng cách `width` đã tự vệ sẵn. Verify: DOM height đổi từ `-Infinity` → `352` (hợp lệ).
+- **`/du-tru` — 2 vấn đề, CHỜ session backend xử lý** (đã nhắn qua `itran-farm-f5`, họ xác nhận sẽ xem sau khi xong đợt vá checklist hiện tại): (a) React cảnh báo "duplicate key" cho nhiều mã SKU (TH-OXY, NL-DAU, NL-BAP-U...) — dữ liệu dự phóng tồn kho có vẻ bị fetch/render trùng cho cùng SKU; (b) `GET /api/data/staff_list` trả về **404** — endpoint thiếu hoặc sai tên bảng.
