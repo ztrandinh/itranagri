@@ -1,0 +1,42 @@
+# DataBoundary rollout — checklist theo dõi
+
+15/46 panel đã dùng `DataBoundary` (rà lại — checklist gốc ghi "1/37" đã lỗi thời). Còn lại 31 file,
+trong đó 4 file không có data fetch dạng danh sách (Home/HuongDan/FarmProfile/DesignSystem) — không áp
+dụng. Còn **27 file cần xử lý thật**, xếp theo độ lớn (nhỏ → lớn) để làm dần, kiểm chứng liên tục.
+
+- [x] Pedigree.tsx (22 dòng) — PedigreePanel (2 khối) + EpiPanel (2 bảng)
+- [x] TaiKhoan.tsx (25 dòng)
+- [x] Finance.tsx (26 dòng) — BudgetPanel + CashflowPanel
+- [x] PayrollAssets.tsx (26 dòng) — PayrollPanel + AssetsPanel
+- [x] PheDuyet.tsx (27 dòng) — helper `Sec` dùng chung cho 7 khối, thêm loading/error/onRetry props
+- [x] DaoTaoThuong.tsx (28 dòng) — 4 tab (tuan/nangluc/thuong/so)
+- [x] GiayPanel.tsx (30 dòng)
+- [x] MuaHang.tsx (37 dòng) — 3 bảng (goiy/ds/bieudo); bỏ qua bảng "tao"/"nhan" (state cục bộ, không phải async list)
+- [ ] Fulfillment.tsx (41 dòng)
+- [ ] DuLich.tsx (44 dòng)
+- [ ] HerdIntake.tsx (44 dòng)
+- [ ] Obj360.tsx (44 dòng — fetch tay, không qua useData, cần wiring loading/error riêng)
+- [ ] KinhDoanh.tsx (45 dòng)
+- [ ] SinhHoc.tsx (51 dòng)
+- [ ] AnimalDetail.tsx (54 dòng)
+- [ ] DoiTuong.tsx (55 dòng)
+- [ ] Company.tsx (61 dòng)
+- [ ] SoLieuPanel.tsx (64 dòng — fetch tay + state riêng, cần wiring loading/error riêng)
+- [ ] Notify.tsx (68 dòng)
+- [ ] ToChuc.tsx (70 dòng)
+- [ ] MeterReading.tsx (75 dòng)
+- [ ] Marketing.tsx (85 dòng)
+- [ ] QuanTri.tsx (93 dòng — panel CRUD tổng quát, cẩn thận)
+- [ ] KhoPanel.tsx (97 dòng — đã lazy-fetch theo tab ở PR #68, giờ thêm DataBoundary cho từng tab)
+- [ ] ProcessDesigner.tsx (98 dòng)
+- [ ] More.tsx (106 dòng)
+- [ ] Depts.tsx (127 dòng)
+
+**Không áp dụng** (không fetch danh sách): Home.tsx, HuongDan.tsx, FarmProfile.tsx, DesignSystem.tsx.
+
+**Quy tắc khi sửa mỗi file:**
+1. Đọc toàn bộ file trước khi sửa — xác định đúng khối `.rows.map(...)` nào tương ứng useData nào.
+2. Bọc DataBoundary CHỈ quanh phần list/table (không bọc cả header/toolbar/form phía trên).
+3. `emptyText` phải mô tả đúng ngữ cảnh (không dùng chung 1 câu cho mọi bảng).
+4. Không đổi cấu trúc bảng/markup bên trong — chỉ thêm lớp bọc.
+5. Sau mỗi ~5 file: chạy `tsc --noEmit`; sau khi xong: build + soi trực quan qua browser 1 mẫu đại diện mỗi cỡ file.
