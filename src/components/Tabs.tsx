@@ -5,6 +5,7 @@
  *    (progressive disclosure — giảm mật độ, tab đang chọn LUÔN hiện ngoài).
  */
 import { useEffect, useRef, useState } from "react";
+import { IconChevronDown } from "@/components/icons/UiIcons";
 
 const MAX_VISIBLE = 7;
 
@@ -50,7 +51,7 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
           <div className="relative" ref={box}>
             <button type="button" aria-expanded={open} aria-haspopup="menu"
               className="tab-btn"
-              onClick={() => setOpen(!open)}>Thêm ▾ <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
+              onClick={() => setOpen(!open)}>Thêm <IconChevronDown size={13} /> <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
             {open && (
               <div role="menu" className="ui-pop-in absolute right-0 mt-1 p-1 max-h-72 overflow-auto"
                 style={{ zIndex: "var(--z-sheet)", minWidth: 240, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", boxShadow: "var(--sh-2)" }}>

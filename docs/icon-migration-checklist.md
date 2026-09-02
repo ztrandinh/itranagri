@@ -10,28 +10,30 @@ Rà soát 2026-09-01 qua 5 agent độc lập (46 panel + toàn bộ component d
 
 - [x] **16 icon khu vực/phòng ban** (📝🎯🐄🌾♻🏭🏬💰🏨🌏📒👥✅🔧🧪🏢) — `src/components/icons/ZoneIcons.tsx`, gắn ở Shell.tsx (sidebar) + Home.tsx (trang chủ). Commit `4d57db7`.
 
-## ĐỢT 2 — Component dùng chung, xuất hiện ở MỌI trang (ưu tiên cao nhất)
+## ĐỢT 2 — Component dùng chung, xuất hiện ở MỌI trang (ưu tiên cao nhất) — XONG (commit tiếp theo)
 
-- [ ] **✓** checkmark "xong/đạt" — PageNav-adjacent, CaPanel.tsx, ThreeTap.tsx, TodayBar.tsx, ModulePanel.tsx (+ dùng lặp lại rất nhiều trong panel, xem Đợt 4)
-- [ ] **✗** cross "chưa đạt/sai" — cặp đôi với ✓, ModulePanel.tsx boolean cell
-- [ ] **← / →** quay lại/tiếp — **PageNav.tsx (MỌI TRANG)**, ThreeTap.tsx, CaPanel.tsx, ProcessFlow.tsx
-- [ ] **🏠** trang chủ/phòng tôi — **PageNav.tsx (MỌI TRANG)**, Shell.tsx
-- [ ] **▾ / ▸** mở rộng/thu gọn — Shell.tsx, TodayBar.tsx, **Tabs.tsx (menu "Thêm ▾" — mọi trang có tab)**
-- [ ] **✕** đóng/xóa — QrScan.tsx, Toast.tsx, Shell.tsx (đóng sidebar mobile)
-- [ ] **☰** hamburger menu mobile — Shell.tsx
-- [ ] **» / «** thu gọn/mở sidebar — Shell.tsx
-- [ ] **📋** việc/hồ sơ — BottomNav.tsx (tab "Việc" — mọi trang mobile), ThreeTap.tsx
-- [ ] **📷** quét/chụp — QrScan.tsx (dùng lại trong Search + ThreeTap), BottomNav.tsx (tab "Phiếu")
-- [ ] **＋** thêm mới — Attachments.tsx, ModulePanel.tsx (+ dùng lặp cực nhiều trong panel, xem Đợt 4)
-- [ ] **✍** ghi/viết — BottomNav.tsx (tab "Ghi"), CaPanel.tsx
-- [ ] **👤** người/tài khoản — BottomNav.tsx (tab "Tôi"), Search.tsx
-- [ ] **⏳ / 📴** trạng thái đồng bộ (hàng đợi/offline) — Shell.tsx header
-- [ ] **☀ / 🌙 / 🖥** chế độ sáng/tối/hệ thống — ThemeToggle.tsx
-- [ ] **🌤** chế độ nắng (đọc ngoài trời) — SunMode.tsx
-- [ ] **🔍** tìm kiếm — Search.tsx
-- [ ] **⚖** cân BLE — ThreeTap.tsx
-- [ ] **−** giảm số lượng (stepper) — ThreeTap.tsx
-- [ ] Search.tsx — bản đồ icon theo LOẠI đối tượng (🐄🐔🟩🌱🧬📦👤🤝⚙️🏠📍🏬📅🏷️🔁🏢🛏️, 17 loại) — ưu tiên thấp hơn vì mỗi cái chỉ 1 chỗ trong code (dù lặp lại nhiều lần lúc chạy)
+- [x] **✓** checkmark "xong/đạt" — CaPanel.tsx, ThreeTap.tsx, TodayBar.tsx, ModulePanel.tsx
+- [x] **✗** cross "chưa đạt/sai" — ModulePanel.tsx boolean cell
+- [x] **← / →** quay lại/tiếp — PageNav.tsx, ThreeTap.tsx, CaPanel.tsx (ProcessFlow.tsx "→ {dept}" để lại — nằm trong SVG sơ đồ phức tạp, xem Đợt 4)
+- [x] **🏠** trang chủ/phòng tôi — PageNav.tsx, Shell.tsx
+- [x] **▾ / ▸** mở rộng/thu gọn — Shell.tsx, TodayBar.tsx, Tabs.tsx ("Thêm ▾")
+- [x] **✕** đóng/xóa — QrScan.tsx, Toast.tsx, Shell.tsx
+- [x] **☰** hamburger menu mobile — Shell.tsx
+- [x] **» / «** thu gọn/mở sidebar — Shell.tsx
+- [x] **📋** việc/hồ sơ — BottomNav.tsx
+- [x] **📷** quét/chụp — QrScan.tsx, BottomNav.tsx
+- [x] **＋** thêm mới — Attachments.tsx, ModulePanel.tsx
+- [x] **✍** ghi/viết — BottomNav.tsx, CaPanel.tsx (📝 handover note)
+- [x] **👤** người/tài khoản — BottomNav.tsx
+- [x] **⏳ / 📴** trạng thái đồng bộ — Shell.tsx header
+- [x] **☀ / 🌙 / 🖥** chế độ sáng/tối/hệ thống — ThemeToggle.tsx
+- [x] **🌤** chế độ nắng — SunMode.tsx
+- [x] **🔍** tìm kiếm — Search.tsx (thêm icon overlay, bỏ emoji khỏi placeholder)
+- [x] **⚖** cân BLE — ThreeTap.tsx
+- [x] **−** giảm số lượng (stepper) — ThreeTap.tsx
+- [ ] Search.tsx — bản đồ icon theo LOẠI đối tượng (🐄🐔🟩🌱🧬📦👤🤝⚙️🏠📍🏬📅🏷️🔁🏢🛏️, 17 loại) — CHƯA LÀM, để Đợt 4 (mỗi cái chỉ 1 chỗ trong code dù lặp nhiều lúc chạy, ưu tiên thấp hơn)
+
+Bộ icon dùng: `src/components/icons/UiIcons.tsx` (đơn sắc, `currentColor`, tự đúng màu theo ngữ cảnh — khác `ZoneIcons.tsx` là icon MÀU tự chứa nền). Thêm 2 icon phát sinh khi làm: `IconRedo` (↷ nút tiến của PageNav), `IconPaperclip`/`IconFile` (kẹp giấy/tệp của Attachments.tsx).
 
 ## ĐỢT 3 — Icon hành động dùng LẶP LẠI nhiều nơi nhất (thiết kế 1 lần, dùng khắp app)
 
