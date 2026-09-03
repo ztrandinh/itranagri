@@ -2,10 +2,10 @@
 
 Ý mới phát sinh trong phiên → ghi ở đây, không mở rộng phạm vi giữa phiên (luật 10).
 
-## NỢ KỸ THUẬT — số migration trùng (ghi 2026-08-20, chưa gấp, rebuild vẫn XANH)
-- **`0170` bị TRÙNG**: `0170_mrp_material_demand.sql` (fix gen_feed_plans + v_material_demand) và `0170_animal_feed_cost.sql` (v_animal_cost_month). Do 2 phiên chạy song song cùng lấy 0170. `migrate.ts` sort theo TÊN file + track theo tên → **cả 2 vẫn chạy, rebuild==live đã XANH** (không vỡ), chỉ trái quy ước "số duy nhất".
-- **Cách xử AN TOÀN khi rảnh**: `git mv 0170_animal_feed_cost.sql <số-trống-mới>_animal_feed_cost.sql` (KHÔNG đổi `0170_mrp_material_demand` — migration 0171 v_stock_status + 0172 v_production_need PHỤ THUỘC `v_material_demand` của nó, đổi ra sau sẽ vỡ thứ tự). animal_feed_cost chỉ tạo view (không migration nào phụ thuộc) nên chuyển ra sau an toàn. Đổi xong: `pnpm db:migrate` + đẩy → CI rebuild-from-scratch tự xác nhận thứ tự.
-- Quy ước tránh tái diễn: trước khi commit migration, `git fetch` + lấy `max số +1` (nhiều phiên chạy song song).
+## NỢ KỸ THUẬT — số migration trùng: ĐÃ VÁ (2026-09-03)
+- **`0170` từng TRÙNG** (ghi 2026-08-20): `0170_mrp_material_demand.sql` và `0170_animal_feed_cost.sql`, do 2 phiên chạy song song. Đã đổi tên `0170_animal_feed_cost.sql` → `0206_animal_feed_cost.sql` (file chỉ tạo view qua `create or replace` + insert có `where not exists` — chạy lại vô hại trên DB đã migrate cũ, không ai phụ thuộc nó nên đổi ra sau an toàn). Kiểm chứng: rebuild-từ-trắng + `pnpm test` xanh.
+- **Phát hiện thêm cùng đợt (2026-09-03, khi merge 6 PR audit)**: `0186` cũng từng TRÙNG tương tự — 1 nhánh dùng `0186_group_guard_skip_backfill.sql`, nhánh khác (PR #44, chưa merge lúc đó) định dùng `0186` cho fix SKU placeholder. Nhánh #44 đã tự đổi số thành `0191_process_io_fix_placeholder_sku.sql` khi merge trước đó — không còn xung đột, chỉ ghi nhận đây là LẦN THỨ 2 việc này xảy ra.
+- **Quy ước tránh tái diễn (vẫn cần làm, chưa có gì chặn tự động)**: trước khi commit migration, `git fetch` + lấy `max số +1`. Chưa có CI check tự động phát hiện số trùng — nên cân nhắc thêm 1 bước CI đơn giản (`ls supabase/migrations | grep -oE '^[0-9]+' | sort | uniq -d` phải rỗng) để chặn hẳn, vì đã xảy ra 2 LẦN với nhiều phiên chạy song song.
 
 ## Rà soát phiên 2026-08-20 — lỗ hổng DỮ LIỆU/HOÀN THIỆN (không phải bug code; cần seed/flow/business quyết)
 

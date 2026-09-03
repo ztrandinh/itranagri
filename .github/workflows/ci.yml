@@ -16,6 +16,10 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Chặn số migration trùng (đã xảy ra 2 lần do nhiều phiên chạy song song — xem docs/backlog.md)
+        run: |
+          dup=$(ls supabase/migrations | grep -oE '^[0-9]+' | sort | uniq -d)
+          if [ -n "$dup" ]; then echo "::error::Số migration trùng: $dup"; exit 1; fi
       - name: Quét dependency có lỗ hổng đã biết (high/critical) — không quét low/moderate để tránh gián đoạn vì lỗi chưa khai thác được
         run: pnpm audit --audit-level=high
       - name: Migrate
