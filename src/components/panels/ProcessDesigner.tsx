@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useEffect, useState } from "react";
 import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
@@ -27,7 +28,7 @@ export default function ProcessDesigner({ sess, initialCode, tab: initialTab }: 
   return (
     <div className="space-y-3">
       {promptElement}{confirmElement}
-      <div className="flex gap-2 items-center flex-wrap"><button className={`px-3 py-1.5 rounded-xl font-semibold ${tab === "tk" ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab("tk")}>🛠 Thiết kế quy trình</button><button className={`px-3 py-1.5 rounded-xl font-semibold ${tab === "chay" ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTab("chay")}>▶ Đang chạy ({runsActive.length})</button>{msg && <span className="text-sm text-green-800 ml-2">{msg}</span>}</div>
+      <Tabs items={[["tk", "🛠 Thiết kế quy trình"], ["chay", `▶ Đang chạy (${runsActive.length})`]]} value={tab} onChange={(k) => setTab(k as typeof tab)} right={msg ? <span className="text-sm text-green-800">{msg}</span> : undefined} />
       {tab === "tk" && <div className="grid md:grid-cols-3 gap-3">
         <div className="card p-0 overflow-auto max-h-[80vh]"><div className="px-3 py-2 bg-stone-100 rounded-t-2xl flex items-center"><b>Quy trình ({P.length})</b>{canW && <button className="ml-auto btn-secondary !py-1 !px-2 !text-xs" onClick={() => { setNewP(true); setCode(null); setMeta({ code: "P-", kind: "CORE", dept_code: depts.rows?.[0]?.code, name: "" }); }}>＋ Mới</button>}</div>
           {(depts.rows ?? []).map((d) => { const list = P.filter((q) => q.dept_code === d.code); return list.length ? <div key={String(d.code)}><div className="px-3 py-1 text-xs font-bold text-stone-500 bg-stone-50">{String(d.short ?? d.name)}</div>{list.map((q) => <button key={String(q.code)} className={`block w-full text-left px-3 py-1.5 text-sm border-b hover:bg-green-50 ${code === q.code ? "bg-green-100" : ""}`} onClick={() => { setCode(String(q.code)); setNewP(false); setEditStep(null); }}><span className="font-mono text-xs">{String(q.code)}</span> {String(q.name)} <span className="text-xs text-stone-500">· {String(q.steps_n)} bước</span> {q.status === "NHAP" ? <span className="b-yel">nháp</span> : q.status === "NGUNG" ? <span className="b-gray">ngưng</span> : null}</button>)}</div> : null; })}</div>

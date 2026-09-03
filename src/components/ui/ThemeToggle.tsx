@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 
 type Mode = "light" | "dark" | "system";
 const KEY = "itran.theme";
+/** Mặc định SÁNG (chuyên nghiệp, đồng nhất cho ảnh chụp/demo) — máy đặt tối không tự áp nữa;
+ *  ai muốn tối bấm "Theo máy" hoặc "Tối" — chọn xong nhớ theo localStorage. */
+const DEFAULT_MODE: Mode = "light";
 
 export function applyTheme(m: Mode) {
   const el = document.documentElement;
@@ -13,9 +16,9 @@ export function applyTheme(m: Mode) {
 }
 
 export function ThemeToggle({ compact }: { compact?: boolean }) {
-  const [mode, setMode] = useState<Mode>("system");
+  const [mode, setMode] = useState<Mode>(DEFAULT_MODE);
   useEffect(() => {
-    try { const v = (localStorage.getItem(KEY) as Mode) || "system"; setMode(v); applyTheme(v); } catch { /* ignore */ }
+    try { const v = (localStorage.getItem(KEY) as Mode) || DEFAULT_MODE; setMode(v); applyTheme(v); } catch { /* ignore */ }
   }, []);
   const set = (m: Mode) => { setMode(m); applyTheme(m); try { localStorage.setItem(KEY, m); } catch { /* ignore */ } };
   const opts: [Mode, string, string][] = [["light", "☀", "Sáng"], ["dark", "🌙", "Tối"], ["system", "🖥", "Theo máy"]];
@@ -32,7 +35,7 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
           style={{
             padding: compact ? "2px 8px" : "4px 10px", borderRadius: "var(--r-full)",
             background: mode === m ? "var(--brand)" : "transparent",
-            color: mode === m ? "#fff" : "var(--muted)",
+            color: mode === m ? "var(--bg)" : "var(--muted)",
             transition: `background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)`,
           }}
         >
@@ -45,6 +48,6 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
 
 /** Nạp theme sớm để tránh nháy sáng→tối khi mở trang (đặt trong Shell). */
 export function ThemeBoot() {
-  useEffect(() => { try { applyTheme(((localStorage.getItem(KEY) as Mode) || "system")); } catch { /* ignore */ } }, []);
+  useEffect(() => { try { applyTheme(((localStorage.getItem(KEY) as Mode) || DEFAULT_MODE)); } catch { /* ignore */ } }, []);
   return null;
 }

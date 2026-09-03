@@ -33,7 +33,7 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
 
   const btn = (k: string, l: string) => (
     <button key={k} type="button" aria-current={value === k ? "page" : undefined}
-      className={`px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap border ${value === k ? "bg-emerald-700 text-white border-emerald-700" : "bg-white text-slate-700 border-slate-200 hover:bg-emerald-50"}`}
+      className={value === k ? "tab-btn-active" : "tab-btn"}
       style={{ transition: "background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)" }}
       onClick={() => onChange(k)}>{l}</button>
   );
@@ -49,7 +49,7 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
         {rest.length > 0 && (
           <div className="relative" ref={box}>
             <button type="button" aria-expanded={open} aria-haspopup="menu"
-              className="px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap border bg-white text-slate-700 border-slate-200 hover:bg-emerald-50"
+              className="tab-btn"
               onClick={() => setOpen(!open)}>Thêm ▾ <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
             {open && (
               <div role="menu" className="ui-pop-in absolute right-0 mt-1 p-1 max-h-72 overflow-auto"

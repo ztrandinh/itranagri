@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useEffect, useMemo, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, ReferenceLine } from "recharts";
 import type { Sess } from "@/components/Shell";
@@ -12,7 +13,7 @@ const label = (t: string, bucket: string) => { const d = new Date(t); return buc
 export default function SoLieuPanel({ sess, initialMetric, initialTab }: { sess: Sess; initialMetric?: string; initialTab?: string }) {
   const [top, setTop] = useState<"kpi" | "any">(initialTab === "any" ? "any" : "kpi");
   return (<div className="space-y-3">
-    <div className="flex gap-2">{[["kpi", "Chỉ số nghiệp vụ (catalog)"], ["any", "📈 Mọi trường dữ liệu (tự động)"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold ${top === k ? "bg-green-700 text-white" : "bg-white border"}`} onClick={() => setTop(k as typeof top)}>{l}</button>)}</div>
+    <Tabs items={[["kpi", "Chỉ số nghiệp vụ (catalog)"], ["any", "📈 Mọi trường dữ liệu (tự động)"]]} value={top} onChange={(k) => setTop(k as typeof top)} />
     {top === "any" ? <AnyExplorer /> : <MetricExplorer sess={sess} initialMetric={initialMetric} />}
   </div>);
 }
@@ -50,7 +51,7 @@ function MetricExplorer({ sess, initialMetric }: { sess: Sess; initialMetric?: s
         <div><label className="text-xs text-stone-500">Đến</label><input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} /></div>
       </div>
       <div className="flex gap-2 items-center flex-wrap text-sm"><span>Nhanh:</span>{[["7 ngày", 7, "day"], ["30 ngày", 30, "day"], ["Quý này", 92, "week"], ["1 năm", 365, "month"], ["3 năm", 1095, "quarter"]].map(([l, d, b]) => <button key={String(l)} className="btn-secondary !py-1 !px-3 !text-sm" onClick={() => { setFrom(new Date(Date.now() - Number(d) * 86400e3).toISOString().slice(0, 10)); setTo(new Date().toISOString().slice(0, 10)); setBucket(String(b)); }}>{l}</button>)}
-        <span className="ml-auto flex gap-1 items-center">{[["bar", "Cột"], ["line", "Đường"], ["cum", "Lũy kế"]].map(([k, l]) => <button key={k} className={`btn-secondary !py-1 !px-3 !text-sm ${chart === k ? "!bg-green-700 !text-white" : ""}`} onClick={() => setChart(k as typeof chart)}>{l}</button>)}<label className="ml-2 flex items-center gap-1"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} /> So kỳ trước</label></span></div>
+        <span className="ml-auto flex gap-1 items-center">{[["bar", "Cột"], ["line", "Đường"], ["cum", "Lũy kế"]].map(([k, l]) => <button key={k} className={chart === k ? "tab-btn-active !px-3 !py-1 !text-xs" : "tab-btn !px-3 !py-1 !text-xs"} onClick={() => setChart(k as typeof chart)}>{l}</button>)}<label className="ml-2 flex items-center gap-1"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} /> So kỳ trước</label></span></div>
       <div className="card"><div className="flex flex-wrap justify-between items-baseline gap-2"><h3 className="font-bold">{m?.name} <span className="text-sm font-normal text-stone-500">({m?.unit}) · {sess.farmId}</span></h3><div className="text-sm">Tổng kỳ: <b>{fmt.n(total, 1)}</b> {m?.unit}{compare && prevTotal > 0 && <span className={total >= prevTotal ? "text-green-700" : "text-red-700"}> · {total >= prevTotal ? "▲" : "▼"} {fmt.n(((total - prevTotal) / prevTotal) * 100, 1)}% so kỳ trước ({fmt.n(prevTotal, 1)})</span>}{norm != null && <span className="text-stone-500"> · định mức ≈ {fmt.n(norm)}/kỳ</span>}</div></div>
         {err && <div className="text-red-700">{err}</div>}
         {!rows.length && !err && <div className="text-stone-500 py-10 text-center">Chưa có dữ liệu trong khoảng này.</div>}
