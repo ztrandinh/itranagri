@@ -41,6 +41,15 @@ flowchart LR
 
 Pipeline thủ công `.github/workflows/deploy.yml`: `gate` (rebuild từ Postgres trắng + lint/tsc/test/build) → (production: `staging-gate` — commit phải có tag `staging-verified`) → `db-push` (Supabase) → `app` (build, Vercel nếu có `VERCEL_TOKEN`). Chi tiết + biến môi trường: `docs/DEPLOY.md`.
 
+## Migration — quy ước forward-only
+
+195+ migration hiện có đều forward-only, không có down-script — chấp nhận được vì backfill down-script
+cho toàn bộ lịch sử là việc lớn không tương xứng giá trị (schema cũ, dữ liệu seed đã đổi nhiều lần).
+**Quy ước cho migration MỚI từ đây về sau**: nếu migration thay đổi có rủi ro cần lùi lại nhanh (đổi
+kiểu cột, xoá cột/bảng, đổi ràng buộc không tương thích ngược) — ghi kèm 1 comment khối `-- DOWN:` ở
+cuối file mô tả câu lệnh lùi lại thủ công (không cần chạy tự động, chỉ cần có sẵn để dùng khi cần gấp).
+Migration thuần thêm mới (bảng/cột/hàm/index mới, không đổi hành vi cũ) không bắt buộc.
+
 ## Đi tiếp
 
 - Nghiệp vụ gốc (điều luật, quy trình, SOP): `docs/bo-goc/`, `docs/plan/00…10`.

@@ -6,14 +6,15 @@ import { useData, act, fmt } from "@/lib/client";
 import type { Sess } from "@/components/Shell";
 import { MonitoringRing } from "@/components/panels/HerdIntake";
 import { PedigreePanel } from "@/components/panels/Pedigree";
+import { DataBoundary } from "@/components/ui/DataBoundary";
 
 export default function AnimalDetail({ sess, code }: { sess: Sess; code: string }) {
   const a = useData("animal", { code }); const tags = useData("animal_tags", { code }); const parity = useData("animal_parity", { code });
-  const [evPage, setEvPage] = useState(0); const [evType, setEvType] = useState(""); const [evRows, setEvRows] = useState<Record<string, unknown>[]>([]); const [evTotal, setEvTotal] = useState(0);
-  const loadEv = async () => { const j = await fetch(`/api/list?kind=events&code=${encodeURIComponent(code)}&limit=50&offset=${evPage * 50}${evType ? `&type=${evType}` : ""}`).then((r) => r.json()); setEvRows(j.rows ?? []); setEvTotal(j.total ?? 0); };
+  const [evPage, setEvPage] = useState(0); const [evType, setEvType] = useState(""); const [evRows, setEvRows] = useState<Record<string, unknown>[]>([]); const [evTotal, setEvTotal] = useState(0); const [evLoading, setEvLoading] = useState(true); const [evError, setEvError] = useState<string | null>(null);
+  const loadEv = async () => { setEvLoading(true); try { const j = await fetch(`/api/list?kind=events&code=${encodeURIComponent(code)}&limit=50&offset=${evPage * 50}${evType ? `&type=${evType}` : ""}`).then((r) => r.json()); setEvRows(j.rows ?? []); setEvTotal(j.total ?? 0); setEvError(j.rows ? null : (j.error ?? "ERR")); } catch { setEvError("offline"); } finally { setEvLoading(false); } };
   useEffect(() => { void loadEv(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, evPage, evType]);
-  const ev = { rows: evRows, reload: loadEv };
+  const ev = { rows: evRows, reload: loadEv, loading: evLoading, error: evError };
   const animals = useData("animals"), groups = useData("animal_groups"), warehouses = useData("warehouses"), products = useData("products"), plots = useData("plots"), recipes = useData("recipes"), locations = useData("locations"), sops = useData("sops"), devices = useData("devices"), partners = useData("partners");
   const [showTag, setShowTag] = useState(false); const [tagVal, setTagVal] = useState(""); const [tagType, setTagType] = useState("RFID");
   const ref: Ref | null = useMemo(() => animals.rows && groups.rows && warehouses.rows && products.rows && plots.rows && recipes.rows && locations.rows && sops.rows && devices.rows && partners.rows ? { animals: animals.rows, groups: groups.rows, warehouses: warehouses.rows, products: products.rows, plots: plots.rows, recipes: recipes.rows, locations: locations.rows, sops: sops.rows, devices: devices.rows, partners: partners.rows } : null, [animals.rows, groups.rows, warehouses.rows, products.rows, plots.rows, recipes.rows, locations.rows, sops.rows, devices.rows, partners.rows]);
@@ -47,8 +48,8 @@ export default function AnimalDetail({ sess, code }: { sess: Sess; code: string 
       <PedigreePanel animalId={code} />
       <div className="card"><MonitoringRing animalId={code} />
       <div className="flex flex-wrap items-center gap-2 mb-2"><h3 className="font-bold">Hồ sơ sự kiện ({evTotal})</h3>{parity.rows?.[0] ? <span className="b-gray">lứa {String(parity.rows[0].parity)} · KC lứa {String(parity.rows[0].calving_interval_days ?? "—")} ngày</span> : null}<select className="input !w-auto !py-1 !text-sm ml-auto" value={evType} onChange={(e) => { setEvType(e.target.value); setEvPage(0); }}><option value="">Mọi loại</option>{["CAN","PHOI","KHAM_THAI","DE","CAI_SUA","DIEU_TRI","VACCINE","BENH","CHUYEN","GHI_CHU"].map((t) => <option key={t}>{t}</option>)}</select><button className="btn-secondary !py-1 !px-2 !text-sm" disabled={evPage === 0} onClick={() => setEvPage(evPage - 1)}>←</button><span className="text-sm">{evPage + 1}/{Math.max(1, Math.ceil(evTotal / 50))}</span><button className="btn-secondary !py-1 !px-2 !text-sm" disabled={(evPage + 1) * 50 >= evTotal} onClick={() => setEvPage(evPage + 1)}>→</button></div>
-        <div className="overflow-auto"><table className="tbl"><thead><tr><th>Lúc</th><th>Sự kiện</th><th>Giá trị</th><th>Chi tiết</th><th>Người ghi</th><th>Nguồn</th></tr></thead><tbody>
+        <div className="overflow-auto"><DataBoundary loading={ev.loading} error={ev.error} empty={!ev.rows?.length} onRetry={ev.reload} emptyText="Chưa có hồ sơ sự kiện."><table className="tbl"><thead><tr><th>Lúc</th><th>Sự kiện</th><th>Giá trị</th><th>Chi tiết</th><th>Người ghi</th><th>Nguồn</th></tr></thead><tbody>
           {(ev.rows ?? []).map((e) => <tr key={String(e.id)} className={e.status !== "ACTIVE" ? "line-through text-muted" : ""}><td>{fmt.dt(e.ts)}</td><td><b>{String(e.event_type)}</b></td><td>{e.value != null ? `${fmt.n(e.value, 1)} ${String(e.unit ?? "")}` : ""}{e.withdrawal_until ? ` · ngưng đến ${fmt.d(e.withdrawal_until)}` : ""}</td><td className="text-sm">{JSON.stringify(e.detail ?? {}).replace(/[{}"]/g, "").slice(0, 80)}{Array.isArray(e.photo_urls) && (e.photo_urls as string[]).map((u) => <a key={u} href={u} target="_blank" className="ml-1 py-2 -my-2 px-1 -ml-1">📷</a>)}</td><td>{String(e.by_name ?? e.created_by)}</td><td className="text-xs">{String(e.source)}{e.is_backfill ? " bù" : ""}{e.paper_serial ? ` ${e.paper_serial}` : ""}</td></tr>)}
-        </tbody></table></div></div>
+        </tbody></table></DataBoundary></div></div>
     </div>);
 }

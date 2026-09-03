@@ -29,7 +29,13 @@ const sopL2Opts = (r: Ref): Option[] => {
 };
 const groupOpts = (r: Ref, kinds?: string[]): Option[] => r.groups
   .filter((g) => (!kinds || kinds.includes(s(g.kind))) && !["DONG", "CLOSED", "HUY"].includes(s(g.status).toUpperCase()))
-  .map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con` }));
+  .map((g) => ({ id: s(g.id), label: s(g.name), sub: `${s(g.head_count)} con`, meta: { species: s(g.species) } }));
+/** Công thức KHỚP LOÀI với đàn đang chọn (target.meta.species) — không có target hoặc đàn chưa
+ *  khai loài thì trả về mọi công thức (đúng luật DB chk_feed_species: thiếu khai thì không chặn). */
+const recipeOptsForTarget = (r: Ref, target: Option | null): Option[] => {
+  const sp = s(target?.meta?.species);
+  return r.recipes.filter((x) => !sp || s(x.species_phase).split("/")[0] === sp).map((x) => ({ id: s(x.id), label: s(x.name) }));
+};
 const binOpts = (r: Ref): Option[] => (r.bins ?? []).map((b) => ({ id: s(b.id), label: `${s(b.warehouse_code)} · ${s(b.code)}`, sub: s(b.zone) }));
 const whOpts = (r: Ref, codes?: string[]): Option[] => r.warehouses.filter((w) => !codes || codes.includes(s(w.code))).map((w) => ({ id: s(w.id), label: `${s(w.code)} ${s(w.name)}`.slice(0, 40) }));
 const prodOpts = (r: Ref, kinds?: string[]): Option[] => r.products.filter((p) => !kinds || kinds.includes(s(p.kind))).map((p) => ({ id: s(p.sku), label: s(p.name), sub: `${s(p.sku)} · ${s(p.unit)}` }));
@@ -68,7 +74,7 @@ export function buildForms(r: Ref, farmId: string): Record<string, ThreeTapSpec>
       table: "feed_logs", title: "Mẻ TMR / cho ăn", targetLabel: "Chọn khu / đàn nhận", targetKey: "dest_group_id",
       targets: [...groupOpts(r, ["BO_NHOM", "GA_DE", "GA_THIT", "RAS", "AO", "DE"])],
       fields: [
-        { key: "recipe_id", label: "Công thức", type: "choice", options: r.recipes.map((x) => ({ id: s(x.id), label: s(x.name) })), required: true },
+        { key: "recipe_id", label: "Công thức", type: "choice", options: (t) => recipeOptsForTarget(r, t), required: true },
         { key: "meal", label: "Cữ", type: "choice", options: [{ id: "SANG", label: "Sáng" }, { id: "CHIEU", label: "Chiều" }, { id: "KHAC", label: "Khác" }], required: true },
         { key: "qty_kg", label: "Khối lượng thực (cân xe trộn)", type: "number", unit: "kg", min: 0, step: 10, required: true },
         { key: "planned_kg", label: "Kế hoạch mẻ", type: "number", unit: "kg", min: 0, step: 10 },
