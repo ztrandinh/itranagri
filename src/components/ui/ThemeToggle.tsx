@@ -2,6 +2,7 @@
 /** Chuyển giao diện Sáng / Tối / Theo máy — ghi data-theme lên <html>, nhớ theo thiết bị.
  *  Mọi màu đã đi qua token nên chỉ cần đổi thuộc tính này. */
 import { useEffect, useState } from "react";
+import { IconSun, IconMoon, IconMonitor } from "@/components/icons/UiIcons";
 
 type Mode = "light" | "dark" | "system";
 const KEY = "itran.theme";
@@ -21,10 +22,10 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
     try { const v = (localStorage.getItem(KEY) as Mode) || DEFAULT_MODE; setMode(v); applyTheme(v); } catch { /* ignore */ }
   }, []);
   const set = (m: Mode) => { setMode(m); applyTheme(m); try { localStorage.setItem(KEY, m); } catch { /* ignore */ } };
-  const opts: [Mode, string, string][] = [["light", "☀", "Sáng"], ["dark", "🌙", "Tối"], ["system", "🖥", "Theo máy"]];
+  const opts: [Mode, (p: { size?: number }) => React.ReactNode, string][] = [["light", IconSun, "Sáng"], ["dark", IconMoon, "Tối"], ["system", IconMonitor, "Theo máy"]];
   return (
     <div role="group" aria-label="Giao diện sáng tối" className="inline-flex items-center gap-1 p-1" style={{ background: "var(--surface-2)", borderRadius: "var(--r-full)", border: "1px solid var(--line)" }}>
-      {opts.map(([m, icon, label]) => (
+      {opts.map(([m, Icon, label]) => (
         <button
           key={m}
           type="button"
@@ -39,7 +40,7 @@ export function ThemeToggle({ compact }: { compact?: boolean }) {
             transition: `background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease)`,
           }}
         >
-          <span aria-hidden="true">{icon}</span>{!compact && <span className="ml-1 hidden sm:inline">{label}</span>}
+          <span aria-hidden="true"><Icon size={14} /></span>{!compact && <span className="ml-1 hidden sm:inline">{label}</span>}
         </button>
       ))}
     </div>

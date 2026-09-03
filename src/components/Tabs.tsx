@@ -5,6 +5,7 @@
  *    (progressive disclosure — giảm mật độ, tab đang chọn LUÔN hiện ngoài).
  */
 import { useEffect, useRef, useState } from "react";
+import { IconChevronDown } from "@/components/icons/UiIcons";
 
 const MAX_VISIBLE = 7;
 
@@ -40,7 +41,7 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
 
   return (
     <div className="flex items-start gap-2">
-      <button type="button" className="px-2 py-1.5 rounded-lg border bg-white text-slate-600 hover:bg-emerald-50 shrink-0" title="Tab trước" onClick={() => go(-1)}>‹</button>
+      <button type="button" className="tab-btn shrink-0 !px-2" title="Tab trước" onClick={() => go(-1)}>‹</button>
       <select className="input sm:hidden flex-1 font-semibold" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Chọn mục">
         {[...groups.entries()].map(([g, arr]) => g ? <optgroup key={g} label={g}>{arr.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</optgroup> : arr.map(([k, l]) => <option key={k} value={k}>{l}</option>))}
       </select>
@@ -50,20 +51,21 @@ export default function Tabs({ items, value, onChange, right }: { items: (readon
           <div className="relative" ref={box}>
             <button type="button" aria-expanded={open} aria-haspopup="menu"
               className="tab-btn"
-              onClick={() => setOpen(!open)}>Thêm ▾ <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
+              onClick={() => setOpen(!open)}>Thêm <IconChevronDown size={13} /> <span style={{ color: "var(--muted)" }}>({rest.length})</span></button>
             {open && (
               <div role="menu" className="ui-pop-in absolute right-0 mt-1 p-1 max-h-72 overflow-auto"
                 style={{ zIndex: "var(--z-sheet)", minWidth: 240, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: "var(--r-md)", boxShadow: "var(--sh-2)" }}>
                 {rest.map(([k, l]) => (
                   <button key={k} role="menuitem" type="button" onClick={() => { onChange(k); setOpen(false); }}
-                    className="block w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-emerald-50" style={{ color: "var(--ink)" }}>{l}</button>
+                    className="block w-full text-left px-3 py-2 min-h-[40px] rounded-lg text-sm" style={{ color: "var(--ink)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--brand-soft)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{l}</button>
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
-      <button type="button" className="px-2 py-1.5 rounded-lg border bg-white text-slate-600 hover:bg-emerald-50 shrink-0" title="Tab tiếp" onClick={() => go(1)}>›</button>
+      <button type="button" className="tab-btn shrink-0 !px-2" title="Tab tiếp" onClick={() => go(1)}>›</button>
       {right && <div className="shrink-0">{right}</div>}
     </div>
   );

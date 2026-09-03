@@ -10,14 +10,19 @@ export default function Login() {
     const next = new URLSearchParams(location.search).get("next"); location.href = next && next.startsWith("/") ? next : j.home;
   }
   return (
-    <div className="min-h-screen flex items-center justify-center bg-green-900 p-4">
-      <form onSubmit={go} className="card w-full max-w-sm space-y-4">
-        <div className="text-center"><div className="text-3xl font-black text-green-800">ITRAN AGRI</div><div className="text-stone-500 text-sm">Hệ điều hành số trang trại tuần hoàn</div></div>
-        <div><label className="text-sm text-stone-600">Tài khoản (mã đăng nhập / SĐT)</label><input className="input" autoFocus autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="a1, gd, owner…" /></div>
-        <div><label className="text-sm text-stone-600">PIN</label><input className="input text-center tracking-[0.5em] text-2xl" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" /></div>
-        {err && <div className="text-red-700 text-sm">{err}</div>}
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "radial-gradient(120% 90% at 50% -10%, color-mix(in srgb, var(--brand) 16%, var(--bg)) 0%, var(--bg) 55%)" }}>
+      <form onSubmit={go} className="card w-full max-w-sm space-y-4 relative overflow-hidden" style={{ boxShadow: "var(--sh-3)" }}>
+        <div className="absolute inset-x-0 top-0 h-1" style={{ background: "linear-gradient(90deg, var(--brand), var(--gold), var(--brand))" }} />
+        <div className="text-center pt-1"><div className="text-3xl font-black text-brand tracking-tight">ITRAN AGRI</div><div className="text-muted text-sm">Hệ điều hành số trang trại tuần hoàn</div></div>
+        <div><label htmlFor="login-id" className="text-sm text-muted">Tài khoản (mã đăng nhập / SĐT)</label><input id="login-id" className="input" autoFocus autoComplete="username" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="a1, gd, owner…" /></div>
+        <div><label htmlFor="login-pin" className="text-sm text-muted">PIN</label><input id="login-pin" className="input text-center tracking-[0.5em] text-2xl" type="password" inputMode="numeric" autoComplete="current-password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="••••" /></div>
+        {err && <div className="text-danger-tok text-sm">{err}</div>}
         <button className="btn-primary w-full" disabled={busy}>Đăng nhập</button>
-        <div className="text-xs text-stone-500 text-center">Dev: owner / gd / ktt-cn / a1…a11 / audit · PIN 1234</div>
+        <div className="flex items-center justify-center gap-1.5 text-[11px] uppercase tracking-wider" style={{ color: "var(--gold)" }}><span>◆</span><span>ITRAN Circular Farm Standard</span><span>◆</span></div>
+        {/* Danh sách tài khoản dev + PIN mặc định trước đây hiện công khai không điều kiện trên màn hình
+            login production — process.env.NODE_ENV được Next.js inline tĩnh lúc build cho client bundle,
+            nên bản build production sẽ không có nhánh này trong JS gửi ra trình duyệt. */}
+        {process.env.NODE_ENV !== "production" && <div className="text-xs text-muted text-center">Dev: owner / gd / ktt-cn / a1…a11 / audit · PIN 1234</div>}
       </form>
     </div>);
 }

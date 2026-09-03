@@ -4,8 +4,8 @@
  *  Dùng cho form nhập nhanh trên điện thoại (ngón cái với tới, không che toàn màn). */
 import { useEffect, useRef } from "react";
 
-export function Sheet({ open, onClose, title, children }: {
-  open: boolean; onClose: () => void; title?: string; children: React.ReactNode;
+export function Sheet({ open, onClose, title, children, widthClassName }: {
+  open: boolean; onClose: () => void; title?: string; children: React.ReactNode; widthClassName?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const prevFocus = useRef<HTMLElement | null>(null);
@@ -40,7 +40,7 @@ export function Sheet({ open, onClose, title, children }: {
         aria-label={title}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full sm:max-w-md outline-none ui-sheet-in"
+        className={`relative w-full ${widthClassName ?? "sm:max-w-md"} outline-none ui-sheet-in`}
         style={{
           background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line)",
           borderRadius: "var(--r-xl) var(--r-xl) 0 0", boxShadow: "var(--sh-3)",

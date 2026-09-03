@@ -5,6 +5,10 @@ public/uploads
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # tài liệu nội bộ — chỉ đẩy khi repo private
 docs/bo-goc/

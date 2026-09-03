@@ -3,6 +3,7 @@
  *  gắn 1 lần ở Shell. Dùng ở bất kỳ đâu: toast.ok("Đã lưu") / toast.err("Lỗi…") / toast.info(...).
  *  Tự ẩn sau ~4s, có nút đóng, aria-live cho screen-reader. */
 import { useSyncExternalStore } from "react";
+import { IconX } from "@/components/icons/UiIcons";
 
 export type ToastKind = "ok" | "err" | "info";
 export type ToastItem = { id: number; kind: ToastKind; msg: string };
@@ -40,13 +41,13 @@ export function Toaster() {
           key={t.id}
           role={t.kind === "err" ? "alert" : "status"}
           className={`ui-toast-in flex items-start gap-2 rounded-xl border px-4 py-3 shadow-lg text-sm ${
-            t.kind === "err" ? "bg-red-50 border-red-200 text-red-800"
-            : t.kind === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+            t.kind === "err" ? "bg-danger-soft-tok border-danger-tok text-danger-tok"
+            : t.kind === "ok" ? "bg-brand-soft border-brand-soft text-brand"
             : "bg-slate-800 border-slate-700 text-white"
           }`}
         >
           <span className="flex-1 break-words">{t.msg}</span>
-          <button className="shrink-0 opacity-70 hover:opacity-100" aria-label="Đóng" onClick={() => dismiss(t.id)}>✕</button>
+          <button className="shrink-0 opacity-70 hover:opacity-100" aria-label="Đóng" onClick={() => dismiss(t.id)}><IconX size={16} /></button>
         </div>
       ))}
     </div>

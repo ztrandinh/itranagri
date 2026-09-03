@@ -52,7 +52,7 @@ export function Modal({ open, onClose, title, children, labelledBy }: {
         className="ui-pop-in relative rounded-2xl shadow-xl w-full max-w-md p-5 outline-none" style={{ background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line)", boxShadow: "var(--sh-3)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {title && <h2 className="text-lg font-bold text-slate-800 mb-3">{title}</h2>}
+        {title && <h2 className="text-lg font-bold text-ink mb-3">{title}</h2>}
         {children}
       </div>
     </div>

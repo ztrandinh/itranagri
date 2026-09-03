@@ -8,16 +8,24 @@ import JSZip from "jszip";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-/** POST /api/jobs/{recon|alerts|tasks|all}?farm=F01&date=YYYY-MM-DD — chạy tay (KTT/GĐ/KS CN) hoặc cron với header x-job-key */
+/** POST/GET /api/jobs/{recon|alerts|tasks|all}?farm=F01&date=YYYY-MM-DD — chạy tay (KTT/GĐ/KS CN),
+ *  cron nội bộ Docker (header x-job-key, xem instrumentation.ts), hoặc Vercel Cron (GET + header
+ *  Authorization: Bearer $CRON_SECRET tự động do Vercel gửi — xem vercel.json). Có GET để tương thích
+ *  Vercel Cron (chỉ gọi được GET) — không đọc body nên logic giống hệt POST, không cần tách hàm. */
 export async function POST(req: Request, { params }: { params: Promise<{ job: string }> }) {
   const { job } = await params; const url = new URL(req.url);
   const s = await getSession(); const key = req.headers.get("x-job-key");
-  if (!s && key !== (process.env.JOB_KEY ?? "dev-job-key")) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
+  // KHÔNG fallback về key mặc định công khai (trước đây "dev-job-key" trùng default trong docker-compose.yml)
+  // — nếu JOB_KEY chưa được set, đường x-job-key coi như tắt hẳn (chỉ còn vào được qua session đăng nhập).
+  const jobKeyOk = !!process.env.JOB_KEY && key === process.env.JOB_KEY;
+  const cronOk = !!process.env.CRON_SECRET && req.headers.get("authorization") === `Bearer ${process.env.CRON_SECRET}`;
+  if (!s && !jobKeyOk && !cronOk) return NextResponse.json({ error: "ERR_UNAUTHENTICATED" }, { status: 401 });
   if (s && !["tech_head","director","owner","it_engineer"].includes(s.role)) return NextResponse.json({ error: "ERR_FORBIDDEN_ROLE" }, { status: 403 });
   const farms = url.searchParams.get("farm") ? [url.searchParams.get("farm")!] : (await adminPool().query("select id from farms where status='ACTIVE'")).rows.map((r) => r.id as string);
   const date = url.searchParams.get("date") ?? new Date(Date.now() - 86400e3).toISOString().slice(0, 10);
   const out: Record<string, unknown> = {};
   for (const f of farms) {
+   try {
     if (job === "recon" || job === "all") out[`recon:${f}`] = await runRecon(f, date);
     if (job === "alerts" || job === "all") out[`alerts:${f}`] = await runAlerts(f);
     if (job === "backup") {
@@ -25,17 +33,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
       const zip = new JSZip(); const tables = (await adminPool().query("select table_name from information_schema.tables where table_schema='public' and table_type='BASE TABLE' and table_name not like 'sensor_reads_2%'")).rows.map((r) => r.table_name as string);
       const manifest: Record<string, string> = {};
       for (const t of tables) { const hasFarm = (await adminPool().query("select 1 from information_schema.columns where table_name=$1 and column_name='farm_id'", [t])).rows.length > 0; const rows = (await adminPool().query(hasFarm ? `select * from ${t} where farm_id=$1` : `select * from ${t}`, hasFarm ? [f] : [])).rows as Record<string, unknown>[]; if (!rows.length) continue; const cols = Object.keys(rows[0]); const esc = (v: unknown) => { const x = v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v); return /[",\n\r]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x; }; const csv = "\uFEFF" + cols.join(",") + "\n" + rows.map((r) => cols.map((c) => esc(r[c])).join(",")).join("\n"); zip.file(`${t}.csv`, csv); manifest[t] = createHash("sha256").update(csv).digest("hex"); }
+      // Ảnh phiếu giấy/bằng chứng ATTP (UPLOAD_DIR) trước đây KHÔNG được backup — DB chỉ giữ URL, mất đĩa
+      // uploads là mất bằng chứng vĩnh viễn dù DB còn nguyên. Gộp vào cùng zip dưới thư mục uploads/.
+      let uploadFiles = 0;
+      try {
+        const { readdir: rd, readFile: rf } = await import("node:fs/promises");
+        const uploadRoot = join(process.env.UPLOAD_DIR ?? join(process.cwd(), "public", "uploads"), f);
+        const walk = async (dir: string, rel: string): Promise<void> => {
+          let entries: import("node:fs").Dirent[]; try { entries = await rd(dir, { withFileTypes: true }); } catch { return; }
+          for (const ent of entries) {
+            const full = join(dir, ent.name); const relPath = rel ? `${rel}/${ent.name}` : ent.name;
+            if (ent.isDirectory()) await walk(full, relPath);
+            else { const buf = await rf(full); zip.file(`uploads/${relPath}`, buf); manifest[`uploads/${relPath}`] = createHash("sha256").update(buf).digest("hex"); uploadFiles++; }
+          }
+        };
+        await walk(uploadRoot, "");
+      } catch (e) { out[`backup_uploads_err:${f}`] = (e as Error).message.slice(0, 120); }
       zip.file("MANIFEST.sha256.json", JSON.stringify({ farm: f, at: new Date().toISOString(), tables: manifest }, null, 2));
       const buf = await zip.generateAsync({ type: "nodebuffer" }); const dir = join(process.cwd(), "backups", f); await mkdir(dir, { recursive: true }); const name = `${f}-${new Date().toISOString().slice(0, 10)}.zip`; await writeFile(join(dir, name), buf);
-      out[`backup:${f}`] = { file: `backups/${f}/${name}`, bytes: buf.length, tables: Object.keys(manifest).length };
+      out[`backup:${f}`] = { file: `backups/${f}/${name}`, bytes: buf.length, tables: Object.keys(manifest).length, upload_files: uploadFiles };
       // OFF-SITE: sao chép sang BACKUP_DIR (ổ khác/NAS/mount cloud) + pg_dump toàn DB (docker exec hoặc pg_dump cục bộ) + xóa bản >30 ngày
       const off = process.env.BACKUP_DIR; if (off) { try { await mkdir(join(off, f), { recursive: true }); await writeFile(join(off, f, name), buf); out[`backup_offsite:${f}`] = join(off, f, name); } catch (e) { out[`backup_offsite:${f}`] = `ERR ${(e as Error).message}`; } }
+      // Trước đây lỗi pg_dump (cả 2 đường: cục bộ lẫn docker exec) bị nuốt trong try/catch riêng, chỉ ghi
+      // chuỗi "ERR ..." vào out["pg_dump"] mà KHÔNG throw — job_runs.ok vẫn ghi true dù pg_dump thật sự
+      // fail, tạo cảm giác an toàn giả trong nhật ký backup. Nay: rethrow để catch ngoài (dòng ~76) ghi
+      // job_runs.ok=false — CSV zip (đã ghi xong ở trên) vẫn giữ nguyên, chỉ báo đúng là pg_dump thất bại.
       try { const { execFile } = await import("node:child_process"); const { promisify } = await import("node:util"); const run = promisify(execFile); const dumpDir = off ?? join(process.cwd(), "backups"); const dumpName = join(dumpDir, `itranagri-${new Date().toISOString().slice(0, 10)}.dump`);
         const url = process.env.DATABASE_ADMIN_URL ?? ""; const m = url.match(/^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:/]+):?(\d+)?\/(.+)$/);
         try { await run("pg_dump", ["-Fc", "-f", dumpName, url], { timeout: 600e3 }); out["pg_dump"] = dumpName; }
-        catch { if (m) { const cont = process.env.PG_CONTAINER ?? "itranagri_db"; const { stdout } = await run("docker", ["exec", cont, "pg_dump", "-U", m[1], "-Fc", m[5]], { maxBuffer: 2e9, encoding: "buffer", timeout: 600e3 }); await writeFile(dumpName, stdout as unknown as Buffer); out["pg_dump"] = `${dumpName} (via docker exec ${cont})`; } }
+        catch (localErr) {
+          if (!m) throw localErr;
+          const cont = process.env.PG_CONTAINER ?? "itranagri_db"; const { stdout } = await run("docker", ["exec", cont, "pg_dump", "-U", m[1], "-Fc", m[5]], { maxBuffer: 2e9, encoding: "buffer", timeout: 600e3 }); await writeFile(dumpName, stdout as unknown as Buffer); out["pg_dump"] = `${dumpName} (via docker exec ${cont})`;
+        }
         const { readdir, stat, unlink } = await import("node:fs/promises"); const keepDays = Number(process.env.BACKUP_KEEP_DAYS ?? 30); for (const d of [dumpDir, join(dumpDir, f)]) { try { for (const fn of await readdir(d)) { const p = join(d, fn); const st = await stat(p); if (st.isFile() && Date.now() - st.mtimeMs > keepDays * 86400e3) await unlink(p); } } catch { /* */ } }
-      } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; }
+      } catch (e) { out["pg_dump"] = `ERR ${(e as Error).message.slice(0, 120)}`; throw new Error(`ERR_PG_DUMP: ${(e as Error).message.slice(0, 200)}`); }
     }
     if (job === "all") { try { out[`depreciation:${f}`] = (await adminPool().query("select run_depreciation($1, date_trunc('month', now())::date) as n", [f])).rows[0].n; } catch (e) { out[`depreciation:${f}`] = `skip ${(e as Error).message.slice(0, 40)}`; } }
     if (job === "reports" || job === "all") { // báo cáo định kỳ theo report_schedules → notifications (app + email/zalo qua channels)
@@ -61,6 +92,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ job: st
     if (job === "grade" || (job === "all" && new Date().getDate() === 1)) { out[`probation:${f}`] = (await adminPool().query("select confirm_probation_grades($1) as n", [f])).rows[0].n; const d = new Date(); if (job === "grade" || d.getMonth() % 3 === 0) out[`grade_review:${f}`] = (await adminPool().query("select run_grade_review($1,$2) as n", [f, `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`])).rows[0].n; }
     if (job === "tasks" || job === "all") { out[`deleg_end:${f}`] = (await adminPool().query("select end_delegations($1) as n", [f])).rows[0].n; out[`stale_closed:${f}`] = (await adminPool().query("select expire_stale_tasks($1) as n", [f])).rows[0].n; out[`tasks:${f}`] = (await adminPool().query("select itran_generate_tasks_v2($1) as n", [f])).rows[0].n; out[`monitor:${f}`] = (await adminPool().query("select gen_monitoring_tasks($1) as n", [f])).rows[0].n; out[`compliance:${f}`] = (await adminPool().query("select gen_compliance_tasks($1) as n", [f])).rows[0].n; out[`recording:${f}`] = (await adminPool().query("select gen_recording_alerts($1) as n", [f])).rows[0].n; out[`amu:${f}`] = (await adminPool().query("select gen_amu_alerts($1) as n", [f])).rows[0].n; out[`mortality:${f}`] = (await adminPool().query("select gen_mortality_alerts($1) as n", [f])).rows[0].n; out[`withdrawal:${f}`] = (await adminPool().query("select gen_withdrawal_reminders($1) as n", [f])).rows[0].n; out[`lot_expiry:${f}`] = (await adminPool().query("select gen_lot_expiry_alerts($1) as n", [f])).rows[0].n; out[`lots_closed:${f}`] = (await adminPool().query("select close_depleted_lots($1) as n", [f])).rows[0].n; out[`herd:${f}`] = (await adminPool().query("select gen_herd_actions($1) as n", [f])).rows[0].n; out[`cyclecount:${f}`] = (await adminPool().query("select gen_cycle_counts($1) as n", [f])).rows[0].n; out[`dunning:${f}`] = (await adminPool().query("select run_dunning($1) as n", [f])).rows[0].n; out[`supervision:${f}`] = (await adminPool().query("select run_supervision_auto($1) as n", [f])).rows[0].n; if (new Date().getDay() === 1) { out[`training:${f}`] = (await adminPool().query("select gen_training_week($1) as n", [f])).rows[0].n; out[`sup_tasks:${f}`] = (await adminPool().query("select gen_supervision_tasks($1) as n", [f])).rows[0].n; await adminPool().query("select run_supervision_auto($1, (date_trunc('week', current_date) - interval '7 days')::date)", [f]); } await adminPool().query("select refresh_compliance_gaps()"); out[`assigned:${f}`] = (await adminPool().query("select assign_open_tasks($1) as n", [f])).rows[0].n; }
     await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),true,$3)", [f, job, JSON.stringify({ date, keys: Object.keys(out).filter((k) => k.endsWith(":" + f)) })]);
+   } catch (e) {
+    // Trước đây 1 trại lỗi giữa chừng làm mất luôn các trại còn lại trong vòng lặp (exception văng thẳng
+    // ra khỏi handler), và KHÔNG có job_runs nào được ghi cho trại lỗi — job chết mà không ai biết.
+    // Nay: ghi nhận lỗi cho đúng trại này, tiếp tục các trại còn lại, và trả về lỗi trong response để gọi
+    // thủ công (KTT/GĐ) thấy ngay; cron gọi qua x-job-key nên kiểm tra "out.errors" thay vì chỉ HTTP 200.
+    const msg = (e as Error).message.slice(0, 500);
+    out[`error:${f}`] = msg;
+    await adminPool().query("insert into job_runs(farm_id,job,finished_at,ok,detail) values ($1,$2,now(),false,$3)", [f, job, JSON.stringify({ date, error: msg })]).catch(() => {});
+   }
   }
-  return NextResponse.json({ ok: true, date, out });
+  const errors = Object.keys(out).filter((k) => k.startsWith("error:"));
+  return NextResponse.json({ ok: errors.length === 0, date, out, ...(errors.length ? { errors } : {}) }, { status: errors.length ? 207 : 200 });
 }
+// Vercel Cron chỉ gọi GET — logic không đọc req.json() nên dùng lại nguyên vẹn hàm POST là đủ.
+export const GET = POST;

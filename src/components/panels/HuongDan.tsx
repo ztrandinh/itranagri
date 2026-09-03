@@ -30,7 +30,7 @@ const G: Record<string, { title: string; steps: string[] }[]> = {
 };
 export default function HuongDan({ sess }: { sess: Sess }) {
   const [role, setRole] = useState(sess.role in G ? sess.role : "worker");
-  return (<div className="space-y-3"><Tabs items={Object.keys(G).map((r) => [r, r] as const)} value={role} onChange={setRole} right={<a className="underline text-sm" href="/to-chuc">quy trình đầy đủ</a>} />
+  return (<div className="space-y-3"><Tabs items={Object.keys(G).map((r) => [r, r] as const)} value={role} onChange={setRole} right={<a className="underline text-sm self-center py-2 -my-2" href="/to-chuc">quy trình đầy đủ</a>} />
     {G[role].map((sec) => <div key={sec.title} className="card"><b>{sec.title}</b><ol className="list-decimal pl-5 mt-1 space-y-1 text-sm">{sec.steps.map((s, i) => <li key={i}>{s}</li>)}</ol></div>)}
-    <div className="text-xs text-slate-500">Điện thoại: mở trình duyệt Chrome → «Thêm vào màn hình chính» để dùng như app (PWA), ghi được khi mất mạng.</div></div>);
+    <div className="text-xs text-muted">Điện thoại: mở trình duyệt Chrome → «Thêm vào màn hình chính» để dùng như app (PWA), ghi được khi mất mạng.</div></div>);
 }

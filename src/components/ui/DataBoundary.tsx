@@ -17,21 +17,21 @@ export function DataBoundary({ loading, error, empty, onRetry, emptyText, skelet
       <div className="animate-pulse space-y-2 py-2" aria-busy="true" aria-live="polite">
         <span className="sr-only">Đang tải…</span>
         {Array.from({ length: skeletonRows }).map((_, i) => (
-          <div key={i} className="h-8 rounded-lg bg-slate-100" />
+          <div key={i} className="h-8 rounded-lg bg-surface-2" />
         ))}
       </div>
     );
   }
   if (error) {
     return (
-      <div role="alert" className="rounded-xl bg-red-50 border border-red-200 text-red-800 px-3 py-3 text-sm flex items-center justify-between gap-3">
+      <div role="alert" className="rounded-xl bg-danger-soft-tok border border-danger-tok text-danger-tok px-3 py-3 text-sm flex items-center justify-between gap-3">
         <span>{error === "offline" ? "Mất mạng — chưa tải được dữ liệu." : `Lỗi tải dữ liệu: ${error}`}</span>
         {onRetry && <button className="btn-secondary !py-1.5 !px-3 !text-sm shrink-0" onClick={onRetry}>Thử lại</button>}
       </div>
     );
   }
   if (empty) {
-    return <div className="text-slate-500 py-6 text-center text-sm">{emptyText ?? "Chưa có dữ liệu."}</div>;
+    return <div className="text-muted py-6 text-center text-sm">{emptyText ?? "Chưa có dữ liệu."}</div>;
   }
   return <>{children}</>;
 }

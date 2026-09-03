@@ -71,7 +71,7 @@ export function usePrompt() {
                 max={state.max}
                 onChange={(e) => { setValue(e.target.value); if (err) setErr(null); }}
               />
-              {state.unit && <span className="text-slate-600 whitespace-nowrap">{state.unit}</span>}
+              {state.unit && <span className="text-muted whitespace-nowrap">{state.unit}</span>}
             </div>
           )}
         </Field>
