@@ -30,7 +30,7 @@ const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem("itran.theme")||"light
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi" className={sans.variable}>
+    <html lang="vi" className={sans.variable} suppressHydrationWarning>
       <head><script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} /></head>
       <body className="min-h-screen antialiased text-[16px]">{children}</body>
     </html>
