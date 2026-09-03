@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useMemo, useState } from "react";
 import ThreeTap from "@/components/ThreeTap";
 import { buildForms, type Ref } from "@/lib/forms";
@@ -16,7 +17,7 @@ export default function GiayPanel({ sess }: { sess: Sess }) {
   const forms = ref ? buildForms(ref, sess.farmId) : null;
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">{[["nop", "📷 Nộp phiếu giấy"], ["nhap", `Nhập từ phiếu (${pending.rows?.length ?? 0})`], ["audit", "Đối chiếu giấy–số"]].map(([k, l]) => <button key={k} className={`px-4 py-2 rounded-xl font-semibold ${tab === k ? "bg-brand-tok text-white" : "bg-white border"}`} onClick={() => setTab(k as typeof tab)}>{l}</button>)}</div>
+      <Tabs items={[["nop", "📷 Nộp phiếu giấy"], ["nhap", `Nhập từ phiếu (${pending.rows?.length ?? 0})`], ["audit", "Đối chiếu giấy–số"]]} value={tab} onChange={(k) => setTab(k as typeof tab)} />
       <div className="text-sm text-muted">Luật giấy–số (SPEC-02): ghi tay tại chỗ → cuối ca chụp → upload theo số seri → nhập máy gắn <code>paper_serial</code> → tick ĐÃ SỐ HÓA → lưu cứng 5 năm. RC11: chưa số hóa &gt;24h = VÀNG; seri nhảy quãng = ĐỎ.</div>
       {tab === "nop" && forms && <ThreeTap spec={{ ...forms.paper_submit, onDone: () => { pending.reload(); all.reload(); } }} />}
       {tab === "nhap" && (<div className="space-y-3">

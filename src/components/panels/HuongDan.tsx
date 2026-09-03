@@ -1,4 +1,5 @@
 "use client";
+import Tabs from "@/components/Tabs";
 import { useState } from "react";
 import type { Sess } from "@/components/Shell";
 const G: Record<string, { title: string; steps: string[] }[]> = {
@@ -29,7 +30,7 @@ const G: Record<string, { title: string; steps: string[] }[]> = {
 };
 export default function HuongDan({ sess }: { sess: Sess }) {
   const [role, setRole] = useState(sess.role in G ? sess.role : "worker");
-  return (<div className="space-y-3"><div className="flex gap-2 flex-wrap">{Object.keys(G).map((r) => <button key={r} className={`px-3 py-1.5 rounded-xl text-sm font-semibold min-h-[40px] ${role === r ? "bg-brand-tok text-white" : "bg-white border"}`} onClick={() => setRole(r)}>{r}</button>)}<a className="ml-auto underline text-sm self-center py-2 -my-2" href="/to-chuc">quy trình đầy đủ</a></div>
+  return (<div className="space-y-3"><Tabs items={Object.keys(G).map((r) => [r, r] as const)} value={role} onChange={setRole} right={<a className="underline text-sm self-center py-2 -my-2" href="/to-chuc">quy trình đầy đủ</a>} />
     {G[role].map((sec) => <div key={sec.title} className="card"><b>{sec.title}</b><ol className="list-decimal pl-5 mt-1 space-y-1 text-sm">{sec.steps.map((s, i) => <li key={i}>{s}</li>)}</ol></div>)}
     <div className="text-xs text-muted">Điện thoại: mở trình duyệt Chrome → «Thêm vào màn hình chính» để dùng như app (PWA), ghi được khi mất mạng.</div></div>);
 }

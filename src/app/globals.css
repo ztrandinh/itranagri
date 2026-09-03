@@ -64,6 +64,10 @@ html { -webkit-tap-highlight-color: transparent; }
 body { font-family: var(--font-sans), ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 /* Tiêu đề gọn: cân chữ, siết tracking nhẹ cho hiện đại */
 h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
+/* PHÂN CẤP CHỮ (đợt 7): thang tiêu đề rõ ràng — trước đây h1–h3 chỉ có letter-spacing, cỡ/độ đậm thả nổi theo trình duyệt */
+h1 { font-size: 1.6rem; font-weight: 800; line-height: 1.25; }
+h2 { font-size: 1.2rem; font-weight: 700; line-height: 1.3; }
+h3 { font-size: 1.05rem; font-weight: 700; line-height: 1.35; }
 @layer components {
   .btn { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
   .btn-primary { @apply inline-flex items-center justify-center rounded-xl px-5 py-3.5 text-lg font-semibold shadow-sm active:scale-[0.98] transition min-h-[52px] disabled:opacity-50; }
@@ -90,8 +94,8 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.012em; }
   table.tbl { @apply w-full text-[15px]; } table.tbl th { @apply text-left text-xs uppercase tracking-wide font-semibold py-2 border-b; background: var(--surface-2); color: var(--muted); border-color: var(--line); } table.tbl td { @apply py-2 border-b align-top; border-color: var(--line); } table.tbl tbody tr:hover td { background: var(--surface-2); }
   /* nút chuyển tab dùng chung (segmented control) — thay chỗ tự vẽ rounded-lg + bg-emerald-700 rời rạc,
      tránh lặp lại đúng lớp bug "class Tailwind cứng không tự đổi theo dark mode" đã vá ở Tabs.tsx. */
-  .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border; }
-  .tab-btn-active { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border; }
+  .tab-btn { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border transition; }
+  .tab-btn-active { @apply inline-flex items-center justify-center rounded-lg px-3 py-2 min-h-[40px] text-sm font-semibold whitespace-nowrap border transition; }
 }
 /* ===== CLASS NGỮ NGHĨA THẬT (dọn nợ kỹ thuật) — thay cho việc chặn ở tầng CSS bằng !important lên
    class Tailwind cứng (vẫn còn tồn tại phía dưới cho code cũ chưa đổi). Code MỚI/đang dọn phải dùng
@@ -201,6 +205,18 @@ table.tbl td { border-color: var(--line); } table.tbl th { border-color: var(--l
    sang dải gradient mảnh teal→vàng→teal — tinh tế, không lạm dụng (1 vị trí, opacity thấp). */
 .app-header { position: relative; border-bottom-color: transparent !important; }
 .app-header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--brand) 20%, var(--gold) 50%, var(--brand) 80%, transparent); opacity: .65; }
+
+/* ===== CHIỀU SÂU CHUYÊN NGHIỆP (đợt 7): bóng phân lớp (key+ambient) thay vì bóng phẳng 1px; điểm nhấn hành động
+   có chiều sâu nhẹ (highlight trên + bóng dưới) — chỉ thêm LỚP PHỦ lên màu token có sẵn, không đổi màu thương hiệu. */
+.card, .kpi, .tile { box-shadow: var(--sh-2); }
+.btn-primary, .btn-danger, .tab-btn-active, .tab-btn[aria-current="page"] {
+  background-image: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%);
+  box-shadow: var(--sh-1), inset 0 1px 0 rgba(255,255,255,.14), inset 0 -1px 0 rgba(0,0,0,.08);
+}
+.btn-primary:active, .btn-danger:active, .tab-btn-active:active { box-shadow: inset 0 1px 3px rgba(0,0,0,.18); }
+.btn-secondary, .tab-btn { box-shadow: var(--sh-1); }
+/* header: bóng đổ rõ để tách khỏi nội dung cuộn bên dưới (chiều sâu lớp) */
+header.sticky { box-shadow: 0 1px 0 var(--line), var(--sh-1); }
 
 /* ===== DARK MODE: bù cho các utility class hardcode đang dùng rải rác (100+ file) =====
    Chỉ ánh xạ về token — không đổi cấu trúc component. Gom vào 1 nơi để sau này gỡ dần. */

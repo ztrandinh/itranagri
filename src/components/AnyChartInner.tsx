@@ -36,7 +36,7 @@ export default function AnyChart(p: AnyChartProps) {
         {p.title && <b className="mr-2">{p.title}</b>}
         <select className="input !w-auto !py-1 !text-sm" value={bucket} onChange={(e) => setBucket(e.target.value)}><option value="day">Ngày</option><option value="week">Tuần</option><option value="month">Tháng</option><option value="quarter">Quý</option><option value="year">Năm</option></select>
         <input type="date" className="input !w-auto !py-1 !text-sm" value={from} onChange={(e) => setFrom(e.target.value)} /><span>→</span><input type="date" className="input !w-auto !py-1 !text-sm" value={to} onChange={(e) => setTo(e.target.value)} />
-        <div className="flex rounded-lg overflow-hidden border">{(["bar", "line", "cum"] as const).map((c) => <button key={c} className={`px-2 py-1 ${chart === c ? "bg-brand-tok text-white" : "bg-white"}`} onClick={() => setChart(c)}>{c === "bar" ? "Cột" : c === "line" ? "Đường" : "Lũy kế"}</button>)}</div>
+        <div className="flex gap-1">{(["bar", "line", "cum"] as const).map((c) => <button key={c} className={c === chart ? "tab-btn-active !px-3 !py-1 !text-xs" : "tab-btn !px-3 !py-1 !text-xs"} onClick={() => setChart(c)}>{c === "bar" ? "Cột" : c === "line" ? "Đường" : "Lũy kế"}</button>)}</div>
         <span className="ml-auto font-bold">{isAvg ? "TB" : "Tổng"}: {fmt.n(isAvg && rows.length ? total / rows.length : total, 1)} {p.unit ?? ""}{p.compare && prev.length ? <span className={`ml-1 text-xs ${total >= prevTotal ? "text-brand" : "text-danger-tok"}`}>({prevTotal ? `${total >= prevTotal ? "+" : ""}${(((total - prevTotal) / prevTotal) * 100).toFixed(0)}%` : "n/a"} vs kỳ trước)</span> : null}</span>
       </div>}
       {err && <div className="text-danger-tok text-sm">{err}</div>}
